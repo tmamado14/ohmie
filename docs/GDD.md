@@ -204,3 +204,26 @@ Full audit in `ASSETS.md`. Summary:
 **Milestone 3: beyond series-parallel.** Nodal-analysis solver with rationals. Lever switches that open and close wires. Bridge and Wheatstone levels with delta-Y shown in the replay. First hazards and hearts.
 
 **Milestone 4: polish and ship.** Animation cycles, particles, art consistency pass, settings, Windows export.
+
+## 11. Goals and missions (added 2026-11-11)
+
+"Exactly 1 Ω" is no longer the only win condition. Every level states a **goal**, shown on screen as a **mission**, and the door opens while the goal is met.
+
+```json
+"goal": { "type": "resistance", "value": "3/2", "mission": "Make exactly 3/2 Ω between A and B." }
+```
+
+- A goal has a `type`. This version implements one: `resistance`, met when the network between A and B is exactly `value`. The value can be any positive rational, not only 1.
+- A level with the old `target` field and no `goal` is treated as a resistance goal.
+- The readout plaque shows `GOAL` and the live reading. A mission sign shows the sentence and switches to a "complete" state while the goal is met.
+
+Planned goal types, each arriving with the parts it needs:
+
+| Type | Met when | Needs |
+|---|---|---|
+| `current` | The current through a named part is within a range, for example "light the LED with 10–20 mA and do not burn it" | Voltage sources, LEDs, nodal analysis |
+| `voltage` | A named node sits at an exact voltage, for example a divider giving 3 V | Voltage sources, nodal analysis |
+| `logic` | A named output has the required value for every input row shown | Logic gates, switches as inputs |
+| `power` | A part dissipates no more than its rating | Power ratings on parts |
+
+Exactness stays a pillar: where a goal is a single value it is matched as a rational; where real parts have tolerances the goal is a stated range.
