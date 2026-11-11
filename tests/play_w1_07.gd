@@ -1,29 +1,31 @@
 extends SceneTree
-## Scripted headless playthrough of res://levels/slice_01.json ("Half and Half":
-## s1 in series with s2 || s3; resistors 1/2, 1, 1 and a 2 decoy).
+## Scripted headless playthrough of res://levels/w1_07.json ("Half and Half":
+## s1 in series with s2 || s3, closed by the ohmmeter om1; resistors 1/2, 1, 1
+## and a 2 decoy; goal: om1 reads 1 Ω).
 ##
 ## First checks the decoy with the circuit API: 2 + (1 || 1) = 5/2, no match.
 ## Then solves the level start to finish through the input map only (no
-## teleporting): 1/2 from the left ledge into s1 (still OPEN), 1 from the right
-## ledge into s2 (3/2, door closed), the floor 1 into s3 (1, door open, mission
-## sign done), pulls s3 out and plugs it back (sign reverts, then done again),
-## and walks into the door. Then the victory line offers the next room and
-## `interact` loads it ("Ohm's Law", the next level of the campaign).
+## teleporting): 1/2 from the left ledge into s1 (still OL), 1 from the right
+## ledge into s2 (3/2 Ω, door closed), the floor 1 into s3 (1 Ω, door open,
+## mission sign done), pulls s3 out and plugs it back (sign reverts, then done
+## again), and walks into the door. The plaque reading and the ohmmeter on the
+## board agree at every step. w1_07 is the campaign's last room, so the victory
+## line offers to play again and `interact` loads nothing.
 ##
 ## Usage (exit code 0 = all checks passed):
-##   godot --headless --path . --script res://tests/play_slice_01.gd
+##   godot --headless --path . --fixed-fps 60 --script res://tests/play_w1_07.gd
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
-const LEVEL_PATH: String = "res://levels/slice_01.json"
+const LEVEL_PATH: String = "res://levels/w1_07.json"
 const ROOM_PATH: NodePath = ^"Room"
 const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
 const TITLE: String = "Half and Half"
-const MISSION: String = "Make exactly 1 Ω between A and B to unlock the door."
-const NEXT_TITLE: String = "Ohm's Law"
-const NEXT_ROOM_LINE: String = "Press E for the next room"
+const MISSION: String = "Make 1 Ω."
+## w1_07 is the campaign's last room.
+const PLAY_AGAIN_LINE: String = "Press R to play again"
 const RELOAD_FRAMES: int = 6
 
-## Layout facts of slice_01.json.
+## Layout facts of w1_07.json.
 const SPAWN: Vector2 = Vector2(96, 640)
 const FLOOR_Y: float = 640.0
 const LEFT_LEDGE_Y: float = 455.0  # row 14, columns 6..10
@@ -65,7 +67,7 @@ func _run() -> void:
 	var exit_code: int = await _run_checks()
 	_release_all()
 	print("")
-	print("play_slice_01: %d passed, %d failed" % [_passed, _failed])
+	print("play_w1_07: %d passed, %d failed" % [_passed, _failed])
 	quit(exit_code)
 
 
@@ -86,42 +88,45 @@ func _run_checks() -> int:
 	_check_start_state()
 	_check_decoy()
 	await _solve()
-	await _check_next_room()
+	await _check_last_room()
 	return 0 if _failed == 0 else 1
 
 
 func _check_start_state() -> void:
 	print("-- start")
 	_check(_room.level_data.title == TITLE, "level title is '%s' (got '%s')" % [TITLE, _room.level_data.title])
-	_check(_hud.get_equivalent_text() == "OPEN", "initial readout is OPEN (got '%s')" % _hud.get_equivalent_text())
+	_check_reading("OL", "initial reading")
 	_check(not _door.is_open(), "door starts closed")
 	_check(_room.get_goal() != null and _room.get_goal().mission == MISSION,
 			"the level's mission is '%s'" % MISSION)
-	_check(_hud.get_mission_text() == _room.get_goal().mission,
+	_check(_hud.get_mission_text() == MISSION,
 			"the mission sign shows the level's mission (got '%s')" % _hud.get_mission_text())
-	_check(_hud.get_goal_text() == "1 Ω", "the plaque shows GOAL 1 Ω (got '%s')" % _hud.get_goal_text())
+	_check(_hud.get_row_caption(0) == "GOAL" and _hud.get_row_value(0) == "1 Ω" and _hud.get_row_caption(1) == "R",
+			"the plaque shows GOAL 1 Ω and an R row (got '%s %s' / '%s')" % [_hud.get_row_caption(0),
+				_hud.get_row_value(0), _hud.get_row_caption(1)])
 	_check(not _hud.is_mission_complete_shown(), "the mission sign starts not done")
 	_check(_player.position.distance_to(SPAWN) <= POSITION_TOLERANCE and _player.is_on_floor(),
 			"player starts on the floor at spawn (%s)" % _player.position)
 
 
-## The 2 ohm decoy in s1 with both 1 ohm in s2 / s3 reads 5/2 and is no match.
+## The 2 ohm decoy in s1 with both 1 ohm in s2 / s3 reads 5/2 Ω and is no match.
 func _check_decoy() -> void:
 	print("-- decoy (circuit API)")
-	var filled: Dictionary = {"s1": Rational.new(2), "s2": Rational.new(1), "s3": Rational.new(1)}
-	var result: CircuitResult = CircuitSolver.solve(_room.get_circuit().build_graph(filled))
-	_check(result.status == CircuitResult.Status.OK and result.value.equals(Rational.new(5, 2)),
-			"2 + (1 || 1) = 5/2 (got '%s')" % result.to_text())
-	_check(not result.matches(_room.get_target()), "the decoy combination does not match the 1 Ω target")
+	var filled: Dictionary = {"s1": _resistor(2, 1), "s2": _resistor(1, 1), "s3": _resistor(1, 1)}
+	var solution: DcSolution = DcSolver.solve(_room.get_circuit().build_network(filled))
+	var goal: LevelGoal = _room.get_goal()
+	_check(goal.reading_text(0, solution) == "5/2 Ω" and MeterText.reading(solution, "om1") == "5/2 Ω",
+			"2 + (1 || 1) reads 5/2 Ω (got '%s')" % goal.reading_text(0, solution))
+	_check(not goal.is_met(solution), "the decoy combination does not meet the 1 Ω goal")
 
 
 func _solve() -> void:
 	print("-- solve")
-	var half: ResistorPickup = _pickup("r_half")
-	var one_ledge: ResistorPickup = _pickup("r_one_ledge")
-	var one_floor: ResistorPickup = _pickup("r_one_floor")
+	var half: PartPickup = _part("r_half")
+	var one_ledge: PartPickup = _part("r_one_ledge")
+	var one_floor: PartPickup = _part("r_one_floor")
 	if half == null or one_ledge == null or one_floor == null:
-		_check(false, "pickups r_half, r_one_ledge and r_one_floor exist")
+		_check(false, "parts r_half, r_one_ledge and r_one_floor exist")
 		return
 
 	# Up onto the S1 platform, then across to the left ledge for the 1/2 ohm.
@@ -139,10 +144,10 @@ func _solve() -> void:
 	await _walk_to_x(S1_X)
 	_check(_on_surface(S1_PLATFORM_Y), "walks off the left ledge back onto the S1 platform (%s)" % _player.position)
 	await _interact()
-	_check(not _carry.is_carrying() and _socket("s1").get_resistor() == half,
+	_check(not _carry.is_carrying() and _socket("s1").get_pickup() == half,
 			"plugs the 1/2 Ω into s1")
-	_check(_hud.get_equivalent_text() == "OPEN" and not _door.is_open(),
-			"s1 alone: readout stays OPEN, door closed (got '%s')" % _hud.get_equivalent_text())
+	_check_reading("OL", "s1 alone (the branch is still open)")
+	_check(not _door.is_open(), "s1 alone: door closed")
 
 	# Across to the S2 platform and up to the right ledge for a 1 ohm.
 	await _walk_to_x(TO_S2_JUMP_X)
@@ -159,10 +164,10 @@ func _solve() -> void:
 	await _walk_to_x(S2_X)
 	_check(_on_surface(S2_PLATFORM_Y), "walks off the right ledge back onto the S2 platform (%s)" % _player.position)
 	await _interact()
-	_check(not _carry.is_carrying() and _socket("s2").get_resistor() == one_ledge,
+	_check(not _carry.is_carrying() and _socket("s2").get_pickup() == one_ledge,
 			"plugs the 1 Ω into s2")
-	_check(_hud.get_equivalent_text() == "3/2 Ω" and not _door.is_open(),
-			"s1 + s2: readout 3/2 Ω, door closed (got '%s')" % _hud.get_equivalent_text())
+	_check_reading("3/2 Ω", "s1 + s2")
+	_check(not _door.is_open() and not _hud.is_condition_met_shown(0), "s1 + s2: door closed, row not green")
 
 	# Off the S2 platform's right end to the floor, fetch the floor 1 ohm, plug into s3.
 	await _walk_to_x(ONE_FLOOR_X)
@@ -171,22 +176,24 @@ func _solve() -> void:
 	_check(_carry.get_carried() == one_floor, "picks up the 1 Ω resistor on the floor")
 	await _walk_to_x(S3_X)
 	await _interact()
-	_check(not _carry.is_carrying() and _socket("s3").get_resistor() == one_floor,
+	_check(not _carry.is_carrying() and _socket("s3").get_pickup() == one_floor,
 			"plugs the 1 Ω into s3")
-	_check(_hud.get_equivalent_text() == "1 Ω" and _door.is_open(),
-			"1/2 + (1 || 1): readout 1 Ω and the door opens (got '%s')" % _hud.get_equivalent_text())
-	_check(_room.get_board().get_last_result().matches(_room.get_target()), "board reports a match")
-	_check(_hud.is_mission_complete_shown(), "at 1 Ω the mission sign shows its done state")
+	_check_reading("1 Ω", "1/2 + (1 || 1)")
+	_check(_door.is_open(), "at 1 Ω the door opens")
+	_check(_room.get_board().is_goal_met(), "board reports the goal met")
+	_check(_hud.is_mission_complete_shown() and _hud.is_condition_met_shown(0)
+			and _hud.get_row_value_color(1) == Hud.COLOR_MATCH,
+			"at 1 Ω the mission sign shows its done state and the reading row is green")
 
 	# Pull the s3 resistor out: the sign reverts. Plug it back: done again.
 	await _interact()
 	_check(_carry.get_carried() == one_floor and not _socket("s3").is_filled(),
 			"pulls the 1 Ω back out of s3")
 	_check(not _hud.is_mission_complete_shown() and not _door.is_open(),
-			"pulled out: mission sign no longer done, door closed (readout '%s')" % _hud.get_equivalent_text())
+			"pulled out: mission sign no longer done, door closed (reading '%s')" % _hud.get_reading_text(0))
 	await _interact()
-	_check(_socket("s3").get_resistor() == one_floor and _hud.is_mission_complete_shown() and _door.is_open(),
-			"plugged back: mission sign done again, door open (readout '%s')" % _hud.get_equivalent_text())
+	_check(_socket("s3").get_pickup() == one_floor and _hud.is_mission_complete_shown() and _door.is_open(),
+			"plugged back: mission sign done again, door open (reading '%s')" % _hud.get_reading_text(0))
 
 	# Walk into the door.
 	Input.action_press("move_right")
@@ -200,21 +207,32 @@ func _solve() -> void:
 	_check(_hud.is_level_complete_shown(), "the level-complete banner is shown")
 
 
-## After completion: the victory line offers the next room, and `interact`
-## (sent as an input event, as a key press would be) loads it.
-func _check_next_room() -> void:
-	print("-- next room")
-	_check(_hud.get_victory_line() == NEXT_ROOM_LINE,
-			"the victory line reads '%s' (got '%s')" % [NEXT_ROOM_LINE, _hud.get_victory_line()])
+## After completion in the campaign's last room: the victory line offers to
+## play again, and `interact` (sent as an input event, as a key press would
+## be) does not load another room.
+func _check_last_room() -> void:
+	print("-- last room")
+	_check(_hud.get_victory_line() == PLAY_AGAIN_LINE,
+			"the victory line reads '%s' (got '%s')" % [PLAY_AGAIN_LINE, _hud.get_victory_line()])
 	_send_action_event(&"interact", true)
 	await _wait_physics(1)
 	_send_action_event(&"interact", false)
 	await _wait_physics(RELOAD_FRAMES)
 	var room: Room = current_scene.get_node_or_null(ROOM_PATH) as Room if current_scene != null else null
-	_check(room != null and room.level_data != null and room.level_data.title == NEXT_TITLE,
-			"pressing interact loads the next room, '%s' (got '%s')" % [
-				NEXT_TITLE, room.level_data.title if room != null and room.level_data != null else "no room"])
+	_check(room == _room and room.is_complete(),
+			"pressing interact in the last room keeps the completed room")
 
+
+## The plaque's reading and the ohmmeter on the board both read `expected`.
+func _check_reading(expected: String, what: String) -> void:
+	var shown: String = _hud.get_reading_text(0)
+	var meter: String = _room.get_board().get_meter("om1").get_reading()
+	_check(shown == expected and meter == expected and _hud.get_row_value(1) == expected,
+			"%s: the plaque and the ohmmeter read %s (plaque '%s', meter '%s')" % [what, expected, shown, meter])
+
+
+func _resistor(num: int, den: int) -> Part:
+	return Part.create(Part.Kind.RESISTOR, Rational.new(num, den))
 
 func _send_action_event(action: StringName, pressed: bool) -> void:
 	var event: InputEventAction = InputEventAction.new()
@@ -239,9 +257,9 @@ func _bind_room(main: Node) -> bool:
 	return true
 
 
-func _pickup(id: String) -> ResistorPickup:
-	for pickup: ResistorPickup in _room.get_pickups():
-		if pickup.pickup_id == id:
+func _part(id: String) -> PartPickup:
+	for pickup: PartPickup in _room.get_parts():
+		if pickup.part_id == id:
 			return pickup
 	return null
 

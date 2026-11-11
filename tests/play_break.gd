@@ -1,17 +1,19 @@
 extends SceneTree
-## Adversarial scripted QA test: tries to break the vertical slice.
+## Adversarial scripted QA test: tries to break the rooms w1_07 ("Half and Half")
+## and dev_room.
 ##
 ## Drives Ohmie through the input map (move_left, move_right, move_down, jump,
 ## interact, restart). To reach a test position quickly it sometimes moves
 ## Ohmie with Player.respawn(at) ("teleport"); every interaction itself still
-## goes through the `interact` action. The HUD sweep (section J) sets socket
+## goes through the `interact` action. The HUD sweep (section J) sets slot
 ## contents through the socket API to cover all 73 assignments.
 ##
 ## Invariants checked on every frame of the spam tests:
-##   conservation: every resistor is in exactly one state (loose, carried or
-##     plugged), loose <=> visible, and the level's resistor count never changes;
-##   readout: the HUD text equals LevelGoal.reading_label(solver result for the
-##     current socket contents) and the door is open exactly on a match.
+##   conservation: every part is in exactly one state (loose, carried or
+##     plugged), loose <=> visible, and the level's part count never changes;
+##   readout: the HUD reading and the ohmmeter on the board equal what DcSolver
+##     gives for the current slot contents (LevelGoal.reading_text and
+##     MeterText.reading), and the door is open exactly while LevelGoal.is_met.
 ##
 ## A check that exposes a real bug FAILS (and stays failing until the bug is
 ## fixed). INFO lines record behaviour that is not pass/fail.
@@ -49,13 +51,13 @@ class ErrorCounter extends Logger:
 
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
-const SLICE: String = "res://levels/slice_01.json"
+const HALF_AND_HALF: String = "res://levels/w1_07.json"
 const DEV: String = "res://levels/dev_room.json"
 const ROOM_PATH: NodePath = ^"Room"
 const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
 const OHM: String = " Ω"
 
-## slice_01 layout facts (feet positions; one-way surfaces sit 7 px below the tile top).
+## w1_07 layout facts (feet positions; one-way surfaces sit 7 px below the tile top).
 const FLOOR_Y: float = 640.0
 const LEFT_LEDGE_Y: float = 455.0  # row 14, x 192..352
 const LEFT_LEDGE_RIGHT_X: float = 352.0
@@ -105,7 +107,7 @@ var _hud: Hud = null
 var _door: ExitDoor = null
 var _board: CircuitBoard = null
 var _tiles: TileMapLayer = null
-var _resistor_count: int = 0
+var _part_count: int = 0
 
 var _picked: int = 0
 var _placed: int = 0
@@ -164,9 +166,9 @@ func _run_all() -> void:
 
 func _section_a_interact_spam() -> void:
 	print("-- A: interact spam")
-	if not await _open_level(SLICE):
+	if not await _open_level(HALF_AND_HALF):
 		return
-	var one_floor: ResistorPickup = _pickup("r_one_floor")
+	var one_floor: PartPickup = _part("r_one_floor")
 	var s3: CircuitSocket = _socket("s3")
 
 	await _teleport(ONE_FLOOR_POS)
@@ -208,10 +210,10 @@ func _section_a_interact_spam() -> void:
 
 func _section_b_mid_air() -> void:
 	print("-- B: interact in mid-air")
-	if not await _open_level(SLICE):
+	if not await _open_level(HALF_AND_HALF):
 		return
-	var half: ResistorPickup = _pickup("r_half")
-	var two: ResistorPickup = _pickup("r_two")
+	var half: PartPickup = _part("r_half")
+	var two: PartPickup = _part("r_two")
 	var s1: CircuitSocket = _socket("s1")
 	var s3: CircuitSocket = _socket("s3")
 
@@ -287,12 +289,12 @@ func _section_b_mid_air() -> void:
 	# B6: empty hands, airborne next to the filled socket s3.
 	await _teleport(AT_S3)
 	await _interact()
-	_check(s3.get_resistor() == half and not _carry.is_carrying(), "B6 setup: the 1/2 Ω plugged into s3 from the floor")
+	_check(s3.get_pickup() == half and not _carry.is_carrying(), "B6 setup: the 1/2 Ω plugged into s3 from the floor")
 	_check(_carry.get_target() == s3, "B6 setup: empty hands at the filled s3, which is highlighted")
 	_reset_counters()
 	before = _contents_text()
 	presses = await _jump_pressing_near(s3.get_interaction_point())
-	_check(presses > 0 and _invalid == presses and _removed == 0 and s3.get_resistor() == half
+	_check(presses > 0 and _invalid == presses and _removed == 0 and s3.get_pickup() == half
 			and not _carry.is_carrying() and _contents_text() == before,
 			"B6 interact while airborne next to a filled socket is invalid and changes nothing (presses %d, invalid %d, removed %d)" % [presses, _invalid, _removed])
 	_check(_air_frames > 0 and _air_highlight_frames == 0,
@@ -356,10 +358,10 @@ func _jump_pressing_near(point: Vector2) -> int:
 
 func _section_c_drop_spots() -> void:
 	print("-- C: put-down spots")
-	if not await _open_level(SLICE):
+	if not await _open_level(HALF_AND_HALF):
 		return
-	var half: ResistorPickup = _pickup("r_half")
-	var two: ResistorPickup = _pickup("r_two")
+	var half: PartPickup = _part("r_half")
+	var two: PartPickup = _part("r_two")
 
 	# C1: at the right end of the left ledge (one-way platform).
 	await _teleport(HALF_POS)
@@ -422,8 +424,8 @@ func _section_c_drop_spots() -> void:
 	_check(_dropped == 1 and half.is_loose() and not _room.is_complete(),
 			"C3 putting a resistor down in the closed doorway works and does not complete the level")
 	var door_index: int = _door.get_parent().get_index()
-	var pickups_index: int = half.get_parent().get_index()
-	_info("C3 draw order: door container index %d, pickups container index %d (pickup drawn %s the door)" % [door_index, pickups_index, "in front of" if pickups_index > door_index else "behind"])
+	var parts_index: int = half.get_parent().get_index()
+	_info("C3 draw order: door container index %d, parts container index %d (part drawn %s the door)" % [door_index, parts_index, "in front of" if parts_index > door_index else "behind"])
 	await _interact()
 	_check(_carry.get_carried() == half, "C3 it can be picked up again in the doorway")
 
@@ -456,7 +458,7 @@ func _section_c_drop_spots() -> void:
 	# C5: dev_room, lip of the pit.
 	if not await _open_level(DEV):
 		return
-	var r3: ResistorPickup = _pickup("r3")
+	var r3: PartPickup = _part("r3")
 	await _teleport(DEV_R3_HOME)
 	await _interact()
 	Input.action_press("move_right")
@@ -485,16 +487,16 @@ func _section_d_pit() -> void:
 	print("-- D: pit falls (dev_room)")
 	if not await _open_level(DEV):
 		return
-	var r1: ResistorPickup = _pickup("r1")
-	var r2: ResistorPickup = _pickup("r2")
-	var r3: ResistorPickup = _pickup("r3")
+	var r1: PartPickup = _part("r1")
+	var r2: PartPickup = _part("r2")
+	var r3: PartPickup = _part("r3")
 
 	# Plug r1 in first, so the circuit has something to keep.
 	await _teleport(DEV_R1_HOME)
 	await _interact()
 	await _teleport(DEV_AT_LOWER_SOCKET)
 	await _interact()
-	var reading: String = _hud.get_equivalent_text()
+	var reading: String = _reading()
 	_check(reading == "2 Ω", "D setup: r1 in the floor socket reads 2 Ω (got '%s')" % reading)
 
 	# D1: carrying r3.
@@ -506,8 +508,8 @@ func _section_d_pit() -> void:
 	_check(_fell == 1, "D1 a fall while carrying emits fell_out once (%d)" % _fell)
 	_check(not _carry.is_carrying() and r3.is_loose() and r3.global_position.distance_to(DEV_R3_HOME) < 0.5,
 			"D1 the carried r3 is back at its home (%s)" % r3.global_position)
-	_check(_hud.get_equivalent_text() == reading and _socket_holding(r1) != null,
-			"D1 the circuit is untouched (readout '%s')" % _hud.get_equivalent_text())
+	_check(_reading() == reading and _socket_holding(r1) != null,
+			"D1 the circuit is untouched (readout '%s')" % _reading())
 	_check(_at_spawn(), "D1 Ohmie is back at spawn on the floor (%s)" % _player.position)
 
 	# D2: empty hands.
@@ -522,7 +524,7 @@ func _section_d_pit() -> void:
 	for i: int in 5:
 		await _run_into_pit()
 	await _wait_physics(60)
-	_check(_fell == 5 and _at_spawn() and _hud.get_equivalent_text() == reading,
+	_check(_fell == 5 and _at_spawn() and _reading() == reading,
 			"D3 five falls in a row: fell_out exactly 5 times (%d), circuit untouched, back at spawn" % _fell)
 
 	# D4: a resistor returned home must not land on another loose resistor.
@@ -552,10 +554,10 @@ func _section_d_pit() -> void:
 
 func _section_e_completion() -> void:
 	print("-- E: completion and the doorway")
-	if not await _open_level(SLICE):
+	if not await _open_level(HALF_AND_HALF):
 		return
-	await _solve_slice()
-	_check(_door.is_open(), "E setup: slice_01 solved, door open")
+	await _solve_half_and_half()
+	_check(_door.is_open(), "E setup: w1_07 solved, door open")
 	await _walk_into_door()
 	_check(_room.is_complete() and _completed == 1, "E1 walking into the open door completes the level")
 	await _wait_physics(SETTLE_FRAMES)
@@ -582,10 +584,10 @@ func _section_e_completion() -> void:
 		print("      after:  " + _state_text())
 
 	# E2: walk into the open door carrying the decoy.
-	if not await _open_level(SLICE):
+	if not await _open_level(HALF_AND_HALF):
 		return
-	await _solve_slice()
-	var two: ResistorPickup = _pickup("r_two")
+	await _solve_half_and_half()
+	var two: PartPickup = _part("r_two")
 	await _teleport(TWO_POS)
 	await _interact()
 	await _walk_into_door()
@@ -595,7 +597,7 @@ func _section_e_completion() -> void:
 
 	# E3: stand in the closed doorway, then the circuit is solved (no socket is
 	# reachable from the doorway in either level, so it is solved through the API).
-	if not await _open_level(SLICE):
+	if not await _open_level(HALF_AND_HALF):
 		return
 	await _teleport(Vector2(DOOR_X, FLOOR_Y))
 	await _wait_physics(30)
@@ -609,7 +611,7 @@ func _section_e_completion() -> void:
 
 func _section_g_restart() -> void:
 	print("-- G: restart")
-	if not await _open_level(SLICE):
+	if not await _open_level(HALF_AND_HALF):
 		return
 	var initial: String = _state_text()
 
@@ -640,7 +642,7 @@ func _section_g_restart() -> void:
 	_print_state_diff(initial)
 
 	# G3 during the victory state.
-	await _solve_slice()
+	await _solve_half_and_half()
 	await _walk_into_door()
 	errors_before = _logger.count()
 	await _restart(1)
@@ -680,10 +682,10 @@ func _section_g_restart() -> void:
 
 func _section_h_swap_and_replug() -> void:
 	print("-- H: swap and replug")
-	if not await _open_level(SLICE):
+	if not await _open_level(HALF_AND_HALF):
 		return
-	await _solve_slice()
-	var two: ResistorPickup = _pickup("r_two")
+	await _solve_half_and_half()
+	var two: PartPickup = _part("r_two")
 	var s3: CircuitSocket = _socket("s3")
 	await _teleport(TWO_POS)
 	await _interact()
@@ -695,7 +697,7 @@ func _section_h_swap_and_replug() -> void:
 		await _interact()
 		var want: String = expected_texts[i % 2]
 		if not _conservation_problem().is_empty() or not _readout_problem().is_empty() \
-				or _hud.get_equivalent_text() != want:
+				or _reading() != want:
 			bad += 1
 	_check(bad == 0 and _swapped == 20 and _carry.get_carried() == two and s3.is_filled(),
 			"H1 20 swaps at s3 (1 Ω <-> 2 Ω): readout alternates 7/6 Ω / 1 Ω and door follows (%d bad, %d swaps)" % [bad, _swapped])
@@ -709,7 +711,7 @@ func _section_h_swap_and_replug() -> void:
 		await _interact()
 		var want: String = "3/2 Ω" if i % 2 == 0 else "1 Ω"
 		if not _conservation_problem().is_empty() or not _readout_problem().is_empty() \
-				or _hud.get_equivalent_text() != want or _door.is_open() != (i % 2 == 1):
+				or _reading() != want or _door.is_open() != (i % 2 == 1):
 			bad += 1
 	_check(bad == 0 and _removed == 50 and _placed == 50 and _opened == 50 and _closed == 50,
 			"H2 pull out and replug s3 50 times: readout and door consistent every time (%d bad; removed %d placed %d opened %d closed %d)" % [bad, _removed, _placed, _opened, _closed])
@@ -719,7 +721,7 @@ func _section_h_swap_and_replug() -> void:
 
 func _section_i_movement_abuse() -> void:
 	print("-- I: movement abuse")
-	if not await _open_level(SLICE):
+	if not await _open_level(HALF_AND_HALF):
 		return
 	var start: Vector2 = _player.position
 	Input.action_press("move_left")
@@ -799,29 +801,30 @@ func _section_i_movement_abuse() -> void:
 
 func _section_j_readout_sweep() -> void:
 	print("-- J: readout sweep, all assignments")
-	if not await _open_level(SLICE):
+	if not await _open_level(HALF_AND_HALF):
 		return
-	var pickups: Array[ResistorPickup] = _room.get_pickups()
+	var room_parts: Array[PartPickup] = _room.get_parts()
 	var sockets: Array[CircuitSocket] = _board.get_sockets()
 	var assignments: Array[Dictionary] = []
-	_enumerate(sockets.size(), 0, [], assignments, pickups.size())
+	_enumerate(sockets.size(), 0, [], assignments, room_parts.size())
 	var mismatches: PackedStringArray = []
 	var open_count: int = 0
 	for assignment: Dictionary in assignments:
 		_api_clear()
 		var values: Dictionary = {}
 		for socket_index: int in assignment:
-			var pickup: ResistorPickup = pickups[assignment[socket_index] as int]
+			var pickup: PartPickup = room_parts[assignment[socket_index] as int]
 			pickup.take()
 			sockets[socket_index].insert(pickup)
-			values[sockets[socket_index].socket_id] = pickup.value
-		var expected: String = _expected_slice_reading(values)
+			values[sockets[socket_index].socket_id] = pickup.part.value
+		var expected: String = _expected_half_and_half_reading(values)
 		var is_match: bool = expected == "1 Ω"
-		var shown: String = _hud.get_equivalent_text()
-		var colour: Color = (_hud.get_node(^"Readout/EquivalentValue") as Label).get_theme_color(&"font_color")
-		var wire_colour: Color = _wire_colour()
+		var shown: String = _reading()
+		var colour: Color = _hud.get_row_value_color(1)
+		var wire_colour: Color = _board.get_wires().get_core_color()
 		var theme: RoomTheme = _room.get_room_theme()
-		var want_wire: Color = theme.wire_match if is_match else (theme.wire_normal if expected == "OPEN" else theme.wire_closed)
+		# An ohmmeter-only board never carries current: plain wires, teal on a match.
+		var want_wire: Color = theme.wire_match if is_match else theme.wire_normal
 		if _door.is_open():
 			open_count += 1
 		if shown != expected or _door.is_open() != is_match or (colour == Hud.COLOR_MATCH) != is_match \
@@ -829,7 +832,7 @@ func _section_j_readout_sweep() -> void:
 			mismatches.append("%s: shown '%s' expected '%s' door %s" % [values, shown, expected, _door.is_open()])
 	_check(assignments.size() == 73, "J enumerated all 73 assignments of 4 resistors to 3 sockets (%d)" % assignments.size())
 	_check(mismatches.is_empty(),
-			"J readout text, readout colour, wire colour and door match an independent calculation for every assignment (%d mismatches)" % mismatches.size())
+			"J readout text, meter text, readout colour, wire colour and door match an independent calculation and DcSolver for every assignment (%d mismatches)" % mismatches.size())
 	for line: String in mismatches.slice(0, 5):
 		print("      " + line)
 	_info("J the door was open in %d of 73 assignments (two: 1/2 + (1 || 1) with either 1 Ω in s2)" % open_count)
@@ -840,7 +843,7 @@ func _section_j_readout_sweep() -> void:
 
 func _section_k_coyote_and_buffer() -> void:
 	print("-- K: coyote time and jump buffer")
-	if not await _open_level(SLICE):
+	if not await _open_level(HALF_AND_HALF):
 		return
 	for late: int in [2, 3, 10]:
 		var rising: bool = await _jump_after_walking_off(late)
@@ -916,24 +919,24 @@ func _enumerate(socket_count: int, index: int, used: Array, out: Array[Dictionar
 		current.erase(index)
 
 
-## Independent reading for slice_01: s1 + (s2 || s3), an empty socket is open.
-func _expected_slice_reading(values: Dictionary) -> String:
+## Independent ohmmeter reading for w1_07: s1 + (s2 || s3), an empty slot is open (OL).
+func _expected_half_and_half_reading(values: Dictionary) -> String:
 	if not values.has("s1"):
-		return "OPEN"
+		return "OL"
 	var branch: Rational = null
 	for id: String in ["s2", "s3"]:
 		if values.has(id):
 			var v: Rational = values[id]
 			branch = v if branch == null else branch.mul(v).div(branch.add(v))
 	if branch == null:
-		return "OPEN"
+		return "OL"
 	return (values["s1"] as Rational).add(branch).to_text() + OHM
 
 
 # --- scenario helpers --------------------------------------------------------------------
 
-## Solves slice_01 with interact presses (teleporting between spots).
-func _solve_slice() -> void:
+## Solves w1_07 with interact presses (teleporting between spots).
+func _solve_half_and_half() -> void:
 	await _teleport(HALF_POS)
 	await _interact()
 	await _teleport(AT_S1)
@@ -974,7 +977,7 @@ func _run_into_pit() -> void:
 ## Plugs resistors into sockets through the API: {"socket_id": "pickup_id"}.
 func _api_fill(plan: Dictionary) -> void:
 	for socket_id: String in plan:
-		var pickup: ResistorPickup = _pickup(plan[socket_id])
+		var pickup: PartPickup = _part(plan[socket_id])
 		pickup.take()
 		_socket(socket_id).insert(pickup)
 
@@ -982,48 +985,53 @@ func _api_fill(plan: Dictionary) -> void:
 ## Empties every socket through the API and sends every resistor home.
 func _api_clear() -> void:
 	for socket: CircuitSocket in _board.get_sockets():
-		var taken: ResistorPickup = socket.take_out()
+		var taken: PartPickup = socket.take_out()
 		if taken != null:
 			taken.place_loose(taken.home_position)
 
 
 # --- state and invariants ----------------------------------------------------------------
 
-## "" when every resistor is in exactly one state; otherwise what is wrong.
+## "" when every part is in exactly one state; otherwise what is wrong.
 func _conservation_problem() -> String:
-	var pickups: Array[ResistorPickup] = _room.get_pickups()
-	if pickups.size() != _resistor_count:
-		return "resistor count %d, expected %d" % [pickups.size(), _resistor_count]
-	for pickup: ResistorPickup in pickups:
+	var room_parts: Array[PartPickup] = _room.get_parts()
+	if room_parts.size() != _part_count:
+		return "part count %d, expected %d" % [room_parts.size(), _part_count]
+	for pickup: PartPickup in room_parts:
 		var states: int = 0
 		if pickup.is_loose():
 			states += 1
 		if _carry.get_carried() == pickup:
 			states += 1
 		for socket: CircuitSocket in _board.get_sockets():
-			if socket.get_resistor() == pickup:
+			if socket.get_pickup() == pickup:
 				states += 1
 		if states != 1:
-			return "%s is in %d states" % [pickup.pickup_id, states]
+			return "%s is in %d states" % [pickup.part_id, states]
 		if pickup.visible != pickup.is_loose():
-			return "%s visible=%s loose=%s" % [pickup.pickup_id, pickup.visible, pickup.is_loose()]
+			return "%s visible=%s loose=%s" % [pickup.part_id, pickup.visible, pickup.is_loose()]
 	var icon: Node2D = _carry.get_node(^"CarriedIcon") as Node2D
 	if icon.visible != _carry.is_carrying():
 		return "carried icon visible=%s carrying=%s" % [icon.visible, _carry.is_carrying()]
 	return ""
 
 
-## "" when the HUD and door agree with the solver for the current sockets.
+## "" when the HUD, the board's ohmmeter and the door agree with DcSolver for
+## the current slots.
 func _readout_problem() -> String:
 	var filled: Dictionary = {}
 	for socket: CircuitSocket in _board.get_sockets():
 		if socket.is_filled():
-			filled[socket.socket_id] = socket.get_value()
-	var result: CircuitResult = CircuitSolver.solve(_room.get_circuit().build_graph(filled))
-	var want: String = _room.get_goal().reading_label(result)
-	var is_match: bool = _room.get_goal().is_met(result)
-	if _hud.get_equivalent_text() != want:
-		return "HUD '%s' but solver '%s'" % [_hud.get_equivalent_text(), want]
+			filled[socket.socket_id] = socket.get_part()
+	var solution: DcSolution = DcSolver.solve(_room.get_circuit().build_network(filled))
+	var goal: LevelGoal = _room.get_goal()
+	var want: String = goal.reading_text(0, solution)
+	var is_match: bool = goal.is_met(solution)
+	if _reading() != want:
+		return "HUD '%s' but solver '%s'" % [_reading(), want]
+	var meter_want: String = MeterText.reading(solution, goal.conditions[0].element_id)
+	if _meter() != meter_want:
+		return "meter '%s' but solver '%s'" % [_meter(), meter_want]
 	if _door.is_open() != is_match:
 		return "door open=%s but match=%s" % [_door.is_open(), is_match]
 	return ""
@@ -1051,11 +1059,11 @@ func _state_text() -> String:
 	if _room == null:
 		return "<no room>"
 	var parts: PackedStringArray = []
-	for pickup: ResistorPickup in _room.get_pickups():
-		parts.append("%s:%s@%s" % [pickup.pickup_id, "loose" if pickup.is_loose() else "-", pickup.global_position.round()])
+	for pickup: PartPickup in _room.get_parts():
+		parts.append("%s:%s@%s" % [pickup.part_id, "loose" if pickup.is_loose() else "-", pickup.global_position.round()])
 	for socket: CircuitSocket in _board.get_sockets():
-		parts.append("%s=%s" % [socket.socket_id, socket.get_resistor().pickup_id if socket.is_filled() else "empty"])
-	parts.append("hud=%s" % _hud.get_equivalent_text())
+		parts.append("%s=%s" % [socket.socket_id, socket.get_pickup().part_id if socket.is_filled() else "empty"])
+	parts.append("hud=%s" % _reading())
 	parts.append("door=%s" % _door.is_open())
 	parts.append("complete=%s" % _room.is_complete())
 	parts.append("banner=%s" % _hud.is_level_complete_shown())
@@ -1090,17 +1098,17 @@ func _footprint_supported(feet: Vector2) -> bool:
 ## Where every resistor is (loose spot, carried, or socket), for "nothing changed" checks.
 func _contents_text() -> String:
 	var parts: PackedStringArray = []
-	for pickup: ResistorPickup in _room.get_pickups():
-		parts.append("%s:%s@%s" % [pickup.pickup_id, "loose" if pickup.is_loose() else "-", pickup.global_position.round()])
+	for pickup: PartPickup in _room.get_parts():
+		parts.append("%s:%s@%s" % [pickup.part_id, "loose" if pickup.is_loose() else "-", pickup.global_position.round()])
 	for socket: CircuitSocket in _board.get_sockets():
-		parts.append("%s=%s" % [socket.socket_id, socket.get_resistor().pickup_id if socket.is_filled() else "empty"])
-	parts.append("carrying=%s" % (_carry.get_carried().pickup_id if _carry.is_carrying() else "none"))
+		parts.append("%s=%s" % [socket.socket_id, socket.get_pickup().part_id if socket.is_filled() else "empty"])
+	parts.append("carrying=%s" % (_carry.get_carried().part_id if _carry.is_carrying() else "none"))
 	return " ".join(parts)
 
 
 ## True if any pickup shows its highlight frame or any socket its highlight texture.
 func _any_highlighted() -> bool:
-	for pickup: ResistorPickup in _room.get_pickups():
+	for pickup: PartPickup in _room.get_parts():
 		if (pickup.get_node(^"Highlight") as Sprite2D).visible:
 			return true
 	for socket: CircuitSocket in _board.get_sockets():
@@ -1109,11 +1117,14 @@ func _any_highlighted() -> bool:
 	return false
 
 
-func _wire_colour() -> Color:
-	var copper: Node = _board.get_node_or_null(^"Wires/Copper")
-	if copper == null or copper.get_child_count() == 0:
-		return Color.BLACK
-	return (copper.get_child(0) as Line2D).default_color
+## The live reading on the plaque (both rooms here have one condition, on om1).
+func _reading() -> String:
+	return _hud.get_reading_text(0)
+
+
+## The reading drawn in the goal's meter (om1) on the board.
+func _meter() -> String:
+	return _board.get_meter(_room.get_goal().conditions[0].element_id).get_reading()
 
 
 func _at_spawn() -> bool:
@@ -1124,9 +1135,9 @@ func _body_centre() -> Vector2:
 	return _player.global_position + Vector2(0, -44)
 
 
-func _socket_holding(pickup: ResistorPickup) -> CircuitSocket:
+func _socket_holding(pickup: PartPickup) -> CircuitSocket:
 	for socket: CircuitSocket in _board.get_sockets():
-		if socket.get_resistor() == pickup:
+		if socket.get_pickup() == pickup:
 			return socket
 	return null
 
@@ -1134,8 +1145,8 @@ func _socket_holding(pickup: ResistorPickup) -> CircuitSocket:
 func _describe(target: Interactable) -> String:
 	if target == null:
 		return "none"
-	if target is ResistorPickup:
-		return "pickup " + (target as ResistorPickup).pickup_id
+	if target is PartPickup:
+		return "pickup " + (target as PartPickup).part_id
 	if target is CircuitSocket:
 		return "socket " + (target as CircuitSocket).socket_id
 	return str(target)
@@ -1177,13 +1188,13 @@ func _bind(main: Node) -> bool:
 	_door = _room.get_door()
 	_board = _room.get_board()
 	_tiles = _room.get_node(^"Tiles") as TileMapLayer
-	_resistor_count = _room.level_data.pickups.size()
+	_part_count = _room.level_data.parts.size()
 	_reset_counters()
-	_carry.picked_up.connect(func(_r: ResistorPickup) -> void: _picked += 1)
-	_carry.placed.connect(func(_r: ResistorPickup, _s: CircuitSocket) -> void: _placed += 1)
-	_carry.removed.connect(func(_r: ResistorPickup, _s: CircuitSocket) -> void: _removed += 1)
-	_carry.swapped.connect(func(_a: ResistorPickup, _b: ResistorPickup, _s: CircuitSocket) -> void: _swapped += 1)
-	_carry.dropped.connect(func(_r: ResistorPickup) -> void: _dropped += 1)
+	_carry.picked_up.connect(func(_r: PartPickup) -> void: _picked += 1)
+	_carry.placed.connect(func(_r: PartPickup, _s: CircuitSocket) -> void: _placed += 1)
+	_carry.removed.connect(func(_r: PartPickup, _s: CircuitSocket) -> void: _removed += 1)
+	_carry.swapped.connect(func(_a: PartPickup, _b: PartPickup, _s: CircuitSocket) -> void: _swapped += 1)
+	_carry.dropped.connect(func(_r: PartPickup) -> void: _dropped += 1)
 	_carry.invalid_action.connect(func() -> void: _invalid += 1)
 	_player.fell_out.connect(func() -> void: _fell += 1)
 	_player.jumped.connect(func() -> void: _jumped += 1)
@@ -1246,9 +1257,9 @@ func _land() -> void:
 		await _wait_physics(1)
 
 
-func _pickup(id: String) -> ResistorPickup:
-	for pickup: ResistorPickup in _room.get_pickups():
-		if pickup.pickup_id == id:
+func _part(id: String) -> PartPickup:
+	for pickup: PartPickup in _room.get_parts():
+		if pickup.part_id == id:
 			return pickup
 	return null
 

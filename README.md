@@ -16,17 +16,17 @@ Early development, but playable. Milestone 1 (a one-room vertical slice) works e
 
 ## Screenshots
 
-The first room, "Half and Half". The board is one socket in series with two in parallel. Four resistors lie around the room, and one of them is a decoy.
+The first room, "Resistance Is Futile". The board is one closed loop: two empty slots and an ammeter. A 6 V battery and three resistors lie around the room; the mission is to draw exactly 2 A.
 
-![The room at the start: three empty sockets, readout OPEN, door closed](tests/screenshots/default_boot.png)
+![The room at the start: two empty slots, the ammeter reading 0 A, door closed](tests/screenshots/w1_02_initial.png)
 
-Solved: 1/2 Ω in series with two 1 Ω in parallel gives exactly 1 Ω, the wires light up and the door opens.
+Solved: the battery in one slot and the 3 Ω resistor in the other drive exactly 2 A, the wires light up and the door opens.
 
-![The solved circuit reading 1 Ω with the door open](tests/screenshots/slice_01_solved.png)
+![The solved loop: the ammeter reads 2 A and the door is open](tests/screenshots/w1_02_solved.png)
 
-The second room, "Ohm's Law". A 6 V battery sits across two sockets in series and the mission asks for exactly 2 A, so the room needs 3 Ω. Two of the four resistors are decoys.
+"Half and Half": an ohmmeter closes a board of one slot in series with two in parallel. 1/2 Ω plus two 1 Ω in parallel reads exactly 1 Ω.
 
-![The Ohm's Law room: a 6 V battery, two series sockets, and a mission asking for 2 A](tests/screenshots/level_02_initial.png)
+![The solved Half and Half board: the ohmmeter reads 1 Ω](tests/screenshots/w1_07_solved.png)
 
 ## Controls
 
@@ -48,7 +48,7 @@ Run the tests:
 
 ```
 godot --headless --path . --script res://tests/run_tests.gd
-godot --headless --path . --script res://tests/play_slice_01.gd
+godot --headless --path . --fixed-fps 60 --script res://tests/play_w1_02.gd
 ```
 
 The first runs the unit tests for the circuit math and level loading. The second plays the first room start to finish with scripted input.

@@ -1,28 +1,28 @@
 class_name PlayerCarry
 extends Node2D
-## Ohmie's hands: carries at most one resistor and handles `interact`
-## (GDD section 2, "Interaction rules").
+## Ohmie's hands: carries at most one part and handles `interact`
+## (GDD section 2, "Interaction rules", with "resistor" read as "part").
 ##
 ## A child of the player, at the player's origin (the feet). Interaction only
 ## works while Ohmie stands on a floor or platform: in the air nothing is
 ## highlighted and every `interact` press is invalid.
 ## On the ground, each physics frame it finds the nearest Interactable within
 ## `reach` of the body centre that can be used with the current hands (empty
-## hands: loose resistors and filled sockets; carrying: sockets) and
+## hands: loose parts and filled slots; carrying: slots) and
 ## highlights it. On `interact`:
-##   empty hands + loose resistor -> pick up
-##   carrying + empty socket      -> plug in
-##   empty hands + filled socket  -> pull out
-##   carrying + filled socket     -> swap
-##   carrying + nothing in range  -> put down at the feet (ResistorPlacement
+##   empty hands + loose part     -> pick up
+##   carrying + empty slot        -> plug in
+##   empty hands + filled slot    -> pull out
+##   carrying + filled slot       -> swap
+##   carrying + nothing in range  -> put down at the feet (PartPlacement
 ##                                   picks the exact spot, or refuses)
 ##   anything else                -> invalid
 
-signal picked_up(resistor: ResistorPickup)
-signal placed(resistor: ResistorPickup, socket: CircuitSocket)
-signal removed(resistor: ResistorPickup, socket: CircuitSocket)
-signal swapped(placed_resistor: ResistorPickup, taken_resistor: ResistorPickup, socket: CircuitSocket)
-signal dropped(resistor: ResistorPickup)
+signal picked_up(part: PartPickup)
+signal placed(part: PartPickup, socket: CircuitSocket)
+signal removed(part: PartPickup, socket: CircuitSocket)
+signal swapped(placed_part: PartPickup, taken_part: PartPickup, socket: CircuitSocket)
+signal dropped(part: PartPickup)
 signal invalid_action
 
 ## The body whose floor state decides whether Ohmie can interact at all.
@@ -33,14 +33,14 @@ signal invalid_action
 @export var body_centre_offset: Vector2 = Vector2(0, -44)
 ## How far a put-down may slide along the surface to find a valid spot.
 @export var put_down_max_slide: float = 64.0
-## Step between the spots tried when a returning resistor's home is taken.
+## Step between the spots tried when a returning part's home is taken.
 @export var return_home_step: float = 64.0
 
-var _carried: ResistorPickup = null
+var _carried: PartPickup = null
 var _target: Interactable = null
 var _enabled: bool = true
 
-@onready var _carried_icon: ResistorIcon = $CarriedIcon
+@onready var _carried_icon: PartIcon = $CarriedIcon
 
 
 func _ready() -> void:
@@ -59,8 +59,8 @@ func _physics_process(_delta: float) -> void:
 			invalid_action.emit()
 
 
-## The resistor in Ohmie's hands, or null.
-func get_carried() -> ResistorPickup:
+## The part in Ohmie's hands, or null.
+func get_carried() -> PartPickup:
 	return _carried
 
 
@@ -80,19 +80,19 @@ func set_enabled(enabled: bool) -> void:
 		_set_target(null)
 
 
-## Sends a carried resistor back to where the level first put it (after a
-## fall), or beside it if another loose resistor lies there.
+## Sends a carried part back to where the level first put it (after a
+## fall), or beside it if another loose part lies there.
 func return_carried_home() -> void:
 	if _carried == null:
 		return
-	var resistor: ResistorPickup = _carried
+	var part: PartPickup = _carried
 	_set_carried(null)
-	resistor.place_loose(_placement().find_return_spot(resistor.home_position, return_home_step))
+	part.place_loose(_placement().find_return_spot(part.home_position, return_home_step))
 
 
 func _interact() -> void:
 	var socket: CircuitSocket = _target as CircuitSocket
-	var pickup: ResistorPickup = _target as ResistorPickup
+	var pickup: PartPickup = _target as PartPickup
 	if _carried == null:
 		if pickup != null:
 			pickup.take()
@@ -100,17 +100,17 @@ func _interact() -> void:
 			_set_target(null)
 			picked_up.emit(pickup)
 		elif socket != null and socket.is_filled():
-			var taken: ResistorPickup = socket.take_out()
+			var taken: PartPickup = socket.take_out()
 			_set_carried(taken)
 			removed.emit(taken, socket)
 		else:
 			invalid_action.emit()
 		return
 
-	var held: ResistorPickup = _carried
+	var held: PartPickup = _carried
 	if socket != null:
 		if socket.is_filled():
-			var old: ResistorPickup = socket.swap(held)
+			var old: PartPickup = socket.swap(held)
 			_set_carried(old)
 			swapped.emit(held, old, socket)
 		else:
@@ -120,7 +120,7 @@ func _interact() -> void:
 		return
 
 	var spot: Vector2 = _placement().find_put_down(global_position, put_down_max_slide)
-	if spot == ResistorPlacement.NO_SPOT:
+	if spot == PartPlacement.NO_SPOT:
 		invalid_action.emit()
 		return
 	_set_carried(null)
@@ -148,14 +148,14 @@ func _find_target() -> Interactable:
 	return best
 
 
-## A placement helper that knows every other loose resistor.
-func _placement() -> ResistorPlacement:
+## A placement helper that knows every other loose part.
+func _placement() -> PartPlacement:
 	var others: Array[Vector2] = []
 	for node: Node in get_tree().get_nodes_in_group(Interactable.GROUP):
-		var pickup: ResistorPickup = node as ResistorPickup
+		var pickup: PartPickup = node as PartPickup
 		if pickup != null and pickup.is_loose() and pickup != _carried:
 			others.append(pickup.global_position)
-	return ResistorPlacement.new(get_world_2d().direct_space_state, others)
+	return PartPlacement.new(get_world_2d().direct_space_state, others)
 
 
 func _set_target(target: Interactable) -> void:
@@ -168,7 +168,7 @@ func _set_target(target: Interactable) -> void:
 		_target.set_highlighted(true)
 
 
-func _set_carried(resistor: ResistorPickup) -> void:
-	_carried = resistor
-	_carried_icon.set_value(resistor.value if resistor != null else null)
-	_carried_icon.visible = resistor != null
+func _set_carried(part: PartPickup) -> void:
+	_carried = part
+	_carried_icon.set_part(part.part if part != null else null)
+	_carried_icon.visible = part != null

@@ -1,15 +1,19 @@
 extends SceneTree
 ## Checks that a level file is valid and solvable, and reports its solutions.
 ##
-## Loads the level, its circuit and its pickups, runs PuzzleSolver over every
-## way of filling the sockets, and prints each solution, which resistor values
-## are never used (decoys), and layout warnings (edges that are not horizontal
-## or vertical, socket or fixed edges shorter than MIN_COMPONENT_LENGTH).
+## Loads the level (LevelData validates the tiles, parts, circuit and goal),
+## runs DcPuzzleSearch over every way of filling the slots with the room's
+## parts, and prints each solution (at most MAX_PRINTED), which parts are never
+## used (decoys), and layout warnings (edges that are not horizontal or
+## vertical, component edges shorter than MIN_COMPONENT_LENGTH).
 ##
 ## Usage (exit code 0 = valid and at least one solution):
 ##   godot --headless --path . --script res://tools/validate_level.gd -- res://levels/<file>.json
 
 const MIN_COMPONENT_LENGTH: float = 128.0
+const MAX_PRINTED: int = 40
+## Upper bound for the search, far above any World 1 room.
+const MAX_SOLUTIONS: int = 100000
 const EXIT_OK: int = 0
 const EXIT_FAIL: int = 1
 
@@ -21,57 +25,46 @@ func _initialize() -> void:
 func _run() -> int:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.is_empty():
-		print("validate_level: give the level path after --, e.g. -- res://levels/slice_01.json")
+		print("validate_level: give the level path after --, e.g. -- res://levels/w1_02.json")
 		return EXIT_FAIL
 	var path: String = args[0]
 
 	var level: LevelData = LevelData.load_from_file(path)
 	if level == null:
-		print("INVALID  %s: level data could not be loaded (see error above)" % path)
+		print("INVALID  %s: the level could not be loaded (see the error above)" % path)
 		return EXIT_FAIL
-	var circuit: LevelCircuit = LevelCircuit.from_dictionary(level.circuit, path)
-	if circuit == null:
-		print("INVALID  %s: circuit is invalid (see error above)" % path)
-		return EXIT_FAIL
-	var pickups: Array[LevelPickup] = []
-	if not LevelPickup.parse_all(level.pickups, path, pickups):
-		print("INVALID  %s: pickups are invalid (see error above)" % path)
-		return EXIT_FAIL
-	var goal: LevelGoal = level.goal
-	var target: Rational = goal.equivalent_resistance_target()
-	if target == null:
-		print("INVALID  %s: goal type '%s' has no equivalent resistance to validate" % [path, goal.type])
-		return EXIT_FAIL
-
-	var sockets: Array[Dictionary] = circuit.get_socket_descriptors()
-	var values: Array[Rational] = []
-	var value_texts: Array[String] = []
-	for pickup: LevelPickup in pickups:
-		values.append(pickup.ohms)
-		value_texts.append(pickup.ohms.to_text())
+	var circuit: LevelCircuit = level.circuit
+	var goal: LevelGoal = level.make_goal()
 
 	print("Level:      %s \"%s\"" % [level.id, level.title])
-	if goal.type == LevelGoal.TYPE_CURRENT:
-		print("Goal:       %s, voltage %s V, value %s A (equivalent resistance %s ohm)" % [
-				goal.type, goal.voltage.to_text(), goal.current.to_text(), target.to_text()])
-	else:
-		print("Goal:       %s, value %s ohm" % [goal.type, target.to_text()])
-	print("Mission:    %s" % goal.mission)
-	var socket_ids: Array[String] = []
-	for socket: Dictionary in sockets:
-		socket_ids.append("%s (%s-%s)" % [socket["id"], socket["from"], socket["to"]])
-	print("Sockets:    %d: %s" % [sockets.size(), ", ".join(socket_ids)])
-	print("Resistors:  %d: %s" % [values.size(), ", ".join(value_texts)])
+	print("Mission:    %s" % level.mission)
+	for i: int in goal.condition_count():
+		var condition: GoalCondition = goal.conditions[i]
+		print("Goal %d:     %s of %s is %s" % [i + 1, condition.quantity_name(), condition.element_id,
+				goal.target_text(i)])
+	var slots: Array[Dictionary] = circuit.get_slot_descriptors()
+	var slot_texts: Array[String] = []
+	for slot: Dictionary in slots:
+		slot_texts.append("%s (%s -> %s)" % [slot["id"], slot["from"], slot["to"]])
+	print("Slots:      %d: %s" % [slots.size(), ", ".join(slot_texts)])
+	var search_parts: Array[Dictionary] = []
+	var part_texts: Array[String] = []
+	for entry: LevelPart in level.parts:
+		search_parts.append(entry.part.to_search_dictionary())
+		part_texts.append("%s %s %s" % [entry.id, entry.part.kind_name(), entry.part.label()])
+	print("Parts:      %d: %s" % [level.parts.size(), ", ".join(part_texts)])
 
 	var warnings: int = _print_layout_warnings(circuit)
 
-	var solutions: Array[Dictionary] = PuzzleSolver.find_solutions(
-			circuit.build_base_graph(), sockets, values, target)
+	var solutions: Array[Dictionary] = DcPuzzleSearch.find_solutions(
+			circuit.build_base_network(), slots, search_parts, goal.conditions, MAX_SOLUTIONS)
 	print("Solutions:  %d" % solutions.size())
-	for i: int in solutions.size():
-		print("  %d. %s" % [i + 1, _describe_solution(solutions[i], sockets)])
+	for i: int in mini(solutions.size(), MAX_PRINTED):
+		print("  %d. %s" % [i + 1, _describe_solution(solutions[i], slots)])
+	if solutions.size() > MAX_PRINTED:
+		print("  ... and %d more" % (solutions.size() - MAX_PRINTED))
 
-	_print_value_usage(value_texts, solutions)
+	_print_part_usage(level.parts, solutions)
 
 	if solutions.is_empty():
 		print("UNSOLVABLE  %s" % path)
@@ -97,27 +90,31 @@ func _print_layout_warnings(circuit: LevelCircuit) -> int:
 	return count
 
 
-func _describe_solution(solution: Dictionary, sockets: Array[Dictionary]) -> String:
-	var parts: Array[String] = []
-	for socket: Dictionary in sockets:
-		var id: String = socket["id"]
-		parts.append("%s=%s" % [id, solution[id] if solution.has(id) else "empty"])
-	return ", ".join(parts)
+func _describe_solution(solution: Dictionary, slots: Array[Dictionary]) -> String:
+	var texts: Array[String] = []
+	for slot: Dictionary in slots:
+		var id: String = slot["id"]
+		texts.append("%s=%s" % [id, solution[id] if solution.has(id) else "empty"])
+	return ", ".join(texts)
 
 
-func _print_value_usage(value_texts: Array[String], solutions: Array[Dictionary]) -> void:
+## One line per distinct part (kind and value): used in some solution, or a decoy.
+func _print_part_usage(parts: Array[LevelPart], solutions: Array[Dictionary]) -> void:
 	var used: Dictionary = {}
 	for solution: Dictionary in solutions:
-		for value: Variant in solution.values():
-			used[str(value)] = true
-	var listed: Dictionary = {}
-	print("Resistor values:")
-	for text: String in value_texts:
-		if listed.has(text):
-			continue
-		listed[text] = true
-		var count: int = value_texts.count(text)
-		if used.has(text):
-			print("  %s ohm (x%d): used in a solution" % [text, count])
-		else:
-			print("  %s ohm (x%d): UNUSED in every solution (decoy)" % [text, count])
+		for text: Variant in solution.values():
+			used[str(text)] = true
+	var counts: Dictionary = {}  # label -> count
+	var order: Array[String] = []
+	var kinds: Dictionary = {}  # label -> kind name
+	for entry: LevelPart in parts:
+		var text: String = entry.part.label()
+		if not counts.has(text):
+			order.append(text)
+			counts[text] = 0
+			kinds[text] = entry.part.kind_name()
+		counts[text] = int(counts[text]) + 1
+	print("Parts used:")
+	for text: String in order:
+		var verdict: String = "used in a solution" if used.has(text) else "UNUSED in every solution (decoy)"
+		print("  %s %s (x%d): %s" % [kinds[text], text, counts[text], verdict])

@@ -1,43 +1,75 @@
 class_name LevelCircuit
 extends RefCounted
-## The circuit section of a level file (GDD section 6), validated, plus the
-## only conversion from level data to a CircuitGraph.
+## The "circuit" object of a level file (GDD 12.2, 12.4), validated, plus the
+## only conversion from level data to a DcNetwork.
 ##
-## Pure data: no nodes, no drawing. Positions are kept for whoever draws the
-## board. Resistances are Rationals parsed once here.
+## Pure data: no nodes, no drawing, no solving. Positions are kept for whoever
+## draws the board. Values are Rationals parsed once here.
+##
+##   {"nodes": {"n1": [x, y], ...},
+##    "edges": [{"id", "type", "from", "to", ...}, ...]}
+##
+## Edge types and their extra fields:
+##   wire                       zero resistance
+##   slot                       holds one carried Part; empty is open
+##   resistor  value            fixed resistor, ohms
+##   battery   value            fixed battery, volts, plus at `from`
+##   lamp      value, rated_min, rated_max
+##                              a resistor of `value` ohms, lit while its
+##                              current is within rated_min..rated_max amps
+##   ammeter, voltmeter, ohmmeter   ideal meters (see DcNetwork)
+## Every value is a string such as "3/2" and must be > 0.
 
 const TYPE_WIRE: String = "wire"
-const TYPE_SOCKET: String = "socket"
-const TYPE_FIXED: String = "fixed"
-const EDGE_TYPES: PackedStringArray = [TYPE_WIRE, TYPE_SOCKET, TYPE_FIXED]
+const TYPE_SLOT: String = "slot"
+const TYPE_RESISTOR: String = "resistor"
+const TYPE_BATTERY: String = "battery"
+const TYPE_LAMP: String = "lamp"
+const TYPE_AMMETER: String = "ammeter"
+const TYPE_VOLTMETER: String = "voltmeter"
+const TYPE_OHMMETER: String = "ohmmeter"
+const EDGE_TYPES: PackedStringArray = [
+	TYPE_WIRE, TYPE_SLOT, TYPE_RESISTOR, TYPE_BATTERY, TYPE_LAMP,
+	TYPE_AMMETER, TYPE_VOLTMETER, TYPE_OHMMETER,
+]
+const METER_TYPES: PackedStringArray = [TYPE_AMMETER, TYPE_VOLTMETER, TYPE_OHMMETER]
+## Types that need a "value".
+const VALUE_TYPES: PackedStringArray = [TYPE_RESISTOR, TYPE_BATTERY, TYPE_LAMP]
+## Types a "power" goal condition may name.
+const POWER_TYPES: PackedStringArray = [TYPE_RESISTOR, TYPE_LAMP, TYPE_BATTERY, TYPE_SLOT]
+const CIRCUIT_KEYS: PackedStringArray = ["nodes", "edges"]
+const EDGE_KEYS: PackedStringArray = ["id", "type", "from", "to"]
+const LAMP_RATING_KEYS: PackedStringArray = ["rated_min", "rated_max"]
 
 
 ## One edge of the board as written in the level file.
 class Edge:
 	extends RefCounted
 	var id: String
-	## One of TYPE_WIRE, TYPE_SOCKET, TYPE_FIXED.
+	## One of the TYPE_* constants.
 	var type: String
 	var from_node: String
 	var to_node: String
-	## Set only for TYPE_FIXED.
-	var ohms: Rational
+	## Ohms (resistor, lamp) or volts (battery); null for other types.
+	var value: Rational = null
+	## Lamps only: the current range in amperes in which the lamp is lit.
+	var rated_min: Rational = null
+	var rated_max: Rational = null
 
-	func _init(edge_id: String, edge_type: String, a: String, b: String, value: Rational) -> void:
+	func _init(edge_id: String, edge_type: String, a: String, b: String) -> void:
 		id = edge_id
 		type = edge_type
 		from_node = a
 		to_node = b
-		ohms = value
 
+	func is_meter() -> bool:
+		return METER_TYPES.has(type)
 
-## Terminal node names (A first, B second).
-var terminal_a: String = ""
-var terminal_b: String = ""
 
 var _positions: Dictionary = {}  # String node name -> Vector2 centre in pixels
 var _node_names: Array[String] = []  # in file order
 var _edges: Array[Edge] = []  # in file order
+var _edges_by_id: Dictionary = {}  # String id -> Edge
 
 
 ## Validates and parses a level's "circuit" object. Returns null and pushes an
@@ -47,14 +79,16 @@ static func from_dictionary(data: Variant, source: String = "circuit") -> LevelC
 		push_error("LevelCircuit: %s: 'circuit' must be an object" % source)
 		return null
 	var dict: Dictionary = data
-	for field: String in ["nodes", "terminals", "edges"]:
+	for key: Variant in dict.keys():
+		if not CIRCUIT_KEYS.has(str(key)):
+			push_error("LevelCircuit: %s: circuit has unknown field '%s' (allowed: nodes, edges)" % [source, str(key)])
+			return null
+	for field: String in CIRCUIT_KEYS:
 		if not dict.has(field):
 			push_error("LevelCircuit: %s: circuit is missing '%s'" % [source, field])
 			return null
 	var circuit: LevelCircuit = LevelCircuit.new()
 	if not circuit._parse_nodes(dict["nodes"], source):
-		return null
-	if not circuit._parse_terminals(dict["terminals"], source):
 		return null
 	if not circuit._parse_edges(dict["edges"], source):
 		return null
@@ -80,6 +114,11 @@ func get_edges() -> Array[Edge]:
 	return _edges.duplicate()
 
 
+## The edge with this id, or null.
+func get_edge(id: String) -> Edge:
+	return _edges_by_id.get(id, null)
+
+
 ## Number of edges (of any type) that touch `node_name`.
 func get_node_degree(node_name: String) -> int:
 	var degree: int = 0
@@ -91,49 +130,91 @@ func get_node_degree(node_name: String) -> int:
 	return degree
 
 
-func is_terminal(node_name: String) -> bool:
-	return node_name == terminal_a or node_name == terminal_b
-
-
-## Sockets as PuzzleSolver expects them: each { "id", "from", "to" }, in file order.
-func get_socket_descriptors() -> Array[Dictionary]:
-	var sockets: Array[Dictionary] = []
+## Slots as DcPuzzleSearch expects them: each { "id", "from", "to" }, in file order.
+func get_slot_descriptors() -> Array[Dictionary]:
+	var slots: Array[Dictionary] = []
 	for edge: Edge in _edges:
-		if edge.type == TYPE_SOCKET:
-			sockets.append({"id": edge.id, "from": edge.from_node, "to": edge.to_node})
-	return sockets
+		if edge.type == TYPE_SLOT:
+			slots.append({"id": edge.id, "from": edge.from_node, "to": edge.to_node})
+	return slots
 
 
-## Wires, fixed resistors and terminals. Every socket is left out (empty).
-func build_base_graph() -> CircuitGraph:
-	return build_graph({})
+## The fixed board: wires, fixed resistors, batteries, lamps and meters. Every
+## slot is left out (empty).
+func build_base_network() -> DcNetwork:
+	return build_network({})
 
 
-## The base graph plus a resistor for every socket listed in `filled`
-## (socket id -> Rational). Sockets not in `filled` are empty and left out.
-## Unknown socket ids or bad values push an error and are skipped.
-func build_graph(filled: Dictionary) -> CircuitGraph:
-	var graph: CircuitGraph = CircuitGraph.new()
-	graph.set_terminals(terminal_a, terminal_b)
-	var socket_ids: Dictionary = {}
+## The base network plus the part in every slot listed in `filled` (slot id ->
+## Part): a resistor becomes add_resistor(slot, from, to, ohms), a battery
+## add_voltage_source(slot, from, to, volts) with plus at `from`. Slots not in
+## `filled` are empty and left out. Unknown slot ids or values that are not a
+## Part push an error and are skipped.
+func build_network(filled: Dictionary) -> DcNetwork:
+	var network: DcNetwork = DcNetwork.new()
+	var slot_ids: Dictionary = {}
 	for edge: Edge in _edges:
+		var a: String = edge.from_node
+		var b: String = edge.to_node
 		match edge.type:
 			TYPE_WIRE:
-				graph.add_wire(edge.id, edge.from_node, edge.to_node)
-			TYPE_FIXED:
-				graph.add_resistor(edge.id, edge.from_node, edge.to_node, edge.ohms)
-			TYPE_SOCKET:
-				socket_ids[edge.id] = true
-				if filled.has(edge.id):
-					var value: Variant = filled[edge.id]
-					if not value is Rational:
-						push_error("LevelCircuit.build_graph: value for socket '%s' is not a Rational" % edge.id)
-						continue
-					graph.add_resistor(edge.id, edge.from_node, edge.to_node, value as Rational)
+				network.add_wire(edge.id, a, b)
+			TYPE_RESISTOR, TYPE_LAMP:
+				network.add_resistor(edge.id, a, b, edge.value)
+			TYPE_BATTERY:
+				network.add_voltage_source(edge.id, a, b, edge.value)
+			TYPE_AMMETER:
+				network.add_ammeter(edge.id, a, b)
+			TYPE_VOLTMETER:
+				network.add_voltmeter(edge.id, a, b)
+			TYPE_OHMMETER:
+				network.add_ohmmeter(edge.id, a, b)
+			TYPE_SLOT:
+				slot_ids[edge.id] = true
+				if not filled.has(edge.id):
+					continue
+				var content: Variant = filled[edge.id]
+				if not content is Part or (content as Part).value == null:
+					push_error("LevelCircuit.build_network: the content of slot '%s' is not a Part" % edge.id)
+					continue
+				var part: Part = content
+				if part.is_battery():
+					network.add_voltage_source(edge.id, a, b, part.value)
+				else:
+					network.add_resistor(edge.id, a, b, part.value)
 	for key: Variant in filled.keys():
-		if not socket_ids.has(key):
-			push_error("LevelCircuit.build_graph: '%s' is not a socket of this circuit" % str(key))
-	return graph
+		if not slot_ids.has(key):
+			push_error("LevelCircuit.build_network: '%s' is not a slot of this circuit" % str(key))
+	return network
+
+
+## True when every condition names an edge of this circuit and asks for a
+## quantity that edge has: resistance only on an ohmmeter; power only on a
+## resistor, lamp, battery or slot; current and voltage on anything but a
+## wire. Otherwise pushes an error naming the problem and returns false.
+func validate_goal(conditions: Array[GoalCondition], source: String = "goal") -> bool:
+	for condition: GoalCondition in conditions:
+		if condition == null:
+			push_error("LevelCircuit: %s: a goal condition is null" % source)
+			return false
+		var edge: Edge = get_edge(condition.element_id)
+		if edge == null:
+			push_error("LevelCircuit: %s: goal condition names '%s', which is not an edge of the circuit" % [
+					source, condition.element_id])
+			return false
+		var allowed: bool = true
+		match condition.quantity:
+			GoalCondition.Quantity.RESISTANCE:
+				allowed = edge.type == TYPE_OHMMETER
+			GoalCondition.Quantity.POWER:
+				allowed = POWER_TYPES.has(edge.type)
+			_:
+				allowed = edge.type != TYPE_WIRE
+		if not allowed:
+			push_error("LevelCircuit: %s: a %s goal cannot be measured on %s '%s'" % [
+					source, condition.quantity_name(), edge.type, edge.id])
+			return false
+	return true
 
 
 func _parse_nodes(value: Variant, source: String) -> bool:
@@ -160,34 +241,14 @@ func _parse_nodes(value: Variant, source: String) -> bool:
 	return true
 
 
-func _parse_terminals(value: Variant, source: String) -> bool:
-	if not value is Array or (value as Array).size() != 2:
-		push_error("LevelCircuit: %s: 'terminals' must be an array of two node names" % source)
-		return false
-	var pair: Array = value
-	if not pair[0] is String or not pair[1] is String:
-		push_error("LevelCircuit: %s: 'terminals' must be two node names" % source)
-		return false
-	var a: String = pair[0]
-	var b: String = pair[1]
-	if a == b:
-		push_error("LevelCircuit: %s: the two terminals must be different nodes (both are '%s')" % [source, a])
-		return false
-	for node_name: String in [a, b]:
-		if not _positions.has(node_name):
-			push_error("LevelCircuit: %s: terminal '%s' is not a node" % [source, node_name])
-			return false
-	terminal_a = a
-	terminal_b = b
-	return true
-
-
 func _parse_edges(value: Variant, source: String) -> bool:
 	if not value is Array:
 		push_error("LevelCircuit: %s: 'edges' must be an array" % source)
 		return false
 	var raw_edges: Array = value
-	var seen: Dictionary = {}
+	if raw_edges.is_empty():
+		push_error("LevelCircuit: %s: 'edges' is empty" % source)
+		return false
 	for i: int in raw_edges.size():
 		if not raw_edges[i] is Dictionary:
 			push_error("LevelCircuit: %s: edges[%d] must be an object" % [source, i])
@@ -195,26 +256,37 @@ func _parse_edges(value: Variant, source: String) -> bool:
 		var edge: Edge = _parse_edge(raw_edges[i], i, source)
 		if edge == null:
 			return false
-		if seen.has(edge.id):
+		if _edges_by_id.has(edge.id):
 			push_error("LevelCircuit: %s: edge id '%s' is used more than once" % [source, edge.id])
 			return false
-		seen[edge.id] = true
+		_edges_by_id[edge.id] = edge
 		_edges.append(edge)
 	return true
 
 
 func _parse_edge(raw: Dictionary, index: int, source: String) -> Edge:
-	for field: String in ["id", "type", "from", "to"]:
+	for field: String in EDGE_KEYS:
 		if not raw.has(field) or not raw[field] is String or String(raw[field]).is_empty():
 			push_error("LevelCircuit: %s: edges[%d] needs a non-empty string '%s'" % [source, index, field])
 			return null
 	var id: String = raw["id"]
 	var type: String = raw["type"]
+	if not EDGE_TYPES.has(type):
+		push_error("LevelCircuit: %s: edge '%s' has unknown type '%s' (expected %s)" % [
+				source, id, type, ", ".join(EDGE_TYPES)])
+		return null
+	var allowed: PackedStringArray = EDGE_KEYS.duplicate()
+	if VALUE_TYPES.has(type):
+		allowed.append("value")
+	if type == TYPE_LAMP:
+		allowed.append_array(LAMP_RATING_KEYS)
+	for key: Variant in raw.keys():
+		if not allowed.has(str(key)):
+			push_error("LevelCircuit: %s: %s edge '%s' has unknown field '%s' (allowed: %s)" % [
+					source, type, id, str(key), ", ".join(allowed)])
+			return null
 	var from_node: String = raw["from"]
 	var to_node: String = raw["to"]
-	if not EDGE_TYPES.has(type):
-		push_error("LevelCircuit: %s: edge '%s' has unknown type '%s' (expected wire, socket or fixed)" % [source, id, type])
-		return null
 	for node_name: String in [from_node, to_node]:
 		if not _positions.has(node_name):
 			push_error("LevelCircuit: %s: edge '%s' refers to unknown node '%s'" % [source, id, node_name])
@@ -222,19 +294,39 @@ func _parse_edge(raw: Dictionary, index: int, source: String) -> Edge:
 	if from_node == to_node:
 		push_error("LevelCircuit: %s: edge '%s' starts and ends at the same node '%s'" % [source, id, from_node])
 		return null
-	var ohms: Rational = null
-	if type == TYPE_FIXED:
-		if not raw.has("ohms") or not raw["ohms"] is String:
-			push_error("LevelCircuit: %s: fixed edge '%s' needs 'ohms' as a string" % [source, id])
+	var edge: Edge = Edge.new(id, type, from_node, to_node)
+	if VALUE_TYPES.has(type):
+		edge.value = _parse_positive(raw, "value", type, id, source)
+		if edge.value == null:
 			return null
-		ohms = Rational.parse(raw["ohms"])
-		if ohms == null or not ohms.is_valid():
-			push_error("LevelCircuit: %s: fixed edge '%s' has an invalid 'ohms' value '%s'" % [source, id, raw["ohms"]])
+	if type == TYPE_LAMP:
+		edge.rated_min = _parse_positive(raw, "rated_min", type, id, source)
+		if edge.rated_min == null:
 			return null
-		if ohms.sign() <= 0:
-			push_error("LevelCircuit: %s: fixed edge '%s' must have 'ohms' > 0, got '%s'" % [source, id, raw["ohms"]])
+		edge.rated_max = _parse_positive(raw, "rated_max", type, id, source)
+		if edge.rated_max == null:
 			return null
-	return Edge.new(id, type, from_node, to_node, ohms)
+		if edge.rated_min.compare(edge.rated_max) > 0:
+			push_error("LevelCircuit: %s: lamp '%s' has rated_min %s greater than rated_max %s" % [
+					source, id, edge.rated_min.to_text(), edge.rated_max.to_text()])
+			return null
+	return edge
+
+
+## The exact value of `raw[key]` (> 0), or null after pushing an error.
+static func _parse_positive(raw: Dictionary, key: String, type: String, id: String,
+		source: String) -> Rational:
+	if not raw.has(key) or not raw[key] is String:
+		push_error("LevelCircuit: %s: %s edge '%s' needs '%s' as a string like \"3/2\"" % [source, type, id, key])
+		return null
+	var value: Rational = Rational.parse(raw[key])
+	if value == null or not value.is_valid():
+		push_error("LevelCircuit: %s: %s edge '%s' has an invalid '%s' value '%s'" % [source, type, id, key, raw[key]])
+		return null
+	if value.sign() <= 0:
+		push_error("LevelCircuit: %s: %s edge '%s' must have '%s' > 0, got '%s'" % [source, type, id, key, raw[key]])
+		return null
+	return value
 
 
 static func _is_number(value: Variant) -> bool:

@@ -1,24 +1,33 @@
 class_name CircuitWires
 extends Node2D
 ## Draws the board's wires with Line2D: a wide dark outline under a narrow
-## core line for every edge. Wire edges run node to node; socket and fixed
-## edges get a lead from each node to the component's side.
+## core line for every edge. Wire edges run node to node; every other edge
+## (slots, fixed parts, lamps, meters) gets a lead from each node to the side
+## of the 104x72 component drawn at its midpoint.
 ##
-## Colour shows the circuit state, using the room theme's wire colours: normal
-## when open, closed when the circuit conducts (status OK), and a pulsing match
-## colour when the value matches the target.
+## Colour shows the circuit state, using the room theme's wire colours:
+##   PLAIN      no current flows (theme "normal")
+##   ENERGIZED  current flows (theme "closed")
+##   MATCH      the goal is met (theme "match", pulsing)
+##   SHORT      a short: the core flashes between SHORT_COLOR and the plain colour
+
+enum State { PLAIN, ENERGIZED, MATCH, SHORT }
 
 const OUTLINE_WIDTH: float = 7.0
 const COPPER_WIDTH: float = 4.0
-## Half the drawn size of a socket or fixed resistor (104x72 frame).
+## Half the drawn size of a component on an edge (104x72 frame).
 const COMPONENT_HALF_SIZE: Vector2 = Vector2(52, 36)
 ## Pulse on a match: brightness swings by this much, this many times a second.
 const PULSE_AMOUNT: float = 0.3
 const PULSE_FREQUENCY: float = 1.2
+## Short warning: the core alternates with this colour every SHORT_FLASH_PERIOD seconds.
+const SHORT_COLOR: Color = Color("c8452f")
+const SHORT_FLASH_PERIOD: float = 0.25
 
 var _outline_layer: Node2D = null
 var _copper_layer: Node2D = null
-var _pulse_time: float = 0.0
+var _time: float = 0.0
+var _state: State = State.PLAIN
 ## Colours come from this theme; a default RoomTheme when none is given.
 var _theme: RoomTheme = null
 
@@ -45,35 +54,61 @@ func build(circuit: LevelCircuit, theme: RoomTheme = null) -> void:
 			_add_segment(a, b)
 		else:
 			_add_leads(a, b)
-	set_state(false, false)
+	set_state(State.PLAIN)
 
 
-## closed: the circuit conducts (status OK). matched: it equals the target.
-func set_state(closed: bool, matched: bool) -> void:
+func set_state(state: State) -> void:
 	if _copper_layer == null:
 		return
+	_state = state
 	var color: Color = _theme.wire_normal
 	var outline: Color = _theme.wire_normal_outline
-	if matched:
-		color = _theme.wire_match
-		outline = _theme.wire_match_outline
-	elif closed:
-		color = _theme.wire_closed
-		outline = _theme.wire_closed_outline
-	for child: Node in _copper_layer.get_children():
-		(child as Line2D).default_color = color
-	for child: Node in _outline_layer.get_children():
-		(child as Line2D).default_color = outline
-	_pulse_time = 0.0
+	match state:
+		State.MATCH:
+			color = _theme.wire_match
+			outline = _theme.wire_match_outline
+		State.ENERGIZED:
+			color = _theme.wire_closed
+			outline = _theme.wire_closed_outline
+	_set_colors(color, outline)
+	_time = 0.0
 	_copper_layer.modulate = Color.WHITE
-	set_process(matched)
+	set_process(state == State.MATCH or state == State.SHORT)
+	if state == State.SHORT:
+		_set_core_color(SHORT_COLOR)
+
+
+func get_state() -> State:
+	return _state
+
+
+## The core colour of the wires as currently drawn.
+func get_core_color() -> Color:
+	if _copper_layer == null or _copper_layer.get_child_count() == 0:
+		return Color.BLACK
+	return (_copper_layer.get_child(0) as Line2D).default_color
 
 
 func _process(delta: float) -> void:
-	_pulse_time += delta
-	var wave: float = 0.5 + 0.5 * cos(_pulse_time * TAU * PULSE_FREQUENCY)
+	_time += delta
+	if _state == State.SHORT:
+		var red: bool = int(_time / SHORT_FLASH_PERIOD) % 2 == 0
+		_set_core_color(SHORT_COLOR if red else _theme.wire_normal)
+		return
+	var wave: float = 0.5 + 0.5 * cos(_time * TAU * PULSE_FREQUENCY)
 	var brightness: float = 1.0 - PULSE_AMOUNT * (1.0 - wave)
 	_copper_layer.modulate = Color(brightness, brightness, brightness)
+
+
+func _set_colors(core: Color, outline: Color) -> void:
+	_set_core_color(core)
+	for child: Node in _outline_layer.get_children():
+		(child as Line2D).default_color = outline
+
+
+func _set_core_color(core: Color) -> void:
+	for child: Node in _copper_layer.get_children():
+		(child as Line2D).default_color = core
 
 
 ## Leads from each end to the side of a component drawn at the midpoint.

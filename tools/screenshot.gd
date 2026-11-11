@@ -8,7 +8,7 @@ extends SceneTree
 ## Options after the path:
 ##   --level=res://levels/<file>.json  load that level (read by the room itself)
 ##   --solve                           plug the level's first solution into its
-##                                     sockets (found with PuzzleSolver) before
+##                                     slots (found with DcPuzzleSearch) before
 ##                                     the capture
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
@@ -78,18 +78,18 @@ func _stop_audio() -> void:
 		await process_frame
 
 
-## Moves loose resistors into the sockets as the first PuzzleSolver solution says.
+## Moves loose parts into the slots as the first DcPuzzleSearch solution says.
 func _plug_in_first_solution(room: Room) -> bool:
 	if room == null or room.get_circuit() == null:
 		push_error("screenshot: no loaded room to solve")
 		return false
 	var circuit: LevelCircuit = room.get_circuit()
-	var pickups: Array[ResistorPickup] = room.get_pickups()
-	var values: Array[Rational] = []
-	for pickup: ResistorPickup in pickups:
-		values.append(pickup.value)
-	var solutions: Array[Dictionary] = PuzzleSolver.find_solutions(circuit.build_base_graph(),
-			circuit.get_socket_descriptors(), values, room.get_goal().equivalent_resistance_target())
+	var parts: Array[PartPickup] = room.get_parts()
+	var search_parts: Array[Dictionary] = []
+	for pickup: PartPickup in parts:
+		search_parts.append(pickup.part.to_search_dictionary())
+	var solutions: Array[Dictionary] = DcPuzzleSearch.find_solutions(circuit.build_base_network(),
+			circuit.get_slot_descriptors(), search_parts, room.get_goal().conditions, 1)
 	if solutions.is_empty():
 		push_error("screenshot: the level has no solution to plug in")
 		return false
@@ -97,8 +97,8 @@ func _plug_in_first_solution(room: Room) -> bool:
 	for socket: CircuitSocket in room.get_board().get_sockets():
 		if not solution.has(socket.socket_id):
 			continue
-		for pickup: ResistorPickup in pickups:
-			if pickup.is_loose() and pickup.value.to_text() == solution[socket.socket_id]:
+		for pickup: PartPickup in parts:
+			if pickup.is_loose() and pickup.part.label() == solution[socket.socket_id]:
 				pickup.take()
 				socket.insert(pickup)
 				break

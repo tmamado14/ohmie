@@ -1,16 +1,16 @@
 class_name Room
 extends Node2D
-## Builds one room from a level file (theme, tiles, pickups, circuit board,
-## door, HUD, player) and runs its flow: the board's reading, judged by the
-## level's goal, drives the HUD and the door,
-## the open door completes the level, `restart` reloads the scene, and falling
-## out respawns Ohmie (a carried resistor goes back to its home). After the
-## level is complete, `interact` loads the next level of the Campaign, if any.
+## Builds one room from a level file (theme, tiles, parts, circuit board,
+## door, HUD, player) and runs its flow: the board's solution, judged by the
+## level's goal, drives the HUD and the door; the open door completes the
+## level, `restart` reloads the scene, and falling out respawns Ohmie (a
+## carried part goes back to its home). After the level is complete,
+## `interact` loads the next level of the Campaign, if any.
 ##
 ## The level file is, in order of precedence: `level_override` (set by scripted
 ## tests; it survives `restart` reloads), a user argument
-## --level=res://levels/<file>.json on the command line (after `--`), or
-## `level_path`.
+## --level=res://levels/<file>.json on the command line (after `--`), the
+## campaign's first level when `start_from_campaign` is set, or `level_path`.
 ## Also connects gameplay signals to the Sfx autoload.
 
 ## Emitted once when Ohmie walks into the open door.
@@ -24,7 +24,11 @@ const ROOM_SIZE: Vector2 = Vector2(1280, 720)
 ## command line. A static, so it outlives scene reloads; for scripted tests.
 static var level_override: String = ""
 
+## The level to load when nothing else names one (and the fallback when the
+## campaign cannot be read).
 @export_file("*.json") var level_path: String = ""
+## Load the campaign's first level instead of `level_path`.
+@export var start_from_campaign: bool = false
 @export var player_scene: PackedScene
 @export var pickup_scene: PackedScene
 
@@ -37,8 +41,8 @@ var _circuit: LevelCircuit = null
 var _goal: LevelGoal = null
 var _player: Player = null
 var _carry: PlayerCarry = null
-var _pickups: Array[ResistorPickup] = []
-var _was_match: bool = false
+var _parts: Array[PartPickup] = []
+var _was_met: bool = false
 var _complete: bool = false
 var _sfx: SfxPlayer = null
 ## The campaign level after this one ("" if none), known once the level is complete.
@@ -48,29 +52,32 @@ var _next_level: String = ""
 @onready var _tiles: RoomTiles = $Tiles
 @onready var _board: CircuitBoard = $Board
 @onready var _door: ExitDoor = $Door/ExitDoor
-@onready var _pickup_container: Node2D = $Pickups
+@onready var _part_container: Node2D = $Parts
 @onready var _hud: Hud = $Hud/Hud
 
 
 func _ready() -> void:
 	_sfx = get_node_or_null(SfxPlayer.AUTOLOAD_PATH) as SfxPlayer
-	var override: String = level_override
-	if override.is_empty():
-		override = level_path_from_command_line()
-	if not override.is_empty():
-		level_path = override
+	level_path = _choose_level_path()
 	if not _load_level():
 		return
 	_apply_theme()
 	_tiles.build(level_data.tile_rows)
 	_hud.set_title(level_data.title)
-	_hud.set_goal(_goal.goal_label(), _goal.mission, _goal.reading_caption())
+	_hud.set_mission(_goal.mission)
+	var symbols: PackedStringArray = PackedStringArray()
+	var targets: PackedStringArray = PackedStringArray()
+	for i: int in _goal.condition_count():
+		symbols.append(_goal.symbol(i))
+		targets.append(_goal.target_text(i))
+	_hud.set_goal_rows(symbols, targets)
 	_door.position = level_data.door
 	_door.entered.connect(_on_door_entered)
 	_door.opened.connect(_play_sound.bind(&"door_open"))
-	_build_pickups()
+	_build_parts()
 	_spawn_player()
-	_board.resistance_changed.connect(_on_resistance_changed)
+	_board.circuit_changed.connect(_on_circuit_changed)
+	_board.shorted.connect(_play_sound.bind(&"invalid"))
 	_board.build(_circuit, _goal, _theme)
 
 
@@ -121,22 +128,31 @@ func get_circuit() -> LevelCircuit:
 	return _circuit
 
 
-## The level's goal (what solves it and the mission text), or null.
+## The level's goal (mission and conditions), or null.
 func get_goal() -> LevelGoal:
 	return _goal
 
 
-## The goal's target resistance, or null when the goal is not a resistance goal.
-func get_target() -> Rational:
-	return _goal.target if _goal != null else null
-
-
-func get_pickups() -> Array[ResistorPickup]:
-	return _pickups.duplicate()
+## Every carried part of the level, in file order.
+func get_parts() -> Array[PartPickup]:
+	return _parts.duplicate()
 
 
 func is_complete() -> bool:
 	return _complete
+
+
+func _choose_level_path() -> String:
+	if not level_override.is_empty():
+		return level_override
+	var from_command_line: String = level_path_from_command_line()
+	if not from_command_line.is_empty():
+		return from_command_line
+	if start_from_campaign:
+		var campaign: Campaign = Campaign.load_from_file(Campaign.DEFAULT_PATH)
+		if campaign != null and not campaign.first().is_empty():
+			return campaign.first()
+	return level_path
 
 
 func _load_level() -> bool:
@@ -144,12 +160,8 @@ func _load_level() -> bool:
 	if level_data == null:
 		push_error("Room: could not load level '%s'" % level_path)
 		return false
-	_circuit = LevelCircuit.from_dictionary(level_data.circuit, level_path)
-	if _circuit == null:
-		push_error("Room: level '%s' has an invalid circuit" % level_path)
-		level_data = null
-		return false
-	_goal = level_data.goal
+	_circuit = level_data.circuit
+	_goal = level_data.make_goal()
 	return true
 
 
@@ -166,22 +178,19 @@ func _apply_theme() -> void:
 		_sfx.play_music(_theme.music)
 
 
-func _build_pickups() -> void:
-	var entries: Array[LevelPickup] = []
-	if not LevelPickup.parse_all(level_data.pickups, level_path, entries):
-		return
+func _build_parts() -> void:
 	if pickup_scene == null:
 		push_error("Room: pickup_scene is not set")
 		return
-	for entry: LevelPickup in entries:
-		var pickup: ResistorPickup = pickup_scene.instantiate() as ResistorPickup
+	for entry: LevelPart in level_data.parts:
+		var pickup: PartPickup = pickup_scene.instantiate() as PartPickup
 		if pickup == null:
-			push_error("Room: pickup_scene does not have a ResistorPickup root")
+			push_error("Room: pickup_scene does not have a PartPickup root")
 			return
-		pickup.name = "Pickup_" + entry.id
-		_pickup_container.add_child(pickup)
-		pickup.setup(entry.id, entry.ohms, entry.position)
-		_pickups.append(pickup)
+		pickup.name = "Part_" + entry.id
+		_part_container.add_child(pickup)
+		pickup.setup(entry.id, entry.part, entry.position)
+		_parts.append(pickup)
 
 
 func _spawn_player() -> void:
@@ -210,12 +219,17 @@ func _spawn_player() -> void:
 	_carry.invalid_action.connect(_play_sound.bind(&"invalid"))
 
 
-func _on_resistance_changed(result: CircuitResult, is_match: bool) -> void:
-	_hud.show_reading(_goal.reading_label(result), is_match)
-	if is_match and not _was_match:
+func _on_circuit_changed(solution: DcSolution, goal_met: bool) -> void:
+	var readings: PackedStringArray = PackedStringArray()
+	var met: Array[bool] = []
+	for i: int in _goal.condition_count():
+		readings.append(_goal.reading_text(i, solution))
+		met.append(_goal.is_condition_met(i, solution))
+	_hud.show_readings(readings, met, goal_met)
+	if goal_met and not _was_met:
 		_play_sound(&"connect")
-	_was_match = is_match
-	_door.set_open(is_match)
+	_was_met = goal_met
+	_door.set_open(goal_met)
 
 
 func _on_door_entered() -> void:

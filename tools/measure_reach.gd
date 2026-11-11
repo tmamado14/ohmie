@@ -1,5 +1,5 @@
 extends SceneTree
-## QA measurement tool for slice_01 ("Half and Half"): how comfortable are the
+## QA measurement tool for w1_07 ("Half and Half"): how comfortable are the
 ## jumps and the interaction ranges? Prints a report; exits 0 unless the room
 ## fails to load. Not a pass/fail test.
 ##
@@ -8,15 +8,15 @@ extends SceneTree
 ##    S1 -> S2 platform, S2 -> right ledge) with each of those hold times, from
 ##    the takeoff point the playthrough test uses, plus the shortest hold that works.
 ## 3. The range of takeoff x for each route jump (full hold) that lands on target.
-## 4. The standing x range on each surface from which each pickup (empty hands)
-##    and each socket (carrying) is the highlighted interact target.
+## 4. The standing x range on each surface from which each part (empty hands)
+##    and each slot (carrying) is the highlighted interact target.
 ##
 ## Moves Ohmie with Player.respawn() between samples; jumps and moves use the
 ## input map. Usage:
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/measure_reach.gd
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
-const LEVEL: String = "res://levels/slice_01.json"
+const LEVEL: String = "res://levels/w1_07.json"
 const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
 const FULL_HOLD: int = -1
 const HOLDS: Array[int] = [1, 3, 6, 12, FULL_HOLD]
@@ -39,9 +39,9 @@ const TARGETS: Array[Dictionary] = [
 	{"kind": "pickup", "id": "r_half", "y": 455.0, "sweep": Vector2(170, 372)},
 	{"kind": "pickup", "id": "r_one_floor", "y": 640.0, "sweep": Vector2(900, 1120)},
 	{"kind": "pickup", "id": "r_one_ledge", "y": 359.0, "sweep": Vector2(876, 1076)},
-	{"kind": "socket", "id": "s1", "y": 551.0, "sweep": Vector2(398, 627)},
-	{"kind": "socket", "id": "s2", "y": 455.0, "sweep": Vector2(622, 851)},
-	{"kind": "socket", "id": "s3", "y": 640.0, "sweep": Vector2(600, 880)},
+	{"kind": "slot", "id": "s1", "y": 551.0, "sweep": Vector2(398, 627)},
+	{"kind": "slot", "id": "s2", "y": 455.0, "sweep": Vector2(622, 851)},
+	{"kind": "slot", "id": "s3", "y": 640.0, "sweep": Vector2(600, 880)},
 ]
 
 var _room: Room = null
@@ -102,7 +102,7 @@ func _run() -> void:
 	print("== 4. Standing x range where each object is the interact target (reach 56 px)")
 	await _teleport(Vector2(272, FLOOR_Y))
 	for target: Dictionary in TARGETS:
-		if target["kind"] == "socket" and not _carry.is_carrying():
+		if target["kind"] == "slot" and not _carry.is_carrying():
 			await _teleport(Vector2(272, FLOOR_Y))  # r_two
 			await _interact()
 		if target["kind"] == "pickup" and _carry.is_carrying():
@@ -158,8 +158,8 @@ func _jump(from: Vector2, direction: int, hold: int) -> Dictionary:
 
 func _target_id() -> String:
 	var target: Interactable = _carry.get_target()
-	if target is ResistorPickup:
-		return (target as ResistorPickup).pickup_id
+	if target is PartPickup:
+		return (target as PartPickup).part_id
 	if target is CircuitSocket:
 		return (target as CircuitSocket).socket_id
 	return ""

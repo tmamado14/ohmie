@@ -1,6 +1,6 @@
-# Ohmie: Circuit Works
+# Ohmie: Circuit Adventure
 
-A Godot 4.7.2 (standard build, GDScript, Compatibility renderer) 2D platformer combined with resistor-network puzzles. Each level is one screen. The player, Ohmie, carries resistors one at a time to sockets wired into the level. The level's door opens when the circuit's equivalent resistance is exactly the target, normally 1 Ω. Platforming decides which resistors and sockets are convenient to reach. The circuit math is the puzzle.
+A Godot 4.7.2 (standard build, GDScript, Compatibility renderer) 2D platformer combined with electronics puzzles. Each level is one screen with a real, closed circuit on the wall. The player, Ohmie, carries parts (batteries, resistors) one at a time to slots in the circuit. The door opens while the level's mission holds, for example "Draw 2 A." Platforming decides which parts and slots are convenient to reach. The circuit is the puzzle, and a real solver decides the result.
 
 Design source of truth: `docs/GDD.md`. Asset facts: `docs/ASSETS.md`. Decisions and their reasons: `docs/DECISIONS.md`.
 
@@ -89,21 +89,37 @@ Tests live in `tests/test_*.gd`. Each is a script with `test_*` methods, discove
 
 ## Current state
 
-Update this section whenever a milestone step completes.
+Update this section whenever a milestone step completes. Last updated 2026-11-12.
 
-- Art: the game uses only the new pack in `assets/`. Sprites, tiles and props are drawn at scale 0.5 with Linear filtering on the unchanged 1280×720 / 32 px grid; the 1920×1080 background is scaled to fit (2/3). Platform tiles use `texture_origin` so the art lines up with a standing surface 7 px below the cell top. Rebuild resources with `tools/build_tilesets.gd` and `tools/build_player_frames.gd`; verify with `tools/check_resources.gd` (485 checks).
-- Scope for this version: World 1 (Old Workshop) only, holding all ten rooms. A level's optional `world` field picks `resources/themes/<world>/theme.tres`; only `old_workshop` has a theme. Worlds 2–5 and the boss are for later versions.
-- Levels 1–4 and 6–10 are not designed yet (two `level-designer` tasks were started and stopped early to save usage; nothing of theirs was kept). Briefs are in `docs/GDD.md` section 7. After that: level-to-level flow, then the collapse replay.
-- Goals: every level has a goal (`src/level/level_goal.gd`, GDD section 11). A level file carries `"goal": {"type": "resistance", "value": "...", "mission": "..."}`; the legacy `target` field still works. Only `resistance` exists; a new type is one branch in `LevelGoal`. The HUD shows a GOAL / R EQ plaque and a mission sign that reads MISSION COMPLETE while the goal is met.
-- Goal type `current` (Ohm's law): `{"type": "current", "voltage": "6", "value": "2"}` puts a battery across A–B and is met when V / R_eq equals the value exactly (`src/circuit/ohms_law.gd`). `levels/level_02.json` ("Ohm's Law") uses it.
-- Level flow: `levels/campaign.json` lists the rooms in order (slice_01, level_02). After completing a room that has a next one, a real `interact` key event loads it; `restart` replays. No level select or saved progress yet.
-- Rough edge: the battery is drawn beside terminal A but no wire is drawn from the battery to A or back from B, so the loop does not look closed.
-- Run play tests with `--fixed-fps 60`. Current counts: 163 unit, 11 movement, 31 dev room, 35 slice_01, 24 level_02, 95 adversarial.
-- Milestone 1 (vertical slice) is playable. The game boots into `levels/slice_01.json` ("Half and Half"). `levels/dev_room.json` is a development room used by the play tests.
-- Passing as of 2026-11-11: 127 unit tests (`tests/run_tests.gd`), and the scripted play tests `tests/play_movement.gd` (11 checks), `tests/play_slice.gd` (30) and `tests/play_slice_01.gd` (25). Run each with `--headless --path . --script res://tests/<name>.gd`.
-- After adding a script with `class_name`, run `--import` once before any `--script` command, or the class name will not resolve.
-- Autoloads are not visible to scripts started with `--script`; gameplay code looks up `Sfx` at `/root/Sfx` and tolerates it being absent.
-- A test or tool selects a level by setting `Room.level_override` before the main scene loads, or with `-- --level=res://levels/x.json`.
-- All subagents that have run reported model `claude-opus-5-5`.
-- QA pass done; bugs and their status are in `docs/BUGS.md`. Known rough edges: the readout plaque text is small at 720p; shelves painted in the background can be mistaken for platforms; `docs/ASSETS.md` still has a few stale lines above its "New pack" section.
-- Git: remote `origin` is https://github.com/tmamado14/ohmie (branch `master`). Commit as the user only, with no Claude co-author or attribution lines. Push after each completed task.
+**Design.** The game is on the version 2 design in `docs/GDD.md` section 12, which supersedes the older sections where they differ: closed DC circuits solved by a real engine, batteries and resistors both carried as parts, every slot takes any part, fixed meters and lamps on the board, a goal is a list of conditions, and the mission is one short line. The long-term aim is a full ECE game; World 1 (Old Workshop) is basic DC networks only: ten rooms plus three overtime rooms, listed in GDD 12.5.
+
+**Engine (`src/circuit/`).** `DcNetwork`, `DcSolver`, `DcSolution`, `GoalCondition`, `DcPuzzleSearch`. Sign conventions are in the header of `dc_solution.gd`. The older `CircuitGraph` / `CircuitSolver` / `PuzzleSolver` / `OhmsLaw` are no longer used by gameplay; `CircuitSolver`'s reduction steps are kept for the planned collapse replay. A full puzzle search on six slots and nine different parts takes about 39 s, so it is for the offline validator only.
+
+**Game.** `Part`, `LevelPart`, `LevelData`, `LevelCircuit` (`build_network`), `LevelGoal` in `src/level/`; `CircuitBoard`, `CircuitSocket`, `PartPickup`, `PartIcon`, `BoardMeter`, `BoardLamp`, `FixedPart`, `CircuitWires` in `src/objects/`. One level format (GDD 12.4); there is no compatibility with the old `terminals` / `socket` / `pickups` / `target` fields. A battery's plus faces its slot's `from` node. Ohmie must be standing to interact.
+
+**Levels.** `levels/campaign.json` orders the rooms; the game boots the first one. Present: `w1_02.json` "Resistance Is Futile", `w1_07.json` "Half and Half", and `dev_room.json` (development room used by `play_movement`, `play_slice`, `play_break`). File names are `w1_NN.json`. Every room needs a validator run with all solutions reported and a scripted route kept as `tests/play_w1_NN.gd`.
+
+**Art.** Only the pack in `assets/` is used (hand-inked style, authored at 2×, drawn at scale 0.5 with Linear filtering on the 1280×720 / 32 px grid; the background is scaled to fit). Generated art is in `assets/processed/`, made by `tools/generate_art.gd` and `tools/generate_parts_art.gd`. Exact paths, text rectangles and offsets are in `docs/ASSETS.md`. `assets-old/` is local only and must never be referenced.
+
+**Checks (all passing).** Run play tests with `--fixed-fps 60`.
+
+| Command | Count |
+|---|---|
+| `--script res://tests/run_tests.gd` | 269 |
+| `--script res://tests/play_movement.gd` | 11 |
+| `--script res://tests/play_slice.gd` | 34 |
+| `--script res://tests/play_break.gd` | 95 |
+| `--script res://tests/play_w1_02.gd` | 54 |
+| `--script res://tests/play_w1_07.gd` | 38 |
+| `--script res://tools/check_resources.gd` | 557 |
+
+**Things that bite.**
+- After adding a script with `class_name`, run `--import` once before any `--script` command.
+- Autoloads are not visible to scripts started with `--script`; gameplay looks up `Sfx` at `/root/Sfx` and tolerates its absence.
+- A test or tool picks a level by setting `Room.level_override` before the main scene loads, or with `-- --level=res://levels/x.json`.
+- The next-room key reacts to a real `interact` input event, not `Input.action_press`.
+- Shell heredocs containing apostrophes or backticks have mangled files twice; write files with the Write/Edit tools.
+
+**Next.** Design the remaining World 1 rooms (1, 3–6, 8–10, then overtime 11–13), QA pass, level select with saved progress, then the collapse replay for ohmmeter rooms. Known rough edges: shelves painted in the background look like platforms; floor and platform tiles are pixel art beside inked sprites; nobody has played by hand with a keyboard and the audio is unheard.
+
+**Git.** Remote `origin` is https://github.com/tmamado14/ohmie (branch `master`). Commit as the user only, with no Claude co-author or attribution lines. Push after each completed task. All subagents so far reported model `claude-opus-5-5`.

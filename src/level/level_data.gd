@@ -1,38 +1,40 @@
 class_name LevelData
 extends RefCounted
-## One level as described in GDD section 6, parsed from a JSON file.
+## One level file (GDD 12.4, the only format), parsed and fully validated:
+## tiles, positions, parts, the circuit and the goal (every condition must name
+## an element of the circuit that has that quantity).
 ##
-## Parsing only: no circuit math happens here. The goal (the optional "goal"
-## object, or the legacy "target" field) is parsed by LevelGoal.
-## `pickups` and `circuit` are stored as parsed and only checked for the right
-## container type; the objects that use them validate their own contents.
+## Parsing only: no circuit math happens here. Any problem pushes an error that
+## names the file and the field, and the loader returns null.
 
 const ROW_COUNT: int = 23
 const COLUMN_COUNT: int = 40
 const TILE_CHARACTERS: String = ".#=BW!|"
 const DEFAULT_WORLD: String = "old_workshop"
 const REQUIRED_FIELDS: PackedStringArray = [
-	"id", "title", "teaches", "tiles", "spawn", "door", "pickups", "circuit",
+	"id", "title", "mission", "goal", "tiles", "spawn", "door", "parts", "circuit",
 ]
+const OPTIONAL_FIELDS: PackedStringArray = ["world", "teaches"]
 
 var id: String = ""
 var title: String = ""
+## Optional note for designers: what the room teaches.
 var teaches: String = ""
-## Optional: the world whose theme the room uses (res://resources/themes/<world>/).
+## The world whose theme the room uses (res://resources/themes/<world>/).
 var world: String = DEFAULT_WORLD
-## What solves the level and the mission text (never null on a loaded level).
-var goal: LevelGoal = null
-## The goal's target resistance as text, for example "1" or "3/2". Kept for
-## older callers; prefer `goal`.
-var target_text: String = ""
+## The one-line mission shown on the sign, e.g. "Draw 2 A.".
+var mission: String = ""
+## Every condition must hold for the door to open (never empty).
+var goal: Array[GoalCondition] = []
 ## ROW_COUNT strings of COLUMN_COUNT tile characters each, top row first.
 var tile_rows: PackedStringArray = PackedStringArray()
 ## Bottom centre of Ohmie at the start, in pixels.
 var spawn: Vector2 = Vector2.ZERO
 ## Bottom centre of the exit door, in pixels.
 var door: Vector2 = Vector2.ZERO
-var pickups: Array[Dictionary] = []
-var circuit: Dictionary = {}
+## The carried parts lying in the room, in file order.
+var parts: Array[LevelPart] = []
+var circuit: LevelCircuit = null
 
 
 ## Reads and parses a level file. Returns null and pushes an error on any problem.
@@ -58,24 +60,28 @@ static func from_dictionary(data: Variant, source: String) -> LevelData:
 		push_error("LevelData: %s: top level must be a JSON object" % source)
 		return null
 	var dict: Dictionary = data
+	for key: Variant in dict.keys():
+		if not REQUIRED_FIELDS.has(str(key)) and not OPTIONAL_FIELDS.has(str(key)):
+			push_error("LevelData: %s: unknown field '%s'" % [source, str(key)])
+			return null
 	for field: String in REQUIRED_FIELDS:
 		if not dict.has(field):
 			push_error("LevelData: %s: missing field '%s'" % [source, field])
 			return null
 
 	var level: LevelData = LevelData.new()
-	for field: String in ["id", "title", "teaches"]:
-		if not dict[field] is String:
-			push_error("LevelData: %s: field '%s' must be a string" % [source, field])
+	for field: String in ["id", "title", "mission"]:
+		if not dict[field] is String or (dict[field] as String).strip_edges().is_empty():
+			push_error("LevelData: %s: field '%s' must be a non-empty string" % [source, field])
 			return null
 	level.id = dict["id"]
 	level.title = dict["title"]
-	level.teaches = dict["teaches"]
-	level.goal = LevelGoal.from_level(dict, source)
-	if level.goal == null:
-		return null
-	if level.goal.target != null:
-		level.target_text = level.goal.target.to_text()
+	level.mission = (dict["mission"] as String).strip_edges()
+	if dict.has("teaches"):
+		if not dict["teaches"] is String:
+			push_error("LevelData: %s: field 'teaches' must be a string" % source)
+			return null
+		level.teaches = dict["teaches"]
 	if dict.has("world"):
 		if not dict["world"] is String or (dict["world"] as String).strip_edges().is_empty():
 			push_error("LevelData: %s: field 'world' must be a non-empty string" % source)
@@ -84,7 +90,6 @@ static func from_dictionary(data: Variant, source: String) -> LevelData:
 
 	if not _parse_tiles(dict["tiles"], source, level):
 		return null
-
 	var spawn_point: Variant = _parse_point(dict["spawn"], "spawn", source)
 	if spawn_point == null:
 		return null
@@ -94,21 +99,38 @@ static func from_dictionary(data: Variant, source: String) -> LevelData:
 		return null
 	level.door = door_point
 
-	if not dict["pickups"] is Array:
-		push_error("LevelData: %s: field 'pickups' must be an array" % source)
+	if not LevelPart.parse_all(dict["parts"], source, level.parts):
 		return null
-	var raw_pickups: Array = dict["pickups"]
-	for i: int in raw_pickups.size():
-		if not raw_pickups[i] is Dictionary:
-			push_error("LevelData: %s: pickups[%d] must be an object" % [source, i])
-			return null
-	level.pickups.assign(raw_pickups)
-
-	if not dict["circuit"] is Dictionary:
-		push_error("LevelData: %s: field 'circuit' must be an object" % source)
+	level.circuit = LevelCircuit.from_dictionary(dict["circuit"], source)
+	if level.circuit == null:
 		return null
-	level.circuit = dict["circuit"]
+	if not _parse_goal(dict["goal"], source, level):
+		return null
+	if not level.circuit.validate_goal(level.goal, source):
+		return null
 	return level
+
+
+## The level's goal: its mission and conditions together.
+func make_goal() -> LevelGoal:
+	return LevelGoal.create(mission, goal)
+
+
+static func _parse_goal(value: Variant, source: String, level: LevelData) -> bool:
+	if not value is Array or (value as Array).is_empty():
+		push_error("LevelData: %s: field 'goal' must be a non-empty array of conditions" % source)
+		return false
+	var raw: Array = value
+	for i: int in raw.size():
+		if not raw[i] is Dictionary:
+			push_error("LevelData: %s: goal[%d] must be an object" % [source, i])
+			return false
+		var condition: GoalCondition = GoalCondition.from_dictionary(raw[i])
+		if condition == null:
+			push_error("LevelData: %s: goal[%d] is invalid (see the error above)" % [source, i])
+			return false
+		level.goal.append(condition)
+	return true
 
 
 static func _parse_tiles(value: Variant, source: String, level: LevelData) -> bool:

@@ -1,7 +1,11 @@
 class_name CircuitSocket
 extends Interactable
-## A socket on the circuit board that holds at most one resistor. The node's
-## origin is the midpoint of its edge; the 104x72 frame is centred on it.
+## A slot on the circuit board that holds at most one part of any kind. The
+## node's origin is the midpoint of its edge; the 104x72 frame is centred on it.
+##
+## A battery's plus end faces the slot's `from` node: its art (plus on the
+## left) is mirrored when `from` lies right of `to`, and the + / − badges sit
+## on the matching corner screws while a battery is in.
 ##
 ## Announces every change of contents with `contents_changed`; the board
 ## listens and re-solves the circuit.
@@ -11,59 +15,69 @@ signal contents_changed
 @export var empty_texture: Texture2D
 @export var highlight_texture: Texture2D
 
-## The level file's edge id of this socket.
+## The level file's edge id of this slot.
 var socket_id: String = ""
 
-var _resistor: ResistorPickup = null
+var _pickup: PartPickup = null
+## The slot's `from` node lies right of its `to` node on screen.
+var _from_is_right: bool = false
 
 @onready var _frame: Sprite2D = $Frame
-@onready var _icon: ResistorIcon = $Icon
+@onready var _icon: PartIcon = $Icon
+@onready var _badges: PolarityBadges = $Polarity
 
 
 func _ready() -> void:
 	_frame.texture = empty_texture
-	_icon.set_value(null)
+	_show_contents()
 
 
 func is_filled() -> bool:
-	return _resistor != null
+	return _pickup != null
 
 
-## Carrying: plug in or swap. Empty hands: only a filled socket (pull out).
+## Carrying: plug in or swap. Empty hands: only a filled slot (pull out).
 func can_interact(carrying: bool) -> bool:
 	return carrying or is_filled()
 
 
-## The value in the socket, or null when empty.
-func get_value() -> Rational:
-	return _resistor.value if _resistor != null else null
+## Tells the slot where its `from` node is, so a battery faces the right way.
+func set_from_is_right(from_is_right: bool) -> void:
+	_from_is_right = from_is_right
+	if is_node_ready():
+		_show_contents()
 
 
-## The resistor in the socket, or null when empty.
-func get_resistor() -> ResistorPickup:
-	return _resistor
+## The part in the slot, or null when empty.
+func get_part() -> Part:
+	return _pickup.part if _pickup != null else null
 
 
-## Plugs `resistor` into this empty socket. Returns false if already filled.
-func insert(resistor: ResistorPickup) -> bool:
-	if _resistor != null or resistor == null:
+## The pickup in the slot, or null when empty.
+func get_pickup() -> PartPickup:
+	return _pickup
+
+
+## Plugs `pickup` into this empty slot. Returns false if already filled.
+func insert(pickup: PartPickup) -> bool:
+	if _pickup != null or pickup == null:
 		return false
-	_set_resistor(resistor)
+	_set_pickup(pickup)
 	return true
 
 
-## Pulls the resistor out and returns it (null if the socket was empty).
-func take_out() -> ResistorPickup:
-	var old: ResistorPickup = _resistor
+## Pulls the part out and returns it (null if the slot was empty).
+func take_out() -> PartPickup:
+	var old: PartPickup = _pickup
 	if old != null:
-		_set_resistor(null)
+		_set_pickup(null)
 	return old
 
 
-## Puts `resistor` in and returns the one that was there (one change event).
-func swap(resistor: ResistorPickup) -> ResistorPickup:
-	var old: ResistorPickup = _resistor
-	_set_resistor(resistor)
+## Puts `pickup` in and returns the one that was there (one change event).
+func swap(pickup: PartPickup) -> PartPickup:
+	var old: PartPickup = _pickup
+	_set_pickup(pickup)
 	return old
 
 
@@ -72,7 +86,25 @@ func set_highlighted(highlighted: bool) -> void:
 		_frame.texture = highlight_texture if highlighted else empty_texture
 
 
-func _set_resistor(resistor: ResistorPickup) -> void:
-	_resistor = resistor
-	_icon.set_value(get_value())
+## The drawn part icon (for checks of how the slot looks).
+func get_icon() -> PartIcon:
+	return _icon
+
+
+## The + / − badges (for checks of how the slot looks).
+func get_polarity_badges() -> PolarityBadges:
+	return _badges
+
+
+func _set_pickup(pickup: PartPickup) -> void:
+	_pickup = pickup
+	_show_contents()
 	contents_changed.emit()
+
+
+func _show_contents() -> void:
+	var part: Part = get_part()
+	var battery: bool = part != null and part.is_battery()
+	_icon.set_part(part)
+	_icon.set_flipped(battery and _from_is_right)
+	_badges.show_polarity(battery, _from_is_right)

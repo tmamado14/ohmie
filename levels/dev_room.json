@@ -2,7 +2,8 @@
   "id": "dev_room",
   "title": "Dev Room",
   "teaches": "Development only: movement test room",
-  "target": "1",
+  "mission": "Make 1 Ω.",
+  "goal": [ { "of": "om1", "quantity": "resistance", "equals": "1" } ],
   "tiles": [
     "........................................",
     "........................................",
@@ -30,32 +31,40 @@
   ],
   "spawn": [96, 640],
   "door": [1180, 640],
-  "pickups": [
-    { "id": "r1", "ohms": "2", "pos": [200, 640] },
-    { "id": "r2", "ohms": "2", "pos": [384, 551] },
-    { "id": "r3", "ohms": "4", "pos": [880, 640] }
+  "parts": [
+    { "id": "r1", "kind": "resistor", "value": "2", "pos": [200, 640] },
+    { "id": "r2", "kind": "resistor", "value": "2", "pos": [384, 551] },
+    { "id": "r3", "kind": "resistor", "value": "4", "pos": [880, 640] }
   ],
   "circuit": {
     "nodes": {
-      "A": [464, 504],
+      "a": [464, 504],
       "j1": [528, 504],
       "t1": [528, 416],
       "b1": [528, 592],
       "t2": [752, 416],
       "b2": [752, 592],
       "j2": [752, 504],
-      "B": [816, 504]
+      "b": [816, 504],
+      "bt": [816, 304],
+      "m2": [752, 304],
+      "m1": [528, 304],
+      "at": [464, 304]
     },
-    "terminals": ["A", "B"],
     "edges": [
-      { "id": "w1", "type": "wire", "from": "A", "to": "j1" },
+      { "id": "w1", "type": "wire", "from": "a", "to": "j1" },
       { "id": "w2", "type": "wire", "from": "j1", "to": "t1" },
       { "id": "w3", "type": "wire", "from": "j1", "to": "b1" },
-      { "id": "s1", "type": "socket", "from": "t1", "to": "t2" },
-      { "id": "s2", "type": "socket", "from": "b1", "to": "b2" },
+      { "id": "s1", "type": "slot", "from": "t1", "to": "t2" },
+      { "id": "s2", "type": "slot", "from": "b1", "to": "b2" },
       { "id": "w4", "type": "wire", "from": "t2", "to": "j2" },
       { "id": "w5", "type": "wire", "from": "b2", "to": "j2" },
-      { "id": "w6", "type": "wire", "from": "j2", "to": "B" }
+      { "id": "w6", "type": "wire", "from": "j2", "to": "b" },
+      { "id": "w7", "type": "wire", "from": "b", "to": "bt" },
+      { "id": "w8", "type": "wire", "from": "bt", "to": "m2" },
+      { "id": "om1", "type": "ohmmeter", "from": "m1", "to": "m2" },
+      { "id": "w9", "type": "wire", "from": "m1", "to": "at" },
+      { "id": "w10", "type": "wire", "from": "at", "to": "a" }
     ]
   }
 }

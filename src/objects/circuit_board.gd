@@ -1,47 +1,43 @@
 class_name CircuitBoard
 extends Node2D
-## The level's circuit drawn on the wall: wires, junction dots, terminals A and
-## B, sockets and fixed resistors, built from a LevelCircuit.
+## The level's closed circuit drawn on the wall (GDD 12.2): wires, junction
+## dots, slots, fixed resistors and batteries, lamps and meters, built from a
+## LevelCircuit.
 ##
-## Whenever a socket's contents change it builds the graph through
-## LevelCircuit.build_graph, solves it with CircuitSolver and announces the
-## result with `resistance_changed`; `is_match` is the level goal's verdict
-## (LevelGoal.is_met). It also announces once right after build().
-## For a goal with a battery (a current goal) it also draws the battery left of
-## terminal A with its voltage under it.
+## Whenever a slot's contents change it builds the network with
+## LevelCircuit.build_network, solves it once with DcSolver, updates every
+## meter's reading, every lamp and the wire colour, and announces the solution
+## with `circuit_changed`; `goal_met` is LevelGoal.is_met. It also announces
+## once right after build(). `shorted` is emitted when a change puts the
+## circuit into a SHORT (not for a board that starts shorted).
+##
+## Fixed components and meters are drawn at z 0 (behind Ohmie, who is added to
+## the room after the board); slots are drawn in front (their scene's z_index).
 
-signal resistance_changed(result: CircuitResult, is_match: bool)
+signal circuit_changed(solution: DcSolution, goal_met: bool)
+signal shorted
 
 const NODE_DOT_TEXTURE: Texture2D = preload("res://assets/processed/node_dot.png")
-const TERMINAL_TEXTURE: Texture2D = preload("res://assets/processed/terminal.png")
 ## The processed art is drawn at 2x; this brings it to its on-screen size.
 const ART_SCALE: Vector2 = Vector2(0.5, 0.5)
 ## Nodes with at least this many edges get a junction dot.
 const JUNCTION_DEGREE: int = 3
-const TERMINAL_NAMES: PackedStringArray = ["A", "B"]
-const TERMINAL_LABEL_RECT: Rect2 = Rect2(-16, -42, 32, 22)
-const TERMINAL_LABEL_COLOR: Color = Color("f6e7c8")
-const TERMINAL_LABEL_OUTLINE: Color = Color("24180f")
-const TERMINAL_LABEL_SIZE: int = 18
-const TERMINAL_LABEL_OUTLINE_SIZE: int = 5
-const BATTERY_TEXTURE: Texture2D = preload("res://assets/props/battery_pickup.png")
-## The battery's centre relative to terminal A.
-const BATTERY_OFFSET: Vector2 = Vector2(-48, 0)
-## The voltage label's rectangle relative to the battery's centre.
-const BATTERY_LABEL_RECT: Rect2 = Rect2(-40, 20, 80, 22)
-const VOLT_SUFFIX: String = " V"
 
 @export var socket_scene: PackedScene
 
 var _circuit: LevelCircuit = null
 var _goal: LevelGoal = null
 var _sockets: Array[CircuitSocket] = []
+var _meters: Dictionary = {}  # edge id -> BoardMeter
+var _lamps: Dictionary = {}  # edge id -> BoardLamp
 var _wires: CircuitWires = null
-var _last_result: CircuitResult = null
+var _last_solution: DcSolution = null
+var _goal_met: bool = false
+var _was_short: bool = false
 
 
-## Builds every visual from `circuit` and announces the first reading.
-## `goal` decides what counts as a match. `theme` colours the wires.
+## Builds every visual from `circuit` and announces the first solution.
+## `goal` decides what counts as solved. `theme` colours the wires.
 func build(circuit: LevelCircuit, goal: LevelGoal, theme: RoomTheme = null) -> void:
 	_circuit = circuit
 	_goal = goal
@@ -49,8 +45,7 @@ func build(circuit: LevelCircuit, goal: LevelGoal, theme: RoomTheme = null) -> v
 	_wires.name = "Wires"
 	add_child(_wires)
 	_wires.build(circuit, theme)
-	_add_battery()
-	_add_node_markers()
+	_add_junction_dots()
 	_add_components()
 	_refresh()
 
@@ -59,77 +54,74 @@ func get_sockets() -> Array[CircuitSocket]:
 	return _sockets.duplicate()
 
 
-## The most recent reading (null before build()).
-func get_last_result() -> CircuitResult:
-	return _last_result
+## The meter drawn for edge `id`, or null.
+func get_meter(id: String) -> BoardMeter:
+	return _meters.get(id, null)
 
 
-func _add_node_markers() -> void:
+## The lamp drawn for edge `id`, or null.
+func get_lamp(id: String) -> BoardLamp:
+	return _lamps.get(id, null)
+
+
+func get_wires() -> CircuitWires:
+	return _wires
+
+
+## The most recent solution (null before build()).
+func get_last_solution() -> DcSolution:
+	return _last_solution
+
+
+## The goal's verdict on the most recent solution.
+func is_goal_met() -> bool:
+	return _goal_met
+
+
+func _add_junction_dots() -> void:
 	for node_name: String in _circuit.get_node_names():
-		var at: Vector2 = _circuit.get_node_position(node_name)
-		if _circuit.is_terminal(node_name):
-			var index: int = 0 if node_name == _circuit.terminal_a else 1
-			_add_terminal(at, TERMINAL_NAMES[index])
-		elif _circuit.get_node_degree(node_name) >= JUNCTION_DEGREE:
-			_add_sprite(NODE_DOT_TEXTURE, at, "Dot_" + node_name)
-
-
-func _add_terminal(at: Vector2, label_text: String) -> void:
-	_add_sprite(TERMINAL_TEXTURE, at, "Terminal" + label_text)
-	_add_label("TerminalLabel" + label_text, label_text,
-			Rect2(at + TERMINAL_LABEL_RECT.position, TERMINAL_LABEL_RECT.size))
-
-
-## Draws the battery of a goal that has one (goal.voltage set) left of terminal A.
-func _add_battery() -> void:
-	if _goal == null or _goal.voltage == null:
-		return
-	var at: Vector2 = _circuit.get_node_position(_circuit.terminal_a) + BATTERY_OFFSET
-	_add_sprite(BATTERY_TEXTURE, at, "Battery")
-	_add_label("BatteryLabel", _goal.voltage.to_text() + VOLT_SUFFIX,
-			Rect2(at + BATTERY_LABEL_RECT.position, BATTERY_LABEL_RECT.size))
-
-
-## A cream label with a dark ink outline, as used for the terminal names.
-func _add_label(label_name: String, text: String, rect: Rect2) -> void:
-	var label: Label = Label.new()
-	label.name = label_name
-	label.text = text
-	label.position = rect.position
-	label.size = rect.size
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override(&"font_size", TERMINAL_LABEL_SIZE)
-	label.add_theme_color_override(&"font_color", TERMINAL_LABEL_COLOR)
-	label.add_theme_color_override(&"font_outline_color", TERMINAL_LABEL_OUTLINE)
-	label.add_theme_constant_override(&"outline_size", TERMINAL_LABEL_OUTLINE_SIZE)
-	add_child(label)
-
-
-func _add_sprite(texture: Texture2D, at: Vector2, sprite_name: String) -> void:
-	var sprite: Sprite2D = Sprite2D.new()
-	sprite.name = sprite_name
-	sprite.texture = texture
-	sprite.scale = ART_SCALE
-	sprite.position = at
-	add_child(sprite)
+		if _circuit.get_node_degree(node_name) >= JUNCTION_DEGREE:
+			var dot: Sprite2D = Sprite2D.new()
+			dot.name = "Dot_" + node_name
+			dot.texture = NODE_DOT_TEXTURE
+			dot.scale = ART_SCALE
+			dot.position = _circuit.get_node_position(node_name)
+			add_child(dot)
 
 
 func _add_components() -> void:
 	for edge: LevelCircuit.Edge in _circuit.get_edges():
-		var middle: Vector2 = (_circuit.get_node_position(edge.from_node)
-				+ _circuit.get_node_position(edge.to_node)) * 0.5
-		if edge.type == LevelCircuit.TYPE_SOCKET:
-			_add_socket(edge.id, middle)
-		elif edge.type == LevelCircuit.TYPE_FIXED:
-			var fixed: FixedResistor = FixedResistor.new()
-			fixed.name = "Fixed_" + edge.id
-			fixed.position = middle
-			fixed.set_value(edge.ohms)
-			add_child(fixed)
+		var a: Vector2 = _circuit.get_node_position(edge.from_node)
+		var b: Vector2 = _circuit.get_node_position(edge.to_node)
+		var middle: Vector2 = (a + b) * 0.5
+		var from_is_right: bool = a.x > b.x
+		match edge.type:
+			LevelCircuit.TYPE_SLOT:
+				_add_socket(edge.id, middle, from_is_right)
+			LevelCircuit.TYPE_RESISTOR, LevelCircuit.TYPE_BATTERY:
+				var fixed: FixedPart = FixedPart.new()
+				fixed.name = "Fixed_" + edge.id
+				fixed.position = middle
+				add_child(fixed)
+				var kind: Part.Kind = Part.Kind.BATTERY if edge.type == LevelCircuit.TYPE_BATTERY else Part.Kind.RESISTOR
+				fixed.setup(Part.create(kind, edge.value), from_is_right)
+			LevelCircuit.TYPE_LAMP:
+				var lamp: BoardLamp = BoardLamp.new()
+				lamp.name = "Lamp_" + edge.id
+				lamp.lamp_id = edge.id
+				lamp.position = middle
+				add_child(lamp)
+				_lamps[edge.id] = lamp
+			LevelCircuit.TYPE_AMMETER, LevelCircuit.TYPE_VOLTMETER, LevelCircuit.TYPE_OHMMETER:
+				var meter: BoardMeter = BoardMeter.new()
+				meter.name = "Meter_" + edge.id
+				meter.position = middle
+				add_child(meter)
+				meter.setup(edge.id, edge.type)
+				_meters[edge.id] = meter
 
 
-func _add_socket(id: String, at: Vector2) -> void:
+func _add_socket(id: String, at: Vector2, from_is_right: bool) -> void:
 	if socket_scene == null:
 		push_error("CircuitBoard: socket_scene is not set")
 		return
@@ -141,6 +133,7 @@ func _add_socket(id: String, at: Vector2) -> void:
 	socket.socket_id = id
 	socket.position = at
 	add_child(socket)
+	socket.set_from_is_right(from_is_right)
 	socket.contents_changed.connect(_refresh)
 	_sockets.append(socket)
 
@@ -149,9 +142,31 @@ func _refresh() -> void:
 	var filled: Dictionary = {}
 	for socket: CircuitSocket in _sockets:
 		if socket.is_filled():
-			filled[socket.socket_id] = socket.get_value()
-	var result: CircuitResult = CircuitSolver.solve(_circuit.build_graph(filled))
-	var is_match: bool = _goal != null and _goal.is_met(result)
-	_last_result = result
-	_wires.set_state(result.status == CircuitResult.Status.OK, is_match)
-	resistance_changed.emit(result, is_match)
+			filled[socket.socket_id] = socket.get_part()
+	var solution: DcSolution = DcSolver.solve(_circuit.build_network(filled))
+	var goal_met: bool = _goal != null and _goal.is_met(solution)
+	var first: bool = _last_solution == null
+	_last_solution = solution
+	_goal_met = goal_met
+	for id: String in _meters:
+		(_meters[id] as BoardMeter).set_reading(MeterText.reading(solution, id))
+	for id: String in _lamps:
+		var edge: LevelCircuit.Edge = _circuit.get_edge(id)
+		(_lamps[id] as BoardLamp).set_state(BoardLamp.state_for(
+				solution.current_through(id), edge.rated_min, edge.rated_max))
+	var is_short: bool = solution.status == DcSolution.Status.SHORT
+	_wires.set_state(_wire_state(solution, goal_met))
+	circuit_changed.emit(solution, goal_met)
+	if is_short and not _was_short and not first:
+		shorted.emit()
+	_was_short = is_short
+
+
+static func _wire_state(solution: DcSolution, goal_met: bool) -> CircuitWires.State:
+	if solution.status == DcSolution.Status.SHORT:
+		return CircuitWires.State.SHORT
+	if goal_met:
+		return CircuitWires.State.MATCH
+	if solution.is_energized():
+		return CircuitWires.State.ENERGIZED
+	return CircuitWires.State.PLAIN

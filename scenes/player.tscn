@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://src/player/player.gd" id="1_player"]
 [ext_resource type="SpriteFrames" path="res://resources/themes/player_frames.tres" id="2_frames"]
 [ext_resource type="Script" path="res://src/player/player_carry.gd" id="3_carry"]
-[ext_resource type="Script" path="res://src/objects/resistor_icon.gd" id="4_icon"]
+[ext_resource type="Script" path="res://src/objects/part_icon.gd" id="4_icon"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
 size = Vector2(36, 88)

@@ -28,6 +28,11 @@ static func load_from_file(path: String = DEFAULT_PATH) -> Campaign:
 	return campaign
 
 
+## The first level of the campaign, or "" when it has none.
+func first() -> String:
+	return levels[0] if not levels.is_empty() else ""
+
+
 ## The level that follows `path`, or "" when `path` is the last level or not in the campaign.
 func next_after(path: String) -> String:
 	var index: int = levels.find(path)

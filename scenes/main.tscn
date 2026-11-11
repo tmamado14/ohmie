@@ -5,4 +5,5 @@
 [node name="Main" type="Node"]
 
 [node name="Room" parent="." instance=ExtResource("1_room")]
-level_path = "res://levels/slice_01.json"
+level_path = "res://levels/w1_02.json"
+start_from_campaign = true

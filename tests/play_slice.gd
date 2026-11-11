@@ -1,12 +1,13 @@
 extends SceneTree
 ## Scripted headless playthrough of res://levels/dev_room.json (two parallel
-## sockets, resistors 2, 2 and a 4 decoy).
+## slots closed by an ohmmeter om1; resistors 2, 2 and a 4 decoy; goal 1 Ω on om1).
 ##
 ## Drives input through the input map only (no teleporting). Part 1 checks the
 ## interaction edge cases: interact with nothing near, drop and pick up again,
 ## no pick-up while carrying (a put-down beside a loose resistor slides away
 ## from it instead), swap at a socket, and a fall into the pit
-## returning the carried resistor home with the circuit untouched. Then it
+## returning the carried resistor home with the circuit untouched. The plaque
+## reading and the ohmmeter on the board read OL, 2 Ω, 4 Ω and 1 Ω. Then it
 ## restarts the room with the `restart` action. Part 2 solves the level: plug
 ## in 2 and 2, pull one out and put it back, and walk into the open door.
 ##
@@ -98,18 +99,23 @@ func _run_checks() -> int:
 
 func _part_one_edge_cases() -> void:
 	print("-- part 1: interaction edge cases")
-	_check(_hud.get_equivalent_text() == "OPEN", "initial readout is OPEN (got '%s')" % _hud.get_equivalent_text())
+	_check(_reading() == "OL", "initial readout is OL (got '%s')" % _reading())
+	_check(_meter() == "OL", "the ohmmeter on the board starts at OL (got '%s')" % _meter())
+	_check(_hud.get_target_text(0) == "1 Ω" and _hud.get_row_caption(0) == "GOAL" and _hud.get_row_value(0) == "1 Ω"
+			and _hud.get_row_caption(1) == "R" and _hud.get_row_value(1) == "OL",
+			"the plaque reads GOAL 1 Ω / R OL (got '%s %s' / '%s %s')" % [_hud.get_row_caption(0),
+				_hud.get_row_value(0), _hud.get_row_caption(1), _hud.get_row_value(1)])
 	_check(not _door.is_open(), "door starts closed")
 	_check(_player.position.distance_to(SPAWN) <= POSITION_TOLERANCE, "player starts at spawn (%s)" % _player.position)
 
 	var invalid_before: int = _invalid_count
 	await _interact()
 	_check(_invalid_count == invalid_before + 1 and not _carry.is_carrying()
-			and _hud.get_equivalent_text() == "OPEN" and _all_pickups_at_home(),
+			and _reading() == "OL" and _all_parts_at_home(),
 			"interact with empty hands and nothing near: invalid action only, nothing changes")
 
-	var r1: ResistorPickup = _pickup("r1")
-	var r3: ResistorPickup = _pickup("r3")
+	var r1: PartPickup = _part("r1")
+	var r3: PartPickup = _part("r3")
 	await _walk_to_x(R1_HOME.x)
 	await _interact()
 	_check(_carry.get_carried() == r1 and not r1.is_loose() and _picked_count == 1,
@@ -139,17 +145,17 @@ func _part_one_edge_cases() -> void:
 
 	await _walk_to_x(SOCKET_X)
 	await _interact()
-	_check(_placed_count == 1 and not _carry.is_carrying() and _hud.get_equivalent_text() == "2 Ω",
-			"r1 plugged into the floor socket reads 2 Ω (got '%s')" % _hud.get_equivalent_text())
+	_check(_placed_count == 1 and not _carry.is_carrying() and _reading() == "2 Ω",
+			"r1 plugged into the floor socket reads 2 Ω (got '%s')" % _reading())
 
 	await _walk_to_x(R3_HOME.x)
 	await _interact()
 	_check(_carry.get_carried() == r3, "picks up r3 with empty hands")
 	await _walk_to_x(SOCKET_X)
 	await _interact()
-	_check(_swapped_count == 1 and _carry.get_carried() == r1 and _hud.get_equivalent_text() == "4 Ω"
+	_check(_swapped_count == 1 and _carry.get_carried() == r1 and _reading() == "4 Ω"
 			and not _door.is_open(),
-			"carrying r3 at the filled socket swaps: socket reads 4 Ω, r1 now carried (got '%s')" % _hud.get_equivalent_text())
+			"carrying r3 at the filled socket swaps: socket reads 4 Ω, r1 now carried (got '%s')" % _reading())
 
 	var fell_before: int = _fell_out_count
 	await _walk_to_x(PIT_RUN_UP_X)
@@ -164,8 +170,8 @@ func _part_one_edge_cases() -> void:
 	_check(not _carry.is_carrying() and r1.is_loose()
 			and r1.global_position.distance_to(R1_HOME) <= 0.5,
 			"after the fall r1 is back at its home %s (at %s)" % [R1_HOME, r1.global_position])
-	_check(_hud.get_equivalent_text() == "4 Ω" and not r3.is_loose(),
-			"the fall leaves the circuit untouched (readout '%s')" % _hud.get_equivalent_text())
+	_check(_reading() == "4 Ω" and not r3.is_loose(),
+			"the fall leaves the circuit untouched (readout '%s')" % _reading())
 	_check(_player.position.distance_to(SPAWN) <= POSITION_TOLERANCE and _player.is_on_floor(),
 			"player respawned at spawn (%s)" % _player.position)
 
@@ -174,17 +180,17 @@ func _part_one_edge_cases() -> void:
 
 func _part_two_solve() -> void:
 	print("-- part 2: solve")
-	_check(_hud.get_equivalent_text() == "OPEN" and not _door.is_open() and _all_pickups_at_home()
+	_check(_reading() == "OL" and not _door.is_open() and _all_parts_at_home()
 			and not _room.is_complete(),
-			"after restart: readout OPEN, door closed, resistors at home")
+			"after restart: readout OL, door closed, resistors at home")
 
 	await _walk_to_x(R1_HOME.x)
 	await _interact()
-	_check(_carry.get_carried() == _pickup("r1"), "picks up the first 2 ohm resistor")
+	_check(_carry.get_carried() == _part("r1"), "picks up the first 2 ohm resistor")
 	await _walk_to_x(SOCKET_X)
 	await _interact()
-	_check(_hud.get_equivalent_text() == "2 Ω" and not _door.is_open(),
-			"plugged into the floor socket: readout 2 Ω, door closed (got '%s')" % _hud.get_equivalent_text())
+	_check(_reading() == "2 Ω" and not _door.is_open() and _meter() == "2 Ω",
+			"plugged into the floor socket: readout and ohmmeter 2 Ω, door closed (got '%s', meter '%s')" % [_reading(), _meter()])
 
 	# The second 2 ohm lies on the lower platform: stand under it and jump up.
 	await _walk_to_x(R2_HOME.x)
@@ -192,7 +198,7 @@ func _part_two_solve() -> void:
 	_check(absf(_player.position.y - LOWER_PLATFORM_Y) <= POSITION_TOLERANCE,
 			"jumps onto the lower platform (y %.1f)" % _player.position.y)
 	await _interact()
-	_check(_carry.get_carried() == _pickup("r2"), "picks up the second 2 ohm resistor")
+	_check(_carry.get_carried() == _part("r2"), "picks up the second 2 ohm resistor")
 
 	# Run and jump across to the upper platform under the top socket.
 	await _walk_to_x(UPPER_JUMP_X)
@@ -203,16 +209,18 @@ func _part_two_solve() -> void:
 			"jumps up to the upper platform (position %s)" % _player.position)
 	await _walk_to_x(SOCKET_X)
 	await _interact()
-	_check(_hud.get_equivalent_text() == "1 Ω" and _door.is_open(),
-			"both 2 Ω in parallel: readout 1 Ω and the door opens (got '%s')" % _hud.get_equivalent_text())
-	_check(_room.get_board().get_last_result().matches(Rational.new(1)), "board reports a match")
+	_check(_reading() == "1 Ω" and _door.is_open(),
+			"both 2 Ω in parallel: readout 1 Ω and the door opens (got '%s')" % _reading())
+	_check(_room.get_board().is_goal_met() and _room.get_goal().is_met(_room.get_board().get_last_solution()),
+			"board reports the goal met")
+	_check(_meter() == "1 Ω", "the ohmmeter on the board reads 1 Ω (got '%s')" % _meter())
 
 	await _interact()
 	_check(_removed_count == 1 and _carry.is_carrying() and not _door.is_open()
-			and _hud.get_equivalent_text() == "2 Ω",
-			"pulling one out closes the door again (readout '%s')" % _hud.get_equivalent_text())
+			and _reading() == "2 Ω",
+			"pulling one out closes the door again (readout '%s')" % _reading())
 	await _interact()
-	_check(not _carry.is_carrying() and _door.is_open() and _hud.get_equivalent_text() == "1 Ω",
+	_check(not _carry.is_carrying() and _door.is_open() and _reading() == "1 Ω",
 			"putting it back opens the door again")
 
 	# Walk off the platform, jump the pit and run into the door.
@@ -235,7 +243,7 @@ func _part_two_solve() -> void:
 	_check(absf(_player.position.x - x_before) < 0.5, "player input is disabled after completion")
 
 	await _restart_room()
-	_check(_room != null and not _room.is_complete() and _hud.get_equivalent_text() == "OPEN",
+	_check(_room != null and not _room.is_complete() and _reading() == "OL",
 			"restart still works after completion")
 
 
@@ -252,11 +260,11 @@ func _bind_room(main: Node) -> bool:
 	_hud = _room.get_hud()
 	_door = _room.get_door()
 	_carry.invalid_action.connect(func() -> void: _invalid_count += 1)
-	_carry.picked_up.connect(func(_r: ResistorPickup) -> void: _picked_count += 1)
-	_carry.placed.connect(func(_r: ResistorPickup, _s: CircuitSocket) -> void: _placed_count += 1)
-	_carry.removed.connect(func(_r: ResistorPickup, _s: CircuitSocket) -> void: _removed_count += 1)
-	_carry.swapped.connect(func(_a: ResistorPickup, _b: ResistorPickup, _s: CircuitSocket) -> void: _swapped_count += 1)
-	_carry.dropped.connect(func(_r: ResistorPickup) -> void: _dropped_count += 1)
+	_carry.picked_up.connect(func(_r: PartPickup) -> void: _picked_count += 1)
+	_carry.placed.connect(func(_r: PartPickup, _s: CircuitSocket) -> void: _placed_count += 1)
+	_carry.removed.connect(func(_r: PartPickup, _s: CircuitSocket) -> void: _removed_count += 1)
+	_carry.swapped.connect(func(_a: PartPickup, _b: PartPickup, _s: CircuitSocket) -> void: _swapped_count += 1)
+	_carry.dropped.connect(func(_r: PartPickup) -> void: _dropped_count += 1)
 	_player.fell_out.connect(func() -> void: _fell_out_count += 1)
 	_room.level_completed.connect(func() -> void: _completed_count += 1)
 	return true
@@ -294,15 +302,24 @@ func _reset_counters() -> void:
 	_completed_count = 0
 
 
-func _pickup(id: String) -> ResistorPickup:
-	for pickup: ResistorPickup in _room.get_pickups():
-		if pickup.pickup_id == id:
+## The live reading on the plaque (the goal's one condition: om1's resistance).
+func _reading() -> String:
+	return _hud.get_reading_text(0)
+
+
+## The reading drawn in the ohmmeter's window on the board.
+func _meter() -> String:
+	return _room.get_board().get_meter("om1").get_reading()
+
+func _part(id: String) -> PartPickup:
+	for pickup: PartPickup in _room.get_parts():
+		if pickup.part_id == id:
 			return pickup
 	return null
 
 
-func _all_pickups_at_home() -> bool:
-	for pickup: ResistorPickup in _room.get_pickups():
+func _all_parts_at_home() -> bool:
+	for pickup: PartPickup in _room.get_parts():
 		if not pickup.is_loose() or pickup.global_position.distance_to(pickup.home_position) > 0.5:
 			return false
 	return true

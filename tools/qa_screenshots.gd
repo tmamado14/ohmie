@@ -3,13 +3,13 @@ extends SceneTree
 ## each as a PNG. Must run with a real renderer (not --headless):
 ##   godot --path . --script res://tools/qa_screenshots.gd -- res://tests/screenshots/qa
 ##
-## Socket contents are set through the socket API (pickup.take + socket.insert),
+## Slot contents are set through the socket API (pickup.take + socket.insert),
 ## carrying and the level-complete state go through the input map, and loose
-## resistors are moved with place_loose to the spots a put-down can reach
+## parts are moved with place_loose to the spots a put-down can reach
 ## (measured by tests/play_break.gd).
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
-const SLICE: String = "res://levels/slice_01.json"
+const HALF_AND_HALF: String = "res://levels/w1_07.json"
 const DEV: String = "res://levels/dev_room.json"
 const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
 const SETTLE_FRAMES: int = 30
@@ -35,17 +35,17 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(_out_dir)
 	_packed = load(MAIN_SCENE) as PackedScene
 
-	await _shot("qa_01_initial", SLICE, _setup_nothing)
-	await _shot("qa_02_carry_at_highlighted_socket", SLICE, _setup_carry_at_s1)
-	await _shot("qa_03_one_socket_open", SLICE, _setup_one_socket)
-	await _shot("qa_04_two_sockets_3_2", SLICE, _setup_two_sockets)
-	await _shot("qa_05_solved_door_open", SLICE, _setup_solved)
-	await _shot("qa_06_level_complete", SLICE, _setup_complete)
-	await _shot("qa_07_decoy_wrong_value", SLICE, _setup_decoy)
-	await _shot("qa_08_put_down_edge_cases", SLICE, _setup_edge_drops)
-	await _shot("qa_09_pickup_highlight", SLICE, _setup_pickup_highlight)
-	await _shot("qa_10_empty_socket_steals_target", SLICE, _setup_socket_steals)
-	await _shot("qa_11_ohmie_at_floor_socket", SLICE, _setup_at_s3)
+	await _shot("qa_01_initial", HALF_AND_HALF, _setup_nothing)
+	await _shot("qa_02_carry_at_highlighted_socket", HALF_AND_HALF, _setup_carry_at_s1)
+	await _shot("qa_03_one_socket_open", HALF_AND_HALF, _setup_one_socket)
+	await _shot("qa_04_two_sockets_3_2", HALF_AND_HALF, _setup_two_sockets)
+	await _shot("qa_05_solved_door_open", HALF_AND_HALF, _setup_solved)
+	await _shot("qa_06_level_complete", HALF_AND_HALF, _setup_complete)
+	await _shot("qa_07_decoy_wrong_value", HALF_AND_HALF, _setup_decoy)
+	await _shot("qa_08_put_down_edge_cases", HALF_AND_HALF, _setup_edge_drops)
+	await _shot("qa_09_pickup_highlight", HALF_AND_HALF, _setup_pickup_highlight)
+	await _shot("qa_10_empty_socket_steals_target", HALF_AND_HALF, _setup_socket_steals)
+	await _shot("qa_11_ohmie_at_floor_socket", HALF_AND_HALF, _setup_at_s3)
 	await _shot("qa_12_dev_room_pit_lip", DEV, _setup_dev_pit_lip)
 
 	var sfx: SfxPlayer = root.get_node_or_null(SfxPlayer.AUTOLOAD_PATH) as SfxPlayer
@@ -79,7 +79,7 @@ func _shot(file_name: String, level: String, setup: Callable) -> void:
 	if err != OK:
 		push_error("qa_screenshots: could not save %s" % path)
 		return
-	print("saved %s  readout '%s' door %s complete %s carrying %s" % [path, _room.get_hud().get_equivalent_text(),
+	print("saved %s  readout '%s' door %s complete %s carrying %s" % [path, _room.get_hud().get_reading_text(0),
 			_room.get_door().is_open(), _room.is_complete(), _room.get_carry().is_carrying()])
 
 
@@ -160,16 +160,16 @@ func _setup_dev_pit_lip() -> void:
 
 func _fill(plan: Dictionary) -> void:
 	for socket_id: String in plan:
-		var pickup: ResistorPickup = _pickup(plan[socket_id])
+		var pickup: PartPickup = _pickup(plan[socket_id])
 		for socket: CircuitSocket in _room.get_board().get_sockets():
 			if socket.socket_id == socket_id:
 				pickup.take()
 				socket.insert(pickup)
 
 
-func _pickup(id: String) -> ResistorPickup:
-	for pickup: ResistorPickup in _room.get_pickups():
-		if pickup.pickup_id == id:
+func _pickup(id: String) -> PartPickup:
+	for pickup: PartPickup in _room.get_parts():
+		if pickup.part_id == id:
 			return pickup
 	return null
 

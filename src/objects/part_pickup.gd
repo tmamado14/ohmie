@@ -1,25 +1,25 @@
-class_name ResistorPickup
+class_name PartPickup
 extends Interactable
-## One resistor from the level. The node's origin is the floor point under it
-## (bottom centre of the icon).
+## One carried part (resistor or battery) from the level. The node's origin is
+## the floor point under it (bottom centre of the icon).
 ##
-## The same node represents the resistor for the whole level: it is shown while
-## it lies loose, and hidden while Ohmie carries it or it sits in a socket
-## (those draw their own icon). It remembers where the level first put it.
+## The same node represents the part for the whole level: it is shown while it
+## lies loose, and hidden while Ohmie carries it or it sits in a slot (those
+## draw their own icon). It remembers where the level first put it.
 
 ## From the origin (feet) to the icon centre.
 const ICON_OFFSET: Vector2 = Vector2(0, -32)
 
-## The level file's id for this resistor.
-var pickup_id: String = ""
-## The resistor's exact value.
-var value: Rational = null
+## The level file's id for this part.
+var part_id: String = ""
+## The part's kind and exact value.
+var part: Part = null
 ## Where the level originally put it (global floor point).
 var home_position: Vector2 = Vector2.ZERO
 
 var _loose: bool = true
 
-@onready var _icon: ResistorIcon = $Icon
+@onready var _icon: PartIcon = $Icon
 @onready var _highlight: Sprite2D = $Highlight
 
 
@@ -27,28 +27,28 @@ func _ready() -> void:
 	_icon.position = ICON_OFFSET
 	_highlight.position = ICON_OFFSET
 	_highlight.visible = false
-	_icon.set_value(value)
+	_icon.set_part(part)
 
 
-## Sets the value and home (global floor point) and puts the resistor there.
-## Call after adding the node to the tree.
-func setup(id: String, ohms: Rational, home: Vector2) -> void:
-	pickup_id = id
-	value = ohms
+## Sets the part and home (global floor point) and puts it there. Call after
+## adding the node to the tree.
+func setup(id: String, level_part: Part, home: Vector2) -> void:
+	part_id = id
+	part = level_part
 	home_position = home
 	if _icon != null:
-		_icon.set_value(value)
+		_icon.set_part(part)
 	place_loose(home)
 
 
-## Lays the resistor loose with its bottom centre at `at` (global).
+## Lays the part loose with its bottom centre at `at` (global).
 func place_loose(at: Vector2) -> void:
 	global_position = at
 	_loose = true
 	visible = true
 
 
-## Takes the resistor out of the world (carried or plugged in).
+## Takes the part out of the world (carried or plugged in).
 func take() -> void:
 	_loose = false
 	visible = false
@@ -63,7 +63,7 @@ func is_available() -> bool:
 	return _loose
 
 
-## A loose resistor can only be picked up, so only with empty hands.
+## A loose part can only be picked up, so only with empty hands.
 func can_interact(carrying: bool) -> bool:
 	return _loose and not carrying
 

@@ -29,7 +29,7 @@ socket_scene = ExtResource("8_socket")
 
 [node name="ExitDoor" parent="Door" instance=ExtResource("9_door")]
 
-[node name="Pickups" type="Node2D" parent="."]
+[node name="Parts" type="Node2D" parent="."]
 
 [node name="Hud" type="CanvasLayer" parent="."]
 

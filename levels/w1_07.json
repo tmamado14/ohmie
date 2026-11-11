@@ -1,13 +1,10 @@
 {
-  "id": "slice_01",
+  "id": "w1_07",
   "title": "Half and Half",
-  "teaches": "Series and parallel in one network",
+  "teaches": "Series and parallel together; reading resistance",
   "world": "old_workshop",
-  "goal": {
-    "type": "resistance",
-    "value": "1",
-    "mission": "Make exactly 1 Ω between A and B to unlock the door."
-  },
+  "mission": "Make 1 Ω.",
+  "goal": [ { "of": "om1", "quantity": "resistance", "equals": "1" } ],
   "tiles": [
     "........................................",
     "........................................",
@@ -35,33 +32,41 @@
   ],
   "spawn": [96, 640],
   "door": [1180, 640],
-  "pickups": [
-    { "id": "r_two", "ohms": "2", "pos": [272, 640] },
-    { "id": "r_half", "ohms": "1/2", "pos": [272, 455] },
-    { "id": "r_one_floor", "ohms": "1", "pos": [1008, 640] },
-    { "id": "r_one_ledge", "ohms": "1", "pos": [976, 359] }
+  "parts": [
+    { "id": "r_two", "kind": "resistor", "value": "2", "pos": [272, 640] },
+    { "id": "r_half", "kind": "resistor", "value": "1/2", "pos": [272, 455] },
+    { "id": "r_one_floor", "kind": "resistor", "value": "1", "pos": [1008, 640] },
+    { "id": "r_one_ledge", "kind": "resistor", "value": "1", "pos": [976, 359] }
   ],
   "circuit": {
     "nodes": {
-      "A": [400, 507],
+      "a": [400, 507],
       "j1": [624, 507],
       "t1": [624, 411],
       "t2": [848, 411],
       "b1": [624, 596],
       "b2": [848, 596],
       "j2": [848, 507],
-      "B": [912, 507]
+      "b": [880, 507],
+      "c2": [880, 300],
+      "m2": [752, 300],
+      "m1": [528, 300],
+      "c1": [400, 300]
     },
-    "terminals": ["A", "B"],
     "edges": [
-      { "id": "s1", "type": "socket", "from": "A", "to": "j1" },
+      { "id": "s1", "type": "slot", "from": "a", "to": "j1" },
       { "id": "w1", "type": "wire", "from": "j1", "to": "t1" },
       { "id": "w2", "type": "wire", "from": "j1", "to": "b1" },
-      { "id": "s2", "type": "socket", "from": "t1", "to": "t2" },
-      { "id": "s3", "type": "socket", "from": "b1", "to": "b2" },
+      { "id": "s2", "type": "slot", "from": "t1", "to": "t2" },
+      { "id": "s3", "type": "slot", "from": "b1", "to": "b2" },
       { "id": "w3", "type": "wire", "from": "t2", "to": "j2" },
       { "id": "w4", "type": "wire", "from": "b2", "to": "j2" },
-      { "id": "w5", "type": "wire", "from": "j2", "to": "B" }
+      { "id": "w5", "type": "wire", "from": "j2", "to": "b" },
+      { "id": "w6", "type": "wire", "from": "b", "to": "c2" },
+      { "id": "w7", "type": "wire", "from": "c2", "to": "m2" },
+      { "id": "om1", "type": "ohmmeter", "from": "m1", "to": "m2" },
+      { "id": "w8", "type": "wire", "from": "m1", "to": "c1" },
+      { "id": "w9", "type": "wire", "from": "c1", "to": "a" }
     ]
   }
 }

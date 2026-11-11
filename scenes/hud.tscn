@@ -78,49 +78,46 @@ mouse_filter = 2
 texture = ExtResource("2_plaque")
 expand_mode = 1
 
-[node name="TargetCaption" type="Label" parent="Readout"]
+[node name="Row0Caption" type="Label" parent="Readout"]
 layout_mode = 0
 offset_left = 131.0
 offset_top = 78.0
-offset_right = 215.0
+offset_right = 190.0
 offset_bottom = 103.0
 theme_override_colors/font_color = Color(0.18039216, 0.12156863, 0.101960786, 1)
 theme_override_font_sizes/font_size = 19
 text = "GOAL"
 vertical_alignment = 1
 
-[node name="TargetValue" type="Label" parent="Readout"]
+[node name="Row0Value" type="Label" parent="Readout"]
 layout_mode = 0
-offset_left = 196.0
+offset_left = 190.0
 offset_top = 78.0
-offset_right = 292.0
+offset_right = 296.0
 offset_bottom = 103.0
 theme_override_colors/font_color = Color(0.18039216, 0.12156863, 0.101960786, 1)
 theme_override_font_sizes/font_size = 21
-text = "1 Ω"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="EquivalentCaption" type="Label" parent="Readout"]
+[node name="Row1Caption" type="Label" parent="Readout"]
 layout_mode = 0
 offset_left = 131.0
 offset_top = 103.0
-offset_right = 215.0
+offset_right = 190.0
 offset_bottom = 128.0
 theme_override_colors/font_color = Color(0.18039216, 0.12156863, 0.101960786, 1)
 theme_override_font_sizes/font_size = 19
-text = "R EQ"
 vertical_alignment = 1
 
-[node name="EquivalentValue" type="Label" parent="Readout"]
+[node name="Row1Value" type="Label" parent="Readout"]
 layout_mode = 0
-offset_left = 182.0
+offset_left = 190.0
 offset_top = 103.0
-offset_right = 292.0
+offset_right = 296.0
 offset_bottom = 128.0
 theme_override_colors/font_color = Color(0.18039216, 0.12156863, 0.101960786, 1)
 theme_override_font_sizes/font_size = 21
-text = "OPEN"
 horizontal_alignment = 2
 vertical_alignment = 1
 
@@ -161,7 +158,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.18039216, 0.12156863, 0.101960786, 1)
 theme_override_font_sizes/font_size = 16
 theme_override_constants/line_spacing = -2
-text = "Make exactly 1 Ω between A and B."
+text = "Make 1 Ω."
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
