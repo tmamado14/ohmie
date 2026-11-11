@@ -187,7 +187,8 @@ Hand-inked, soft edges.
 - World-distinct tilesets: the five sets differ only by a slight tint.
 - Animation cycles: keyframes only (2-frame run, single frames elsewhere), same as before.
 - Socket, highlight, junction and terminal art for the circuit: generated in `assets/processed/`.
-- Resistor icons beyond 0.5, 1, 2, 3, 4, 6, 10 ohm.
+- Resistor icons beyond 0.5, 1, 2, 3, 4, 6, 10 ohm. Covered by the generated `part_resistor_blank.png` with the value drawn as text.
+- Circuit parts other than resistors (carried battery, meters, lamps, polarity marks): generated in `assets/processed/`.
 - A font with the pack's look (and an Ω glyph).
 - Wall and ceiling-edge tiles (same gap as before).
 
@@ -199,8 +200,9 @@ Rebuilt by scripts in `tools/`. Do not hand-edit the outputs; change the script 
 |---|---|
 | `--headless --path . --script res://tools/build_tilesets.gd` | `resources/themes/<theme>/tileset.tres` (5) |
 | `--headless --path . --script res://tools/build_player_frames.gd` | `resources/themes/player_frames.tres` |
-| `--headless --path . --script res://tools/generate_art.gd` | the seven PNGs in `assets/processed/` |
-| `--headless --path . --script res://tools/check_resources.gd` | nothing; verifies all of the above plus the six music loops (445 checks, exit 0 = pass) |
+| `--headless --path . --script res://tools/generate_art.gd` | the seven socket/door PNGs in `assets/processed/` |
+| `--headless --path . --script res://tools/generate_parts_art.gd` | the ten part, meter, lamp and polarity PNGs in `assets/processed/` (see "Parts, meters and lamps") |
+| `--headless --path . --script res://tools/check_resources.gd` | nothing; verifies all of the above plus the six music loops (557 checks, exit 0 = pass) |
 
 None of these touch the old-pack resources; `tools/build_tileset.gd`, `build_player_frames.gd`, `generate_placeholders.gd` and `check_resources.gd` are unchanged.
 
@@ -268,6 +270,35 @@ Authored at 2x for scale 0.5 with Linear filtering; anti-aliased edges. Palette 
 - Inner window (parchment / walnut) x 20-187, y 20-122.
 - **Notch centre y = 72 (36 on screen), mid-height.** The notch art spans rows 60-84 (centre 72.5). The copper stubs cover rows 65-78 (continuous 65-79, centre 72.0), from x 0 to 26 on the left and 182 to 208 on the right. A wire ending at the socket's left or right edge at mid-height runs straight into a stub.
 - **Resistor placement:** draw the 192x128 icon with its top-left at socket top-left + **(8, 15)** in 2x px, i.e. **(4, 7.5) on screen**: icon centre 3.5 px below the socket centre. Its leads (centre y 57) then land on the stubs (y 72). The body (x 32-176, y 34-114) is inside the window, so the frame never covers it. The value label (y 115-139) overlaps the bottom brass bar and is drawn over it, which looks like a tag. If the icon is instead centred on the socket, as the old code does with (4, 4) on screen, the leads sit 3.5 px above the stubs and only partly overlap them.
+
+### Parts, meters and lamps (`assets/processed/`, from `tools/generate_parts_art.gd`)
+
+Same rules as the other processed art: authored at 2x, draw at **scale 0.5 with Linear filtering**, anti-aliased ink edges, same palette plus three accents (teal `#407A70`, oxblood `#963E30`, mustard `#CDA537`). Import settings are Godot's defaults, identical to `socket_empty.png`. Checked by compositing every image over the dimmed Old Workshop background at on-screen size next to `resistor_2ohm.png` and `socket_empty.png`, with sample text drawn in the text rects.
+
+Two kinds of geometry:
+
+- **Carried / plugged parts** (192x128): the resistor icons' geometry. Leads on rows 50-63 (centre **y = 57**), from x 7 and to x 185, ink rows 50-52 and 61-63 with a `#AAA29A` core. Seat them in a socket exactly like a resistor: top-left at socket top-left + **(8, 15)** source px, (4, 7.5) on screen. Verified: leads land on the socket stubs (rows 65-78), the body sits inside the window, the plaque hangs over the bottom bar like a tag. `pickup_highlight.png` drawn at part position − (8, 8) does not overlap either part (checked by `check_resources.gd`).
+- **Board fixtures** (208x144, the `socket_empty.png` footprint): socket-identical copper stubs on rows 65-78 (centre **y = 72**), x 0-26 and 182-208, open at the canvas edge, so a wire ending at the fixture's left or right edge at mid-height runs into a stub. Place them like a socket.
+
+| Resource path | Size (on screen) | What it is | Text rect, source px (x, y, w, h) | On screen at 0.5 | Text colour / max font on screen | Lead or stub centre y | Opaque box (a >= 16) |
+|---|---|---|---|---|---|---|---|
+| `res://assets/processed/part_battery.png` | 192x128 (96x64) | Horizontal dry cell. **Positive end on the LEFT**: brass nub (visible x 12-29, rows 40-73) and a cream `+`; flat copper cap and `−` on the right. Copper end caps, muted teal wrapper, ink and gold bands (as on `battery_pickup.png`). **Body x 30-167, rows 19-96** (with the nub: x 12-167). Blank value plaque. | (61, 98, 72, 23); plaque interior x 59-133, y 97-122 | (30.5, 49, 36, 11.5) | `#33241D` (the icons' ink) / **11 px** (12 at most). The icons' baked text is 14 source px tall. | 57 (rows 50-63, x 7-185) | x 7-185, y 19-124 |
+| `res://assets/processed/part_resistor_blank.png` | 192x128 (96x64) | `resistor_2ohm.png` with bands 1-3 turned neutral taupe `#96846E` (gold tolerance band kept) and the plaque text removed. For values with no dedicated icon. Body x 24-168, rows 19-96, same as the icons. | (61, 98, 72, 23) | (30.5, 49, 36, 11.5) | `#33241D` / **11 px** (12 at most) | 57 | x 7-185, y 19-124 |
+| `res://assets/processed/meter_ammeter.png` | 208x144 (104x72) | Panel meter: walnut case, brass bezel, parchment face. Top left: letter plate (x 31-92, y 21-68) with a big cream `A` on **oxblood** enamel. Top right: arc scale with an oxblood needle and zone. Bottom: wide recessed cream display window. Brass binding posts where the stubs enter. | (36, 78, 136, 40); window interior x 33-174, y 75-120 (142x46; the top 6 rows carry a soft shadow) | (18, 39, 68, 20) | `#24180F` (ink) / **18 px** | 72 (rows 65-78) | x 0-207, y 5-138 |
+| `res://assets/processed/meter_voltmeter.png` | 208x144 | Same, `V` on **teal** enamel, teal needle and zone, needle at a different angle. | (36, 78, 136, 40) | (18, 39, 68, 20) | `#24180F` / **18 px** | 72 | x 0-207, y 5-138 |
+| `res://assets/processed/meter_ohmmeter.png` | 208x144 | Same, `Ω` on **mustard** enamel, mustard needle and zone, needle near vertical. | (36, 78, 136, 40) | (18, 39, 68, 20) | `#24180F` / **18 px** | 72 | x 0-207, y 5-138 |
+| `res://assets/processed/lamp_off.png` | 208x144 | Grey unlit glass bulb with a dark filament on a brass screw base and flange, walnut plinth (x 52-155, y 116-138); copper wires curve from brass posts at the stub ends (30, 72) and (178, 72) down into the flange, as on the HUD plaque's bulb. | none | | | 72 | x 0-207, y 18-138 |
+| `res://assets/processed/lamp_on.png` | 208x144 | Same, warm yellow glowing glass, white-hot filament, soft halo (fades out 15 px beyond the glass) and four inked brass shine wedges like `battery_pickup.png`'s. | none | | | 72 | x 0-207, y 6-138 |
+| `res://assets/processed/lamp_blown.png` | 208x144 | Same, smoky dark scorched glass, ink cracks, snapped drooping filament, small grey smoke puff rising from the top right. | none | | | 72 | x 0-207, y 3-138 |
+| `res://assets/processed/polarity_plus.png` | 32x32 (16x16) | Brass disc, ink outline, ink `+`. | none | | | | x 2-29, y 2-29 |
+| `res://assets/processed/polarity_minus.png` | 32x32 (16x16) | Brass disc, ink outline, ink `−`. | none | | | | x 2-29, y 2-29 |
+
+Notes:
+
+- **Lamps swap cleanly**: the stubs, posts, wires, base and the bulb silhouette (glass circle centre (104, 47), radius 29, neck down into the screw base) are drawn by the same code in all three; only the glass fill, filament, halo, shine wedges, cracks and smoke differ from `lamp_off` (within x 55-152, y 3-93 for `lamp_on`; x 78-158, y 3-93 for `lamp_blown`). Nothing below row 93 changes, so the base never shifts.
+- **Polarity badges**: centre them on the slot's corner screw on the matching side, source (25, 25) for the left and (183, 25) for the right, i.e. (12.5, 12.5) and (91.5, 12.5) on screen from the socket's top-left. The badge then sits over the screw without touching the window or the part.
+- The meters differ by enamel colour, needle colour and needle angle as well as by letter, so they are distinguishable even where the letter is hard to read.
+- Text in the battery plaque goes where the resistor icons have their baked value; the battery's plaque is pixel-copied from the blank resistor, so both blank plaques are identical.
 
 ---
 

@@ -64,7 +64,33 @@ const EXPECTED_TEXTURES: Dictionary = {
 	"res://assets/processed/node_dot.png": Vector2i(32, 32),
 	"res://assets/processed/terminal.png": Vector2i(64, 64),
 	"res://assets/processed/exit_door_open_aligned.png": Vector2i(216, 320),
+	# From tools/generate_parts_art.gd.
+	"res://assets/processed/part_battery.png": Vector2i(192, 128),
+	"res://assets/processed/part_resistor_blank.png": Vector2i(192, 128),
+	"res://assets/processed/meter_ammeter.png": Vector2i(208, 144),
+	"res://assets/processed/meter_voltmeter.png": Vector2i(208, 144),
+	"res://assets/processed/meter_ohmmeter.png": Vector2i(208, 144),
+	"res://assets/processed/lamp_off.png": Vector2i(208, 144),
+	"res://assets/processed/lamp_on.png": Vector2i(208, 144),
+	"res://assets/processed/lamp_blown.png": Vector2i(208, 144),
+	"res://assets/processed/polarity_plus.png": Vector2i(32, 32),
+	"res://assets/processed/polarity_minus.png": Vector2i(32, 32),
 }
+
+## Carried parts: leads on rows 50-63 (centre y 57) from x 7 to x 185, like the resistor icons.
+const PART_PATHS: Array[String] = [
+	"res://assets/processed/part_battery.png",
+	"res://assets/processed/part_resistor_blank.png",
+]
+## Board fixtures: copper stubs on rows 65-78 (centre y 72) meeting both side edges, like the socket.
+const FIXTURE_PATHS: Array[String] = [
+	"res://assets/processed/meter_ammeter.png",
+	"res://assets/processed/meter_voltmeter.png",
+	"res://assets/processed/meter_ohmmeter.png",
+	"res://assets/processed/lamp_off.png",
+	"res://assets/processed/lamp_on.png",
+	"res://assets/processed/lamp_blown.png",
+]
 
 var _failures: int = 0
 var _checks: int = 0
@@ -78,6 +104,8 @@ func _init() -> void:
 	_check_music()
 	_check_textures()
 	_check_pickup_highlight_centre()
+	_check_part_leads()
+	_check_fixture_stubs()
 	print("check_resources: %d checks, %d failures" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -250,10 +278,14 @@ func _check_pickup_highlight_centre() -> void:
 		_expect(false, "pickup_highlight.png loads as an image")
 		return
 	var dir: String = "res://assets/interactive/resistors/"
+	var icon_paths: Array[String] = []
 	for file: String in DirAccess.get_files_at(dir):
-		if not file.ends_with(".png"):
-			continue
-		var icon: Image = Image.load_from_file(ProjectSettings.globalize_path(dir + file))
+		if file.ends_with(".png"):
+			icon_paths.append(dir + file)
+	icon_paths.append_array(PART_PATHS)
+	for icon_path: String in icon_paths:
+		var file: String = icon_path.get_file()
+		var icon: Image = Image.load_from_file(ProjectSettings.globalize_path(icon_path))
 		if icon == null or icon.is_empty():
 			_expect(false, "%s loads as an image" % file)
 			continue
@@ -263,3 +295,36 @@ func _check_pickup_highlight_centre() -> void:
 				if icon.get_pixel(x, y).a > 0.0 and img.get_pixel(x + 8, y + 8).a > 0.0:
 					overlap += 1
 		_expect(overlap == 0, "pickup_highlight does not overlap %s drawn at (8, 8) (%d pixels overlap)" % [file, overlap])
+
+
+func _load_image(path: String) -> Image:
+	var img: Image = Image.load_from_file(ProjectSettings.globalize_path(path))
+	_expect(img != null and not img.is_empty(), "%s loads as an image" % path)
+	if img == null or img.is_empty():
+		return null
+	return img
+
+
+## Leads of a carried part: opaque on rows 50-63 at both ends (x 7 and x 185), clear just
+## outside them, so the part seats on the socket stubs exactly like a resistor icon.
+func _check_part_leads() -> void:
+	for path: String in PART_PATHS:
+		var img: Image = _load_image(path)
+		if img == null:
+			continue
+		for x: int in [7, 10, 182, 185]:
+			_expect(img.get_pixel(x, 50).a > 0.5 and img.get_pixel(x, 63).a > 0.5, "%s: lead covers rows 50-63 at x %d" % [path, x])
+			_expect(img.get_pixel(x, 49).a == 0.0 and img.get_pixel(x, 64).a == 0.0, "%s: lead is clear at rows 49 and 64 at x %d" % [path, x])
+		_expect(img.get_pixel(6, 57).a == 0.0 and img.get_pixel(186, 57).a == 0.0, "%s: leads end at x 7 and x 185" % path)
+
+
+## Stubs of a board fixture: opaque on rows 65-78 at both side edges, clear above and below.
+func _check_fixture_stubs() -> void:
+	for path: String in FIXTURE_PATHS:
+		var img: Image = _load_image(path)
+		if img == null:
+			continue
+		var right: int = img.get_width() - 1
+		for x: int in [0, right]:
+			_expect(img.get_pixel(x, 65).a > 0.5 and img.get_pixel(x, 72).a > 0.5 and img.get_pixel(x, 78).a > 0.5, "%s: stub covers rows 65-78 at x %d" % [path, x])
+			_expect(img.get_pixel(x, 63).a == 0.0 and img.get_pixel(x, 80).a == 0.0, "%s: stub is clear at rows 63 and 80 at x %d" % [path, x])
