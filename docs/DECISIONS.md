@@ -17,3 +17,4 @@ One line per decision, newest at the bottom. Made by the lead (Fable 5.2) unless
 | 11 | 2026-11-11 | Levels 1–10 use only 0.5, 1, 2, 3, 4, 6 and 10 Ω. | These are the only values with resistor art. |
 | 12 | 2026-11-11 | Wires are drawn with `Line2D` from level data, not wire tiles. | Wires can then light up when the circuit closes, and always match the real topology. |
 | 13 | 2026-11-11 | `.import` files are committed. `.godot/` stays ignored. | Standard Godot practice. Keeps import settings (for example music looping) under version control. |
+| 14 | 2026-11-11 | Subagents are pinned with `model: claude-opus-5-5` in frontmatter. Agents created mid-session are not loaded until Claude Code restarts, so implementation waits for the restart instead of using a general-purpose agent. | The workflow rule forbids implementation by agents that are not guaranteed to be Opus 5.5. |

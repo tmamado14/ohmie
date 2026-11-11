@@ -85,3 +85,11 @@ In PowerShell, set `$godot` to that path first, then:
 Always read the output for `ERROR`, `SCRIPT ERROR` and `WARNING` lines. An exit code of 0 alone is not proof for the boot check.
 
 Tests live in `tests/test_*.gd`. Each is a script with `test_*` methods, discovered and run by `tests/run_tests.gd`. Every change to `src/circuit/` needs tests. No third-party test addon.
+
+## Current state
+
+Update this section whenever a milestone step completes.
+
+- Phases 1–3 are complete (audit, team, GDD). No game code exists yet.
+- Next: Milestone 1, step 1. Delegate the circuit engine (`src/circuit/` plus `tests/run_tests.gd`) to `circuit-engine`, per GDD section 3. Then asset-integrator, gdscript-coder, level-designer, qa-tester.
+- On the first delegation, have the subagent state its model ID and confirm it is `claude-opus-5-5`.
