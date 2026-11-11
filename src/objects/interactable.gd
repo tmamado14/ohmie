@@ -28,6 +28,12 @@ func is_available() -> bool:
 	return visible
 
 
+## True if `interact` can do something with this object right now, given
+## whether Ohmie is carrying a resistor. Only such objects are targets.
+func can_interact(_carrying: bool) -> bool:
+	return is_available()
+
+
 ## Shows or hides the "this is what interact will act on" highlight.
 func set_highlighted(_highlighted: bool) -> void:
 	pass

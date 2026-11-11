@@ -1,7 +1,8 @@
 class_name Hud
 extends Control
 ## On-screen information: the TARGET / EQUIVALENT readout, the level title, a
-## control hint, and the level-complete banner.
+## control hint, and the level-complete banner over a full-screen dim. The
+## dim sits above the title and hint and below the readout and the banner.
 ##
 ## Only shows what it is given through its methods; it never looks at the board.
 
@@ -14,12 +15,14 @@ const OHM_SUFFIX: String = " Ω"
 @onready var _equivalent_value: Label = $Readout/EquivalentValue
 @onready var _title: Label = $Title
 @onready var _victory: Control = $Victory
+@onready var _victory_dim: ColorRect = $VictoryDim
 
 
 func _ready() -> void:
 	_target_value.add_theme_color_override(&"font_color", COLOR_TARGET)
 	_equivalent_value.add_theme_color_override(&"font_color", COLOR_EQUIVALENT)
 	_victory.visible = false
+	_victory_dim.visible = false
 
 
 func set_title(text: String) -> void:
@@ -37,6 +40,7 @@ func show_reading(result: CircuitResult, is_match: bool) -> void:
 
 
 func show_level_complete() -> void:
+	_victory_dim.visible = true
 	_victory.visible = true
 
 

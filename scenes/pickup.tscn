@@ -5,6 +5,7 @@
 [ext_resource type="Texture2D" path="res://assets/processed/pickup_highlight.png" id="3_highlight"]
 
 [node name="Pickup" type="Node2D"]
+z_index = 1
 script = ExtResource("1_pickup")
 
 [node name="Icon" type="Node2D" parent="."]

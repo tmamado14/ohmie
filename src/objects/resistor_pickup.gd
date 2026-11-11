@@ -63,6 +63,11 @@ func is_available() -> bool:
 	return _loose
 
 
+## A loose resistor can only be picked up, so only with empty hands.
+func can_interact(carrying: bool) -> bool:
+	return _loose and not carrying
+
+
 func get_interaction_point() -> Vector2:
 	return global_position + ICON_OFFSET
 

@@ -4,7 +4,8 @@ extends SceneTree
 ##
 ## Drives input through the input map only (no teleporting). Part 1 checks the
 ## interaction edge cases: interact with nothing near, drop and pick up again,
-## no pick-up while carrying, swap at a socket, and a fall into the pit
+## no pick-up while carrying (a put-down beside a loose resistor slides away
+## from it instead), swap at a socket, and a fall into the pit
 ## returning the carried resistor home with the circuit untouched. Then it
 ## restarts the room with the `restart` action. Part 2 solves the level: plug
 ## in 2 and 2, pull one out and put it back, and walk into the open door.
@@ -32,6 +33,8 @@ const UPPER_JUMP_X: float = 470.0  # jump from the lower to the upper platform h
 const PIT_RUN_UP_X: float = 900.0
 const DOOR_JUMP_X: float = 930.0  # jump over the pit towards the door here
 
+## Two loose resistors' floor points never lie closer than this.
+const MIN_SPACING: float = 60.0
 const POSITION_TOLERANCE: float = 6.0
 const SETTLE_FRAMES: int = 20
 const MAX_WALK_FRAMES: int = 600
@@ -122,11 +125,17 @@ func _part_one_edge_cases() -> void:
 	_check(_carry.get_carried() == r1 and _picked_count == 2, "the dropped r1 can be picked up again")
 
 	await _walk_to_x(R3_HOME.x)
-	invalid_before = _invalid_count
 	_check(_carry.get_target() != r3, "while carrying, the loose 4 ohm r3 is not highlighted")
 	await _interact()
-	_check(_carry.get_carried() == r1 and r3.is_loose() and _invalid_count == invalid_before + 1,
-			"interact while carrying next to a loose resistor does not pick it up (invalid action)")
+	# Putting down beside a loose resistor slides away from it (at least 60 px),
+	# it never picks the other one up or stacks on it.
+	_check(not _carry.is_carrying() and r1.is_loose() and r3.is_loose() and _dropped_count == 2
+			and r3.global_position == R3_HOME and r1.global_position.distance_to(R3_HOME) >= MIN_SPACING - 0.01,
+			"interact while carrying next to a loose resistor does not pick it up: r1 is put down beside it, at least %.0f px away (r1 at %s)" % [MIN_SPACING, r1.global_position])
+	await _walk_to_x(r1.global_position.x)
+	await _interact()
+	_check(_carry.get_carried() == r1 and r3.is_loose() and _picked_count == 3,
+			"r1 can be picked up again beside r3 (r3 stays loose)")
 
 	await _walk_to_x(SOCKET_X)
 	await _interact()

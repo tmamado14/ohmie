@@ -127,11 +127,12 @@ func _setup_decoy() -> void:
 
 
 func _setup_edge_drops() -> void:
-	# Spots a put-down reaches: the left ledge's end, the left screen edge,
-	# and the nearest allowed spot beside the 2 ohm decoy.
-	_pickup("r_half").place_loose(Vector2(368, 455))
-	_pickup("r_one_floor").place_loose(Vector2(18, 640))
-	_pickup("r_one_ledge").place_loose(Vector2(327, 640))
+	# Spots a put-down reaches: from the left ledge's end (slid back fully onto
+	# the ledge), from the left screen edge (slid fully on screen), and the
+	# nearest allowed spot beside the 2 ohm decoy (60 px away).
+	_pickup("r_half").place_loose(Vector2(312, 455))
+	_pickup("r_one_floor").place_loose(Vector2(48, 640))
+	_pickup("r_one_ledge").place_loose(Vector2(332, 640))
 	await _teleport(Vector2(560, 640))
 
 
@@ -150,7 +151,8 @@ func _setup_at_s3() -> void:
 
 
 func _setup_dev_pit_lip() -> void:
-	_pickup("r3").place_loose(Vector2(976, 640))
+	# A put-down from the pit's lip (x=976) slides back to be fully supported.
+	_pickup("r3").place_loose(Vector2(920, 640))
 	await _teleport(Vector2(900, 640))
 
 

@@ -29,6 +29,11 @@ func is_filled() -> bool:
 	return _resistor != null
 
 
+## Carrying: plug in or swap. Empty hands: only a filled socket (pull out).
+func can_interact(carrying: bool) -> bool:
+	return carrying or is_filled()
+
+
 ## The value in the socket, or null when empty.
 func get_value() -> Rational:
 	return _resistor.value if _resistor != null else null

@@ -81,6 +81,12 @@ const DEV_PIT_LEFT_X: float = 960.0
 
 const SCREEN_WIDTH: float = 1280.0
 const ICON_HALF_WIDTH: float = 48.0
+## A loose resistor's footprint is floor point x +- this (lead's decision for BUG-002).
+const FOOTPRINT_HALF_WIDTH: float = 40.0
+## Two loose resistors' floor points never lie closer than this (BUG-004).
+const MIN_SPACING: float = 60.0
+const LEFT_LEDGE_LEFT_X: float = 192.0
+const REACH: float = 56.0
 const PLAYER_HEIGHT: float = 88.0
 const POSITION_TOLERANCE: float = 3.0
 const SETTLE_FRAMES: int = 20
@@ -112,6 +118,10 @@ var _completed: int = 0
 var _jumped: int = 0
 var _opened: int = 0
 var _closed: int = 0
+
+var _air_min_distance: float = INF
+var _air_frames: int = 0
+var _air_highlight_frames: int = 0
 
 
 func _initialize() -> void:
@@ -194,7 +204,7 @@ func _section_a_interact_spam() -> void:
 	_check(bad == 0, "A3 40 more presses between the loose resistor and the socket: invariants hold every frame (%d bad frames)" % bad)
 
 
-# --- B: interaction in mid-air ------------------------------------------------------
+# --- B: interaction in mid-air (Ohmie must stand on a surface to interact) -----------
 
 func _section_b_mid_air() -> void:
 	print("-- B: interact in mid-air")
@@ -203,62 +213,40 @@ func _section_b_mid_air() -> void:
 	var half: ResistorPickup = _pickup("r_half")
 	var two: ResistorPickup = _pickup("r_two")
 	var s1: CircuitSocket = _socket("s1")
+	var s3: CircuitSocket = _socket("s3")
 
-	# B1: from the floor under the left ledge, jump and grab the 1/2 ohm lying on the ledge.
+	# B1: from the floor under the left ledge, jump and try to grab the 1/2 ohm lying on the ledge.
 	await _teleport(TWO_POS)
 	_check(_carry.get_target() == two, "B1 standing on the floor at x=272 targets the 2 Ω decoy")
-	var min_distance: float = INF
-	var grabbed: bool = false
-	Input.action_press("jump")
-	var left_floor: bool = false
-	for i: int in MAX_AIR_FRAMES:
-		await _wait_physics(1)
-		min_distance = minf(min_distance, _body_centre().distance_to(half.get_interaction_point()))
-		if not _player.is_on_floor():
-			left_floor = true
-		elif left_floor:
-			break
-		if not grabbed and _carry.get_target() == half:
-			# A scripted press is seen by the nodes on the next physics frame.
-			Input.action_press("interact")
-			await _wait_physics(2)
-			Input.action_release("interact")
-			grabbed = _carry.get_carried() == half
-	Input.action_release("jump")
-	await _wait_physics(2)
-	_info("B1 jumping from the floor at x=272: closest approach to the 1/2 Ω on the left ledge %.1f px; grabbed in mid-air: %s" % [min_distance, grabbed])
+	_reset_counters()
+	var before: String = _contents_text()
+	var presses: int = await _jump_pressing_near(half.get_interaction_point())
+	_info("B1 jumping from the floor at x=272: closest approach to the 1/2 Ω on the left ledge %.1f px (reach 56); %d interact presses in reach" % [_air_min_distance, presses])
+	_check(presses > 0 and _invalid == presses and _picked == 0 and not _carry.is_carrying()
+			and half.is_loose() and _contents_text() == before,
+			"B1 the 1/2 Ω on the left ledge cannot be picked up by jumping from the floor below it (presses %d, invalid %d, picked %d)" % [presses, _invalid, _picked])
+	_check(_air_frames > 0 and _air_highlight_frames == 0,
+			"B1 nothing is highlighted while airborne (%d of %d airborne frames had a highlight)" % [_air_highlight_frames, _air_frames])
 	_check(_conservation_problem().is_empty(), "B1 conservation after a mid-air grab attempt (%s)" % _conservation_problem())
 
-	# B2: carrying, jump straight up from the floor under s1 and plug in mid-air.
-	if not grabbed:
-		await _teleport(HALF_POS)
-		await _interact()
+	# B2: carrying, jump straight up from the floor under s1 and try to plug in mid-air.
+	await _teleport(HALF_POS)
+	await _interact()
+	_check(_carry.get_carried() == half, "B2 setup: carrying the 1/2 Ω")
 	await _teleport(Vector2(AT_S1.x, FLOOR_Y))
 	_check(_carry.get_target() == null, "B2 on the floor under s1 the socket is out of reach (%s)" % _describe(_carry.get_target()))
-	var plugged_mid_air: bool = false
-	Input.action_press("jump")
-	left_floor = false
-	for i: int in MAX_AIR_FRAMES:
-		await _wait_physics(1)
-		if not _player.is_on_floor():
-			left_floor = true
-		elif left_floor:
-			break
-		if not plugged_mid_air and _carry.get_target() == s1:
-			Input.action_press("interact")
-			await _wait_physics(2)
-			Input.action_release("interact")
-			plugged_mid_air = s1.get_resistor() == half and not _player.is_on_floor()
-	Input.action_release("jump")
-	await _wait_physics(2)
-	_info("B2 plugging into s1 during a hop from the floor (S1 platform not needed): %s; landed at %s" % [plugged_mid_air, _player.position])
+	_reset_counters()
+	before = _contents_text()
+	presses = await _jump_pressing_near(s1.get_interaction_point())
+	_check(presses > 0 and _invalid == presses and _placed == 0 and not s1.is_filled()
+			and _carry.get_carried() == half and _contents_text() == before,
+			"B2 socket s1 cannot be filled by jumping from the floor below it (presses %d, invalid %d, placed %d; landed at %s)" % [presses, _invalid, _placed, _player.position])
+	_check(_air_frames > 0 and _air_highlight_frames == 0,
+			"B2 nothing is highlighted while airborne (%d of %d airborne frames had a highlight)" % [_air_highlight_frames, _air_frames])
 	_check(_conservation_problem().is_empty() and _readout_problem().is_empty(),
-			"B2 conservation and readout after a mid-air plug-in")
+			"B2 conservation and readout after a mid-air plug-in attempt")
 
-	# B3: drop while airborne. GDD 2 says carrying with nothing in range puts it down at the feet.
-	if s1.is_filled():
-		await _teleport(AT_S1)
-		await _interact()  # pull the 1/2 back out
+	# B3: put down while airborne with nothing in reach.
 	await _teleport(Vector2(OPEN_FLOOR_X, FLOOR_Y))
 	_reset_counters()
 	Input.action_press("jump")
@@ -267,7 +255,8 @@ func _section_b_mid_air() -> void:
 	await _interact()
 	Input.action_release("jump")
 	await _wait_physics(60)
-	_info("B3 interact while airborne carrying with nothing in reach (airborne %s): dropped %d, invalid %d, still carrying %s" % [airborne, _dropped, _invalid, _carry.is_carrying()])
+	_check(airborne and _dropped == 0 and _invalid == 1 and _carry.get_carried() == half,
+			"B3 interact while airborne carrying with nothing in reach is invalid (airborne %s): dropped %d, invalid %d, still carrying %s" % [airborne, _dropped, _invalid, _carry.is_carrying()])
 	_check(_conservation_problem().is_empty(), "B3 conservation after an airborne drop attempt (%s)" % _conservation_problem())
 
 	# B4: interact on the same frame as the jump press.
@@ -279,8 +268,88 @@ func _section_b_mid_air() -> void:
 	await _wait_physics(1)
 	Input.action_release("jump")
 	await _land()
-	_info("B4 jump + interact on the same frame, carrying: dropped %d, invalid %d" % [_dropped, _invalid])
+	_check(_dropped == 0 and _invalid == 1 and _carry.get_carried() == half,
+			"B4 jump + interact on the same frame, carrying: invalid (dropped %d, invalid %d)" % [_dropped, _invalid])
 	_check(_conservation_problem().is_empty(), "B4 conservation after jump + interact on one frame")
+
+	# B5: carrying, airborne next to the empty socket s3.
+	await _teleport(AT_S3)
+	_check(_carry.get_target() == s3 and not s3.is_filled(), "B5 setup: carrying, standing at the empty s3, which is highlighted")
+	_reset_counters()
+	before = _contents_text()
+	presses = await _jump_pressing_near(s3.get_interaction_point())
+	_check(presses > 0 and _invalid == presses and _placed == 0 and not s3.is_filled()
+			and _carry.get_carried() == half and _contents_text() == before,
+			"B5 interact while airborne and carrying next to an empty socket is invalid and changes nothing (presses %d, invalid %d, placed %d)" % [presses, _invalid, _placed])
+	_check(_air_frames > 0 and _air_highlight_frames == 0,
+			"B5 nothing is highlighted while airborne (%d of %d airborne frames had a highlight)" % [_air_highlight_frames, _air_frames])
+
+	# B6: empty hands, airborne next to the filled socket s3.
+	await _teleport(AT_S3)
+	await _interact()
+	_check(s3.get_resistor() == half and not _carry.is_carrying(), "B6 setup: the 1/2 Ω plugged into s3 from the floor")
+	_check(_carry.get_target() == s3, "B6 setup: empty hands at the filled s3, which is highlighted")
+	_reset_counters()
+	before = _contents_text()
+	presses = await _jump_pressing_near(s3.get_interaction_point())
+	_check(presses > 0 and _invalid == presses and _removed == 0 and s3.get_resistor() == half
+			and not _carry.is_carrying() and _contents_text() == before,
+			"B6 interact while airborne next to a filled socket is invalid and changes nothing (presses %d, invalid %d, removed %d)" % [presses, _invalid, _removed])
+	_check(_air_frames > 0 and _air_highlight_frames == 0,
+			"B6 nothing is highlighted while airborne (%d of %d airborne frames had a highlight)" % [_air_highlight_frames, _air_frames])
+	_check(_conservation_problem().is_empty() and _readout_problem().is_empty(),
+			"B6 conservation and readout after a mid-air pull-out attempt")
+
+	# B7: empty hands, airborne next to the loose 2 ohm at the feet.
+	await _teleport(TWO_POS)
+	_check(_carry.get_target() == two, "B7 setup: empty hands at the loose 2 Ω, which is highlighted")
+	_reset_counters()
+	before = _contents_text()
+	presses = await _jump_pressing_near(two.get_interaction_point())
+	_check(presses > 0 and _invalid == presses and _picked == 0 and two.is_loose()
+			and not _carry.is_carrying() and _contents_text() == before,
+			"B7 interact while airborne next to a loose resistor is invalid and changes nothing (presses %d, invalid %d, picked %d)" % [presses, _invalid, _picked])
+	_check(_air_frames > 0 and _air_highlight_frames == 0,
+			"B7 nothing is highlighted while airborne (%d of %d airborne frames had a highlight)" % [_air_highlight_frames, _air_frames])
+	_check(_conservation_problem().is_empty(), "B7 conservation after a mid-air pick-up attempt")
+
+
+## Makes a full jump from where Ohmie stands and lands again. While rising
+## (so a press is surely seen in mid-air) and `point` is within reach, presses
+## interact on alternate frames. Returns the number of presses. Also records
+## _air_min_distance, _air_frames and _air_highlight_frames (airborne frames on
+## which the carry had a target or any object showed its highlight).
+func _jump_pressing_near(point: Vector2) -> int:
+	var presses: int = 0
+	var holding_interact: bool = false
+	var left_floor: bool = false
+	_air_min_distance = INF
+	_air_frames = 0
+	_air_highlight_frames = 0
+	Input.action_press("jump")
+	for i: int in MAX_AIR_FRAMES:
+		await _wait_physics(1)
+		var just_released: bool = holding_interact
+		if holding_interact:
+			Input.action_release("interact")
+			holding_interact = false
+		var distance: float = _body_centre().distance_to(point)
+		if not _player.is_on_floor():
+			left_floor = true
+			_air_frames += 1
+			_air_min_distance = minf(_air_min_distance, distance)
+			if _carry.get_target() != null or _any_highlighted():
+				_air_highlight_frames += 1
+			if not just_released and _player.velocity.y < 0.0 and distance <= REACH:
+				Input.action_press("interact")
+				holding_interact = true
+				presses += 1
+		elif left_floor:
+			break
+	Input.action_release("interact")
+	Input.action_release("jump")
+	await _wait_physics(2)
+	return presses
 
 
 # --- C: where can a resistor be put down -----------------------------------------------
@@ -308,15 +377,28 @@ func _section_c_drop_spots() -> void:
 	_check(half.is_loose(), "C1 the 1/2 Ω can be put down at the ledge's end (at %s)" % half.global_position)
 	_check(_is_supported(half.global_position),
 			"C1 a put-down resistor rests on a tile (put down at %s; ledge ends at x=%.0f, so it floats in mid-air)" % [half.global_position, LEFT_LEDGE_RIGHT_X])
+	_check(half.global_position.x - FOOTPRINT_HALF_WIDTH >= LEFT_LEDGE_LEFT_X
+			and half.global_position.x + FOOTPRINT_HALF_WIDTH <= LEFT_LEDGE_RIGHT_X
+			and absf(half.global_position.y - LEFT_LEDGE_Y) <= POSITION_TOLERANCE
+			and _footprint_supported(half.global_position),
+			"C1 a put-down at the left ledge's end lands fully on the ledge (footprint x %.0f..%.0f, ledge x %.0f..%.0f, y %.0f)" % [half.global_position.x - FOOTPRINT_HALF_WIDTH, half.global_position.x + FOOTPRINT_HALF_WIDTH, LEFT_LEDGE_LEFT_X, LEFT_LEDGE_RIGHT_X, half.global_position.y])
+	# The put-down slid up to 64 px back onto the ledge, which can be out of reach
+	# of where Ohmie stands, so stand at it to pick it up.
+	await _teleport(Vector2(half.global_position.x, LEFT_LEDGE_Y))
 	await _interact()
-	_check(_carry.get_carried() == half, "C1 it can be picked up again from the same spot")
+	_check(_carry.get_carried() == half, "C1 it can be picked up again (standing at it)")
 
 	# C2: on top of another loose resistor's spot, and as close as allowed.
 	await _teleport(TWO_POS)
 	_reset_counters()
 	await _interact()
-	_check(_carry.get_carried() == half and two.is_loose() and _invalid == 1,
-			"C2 putting down on top of the loose 2 Ω is refused (invalid action)")
+	var slide_gap: float = half.global_position.distance_to(two.global_position)
+	_check(_dropped == 1 and half.is_loose() and two.is_loose() and two.global_position == TWO_POS
+			and slide_gap >= MIN_SPACING - 0.01,
+			"C2 putting down on top of the loose 2 Ω does not stack: it slides aside to at least %.0f px from it (at %s, %.1f px)" % [MIN_SPACING, half.global_position, slide_gap])
+	await _teleport(Vector2(half.global_position.x, FLOOR_Y))
+	await _interact()
+	_check(_carry.get_carried() == half, "C2 it can be picked up again beside the 2 Ω")
 	var closest_x: float = -1.0
 	for dx: int in range(40, 80):
 		await _teleport(Vector2(TWO_POS.x + dx, FLOOR_Y))
@@ -329,6 +411,8 @@ func _section_c_drop_spots() -> void:
 	_info("C2 nearest allowed put-down beside the 2 Ω is at x=%.1f (%.1f px away): the two 96 px icons overlap by %.1f px" % [closest_x, closest_x - TWO_POS.x, overlap])
 	_check(closest_x > 0.0 and absf(closest_x - TWO_POS.x) >= ICON_HALF_WIDTH,
 			"C2 resistors are never put down covering more than half of another's icon")
+	_check(closest_x > 0.0 and absf(closest_x - TWO_POS.x) >= MIN_SPACING - 0.01,
+			"C2 a put-down beside another loose resistor does not land closer than %.0f px to it (%.1f px)" % [MIN_SPACING, absf(closest_x - TWO_POS.x)])
 	await _interact()
 
 	# C3: right next to (in) the closed door.
@@ -386,8 +470,13 @@ func _section_c_drop_spots() -> void:
 	await _interact()
 	_check(r3.is_loose() and _is_supported(r3.global_position),
 			"C5 a resistor put down at the pit's lip rests on ground (at %s; the pit starts at x=%.0f)" % [r3.global_position, DEV_PIT_LEFT_X])
+	_check(r3.is_loose() and r3.global_position.x + FOOTPRINT_HALF_WIDTH <= DEV_PIT_LEFT_X
+			and absf(r3.global_position.y - FLOOR_Y) <= POSITION_TOLERANCE and _footprint_supported(r3.global_position),
+			"C5 a put-down at the lip of the pit ends fully supported (footprint x %.0f..%.0f; the pit starts at x=%.0f)" % [r3.global_position.x - FOOTPRINT_HALF_WIDTH, r3.global_position.x + FOOTPRINT_HALF_WIDTH, DEV_PIT_LEFT_X])
+	# It slid back from the lip, possibly out of reach, so stand at it.
+	await _teleport(Vector2(r3.global_position.x, FLOOR_Y))
 	await _interact()
-	_check(_carry.get_carried() == r3, "C5 it can be picked up again from the lip")
+	_check(_carry.get_carried() == r3, "C5 it can be picked up again (standing at it)")
 
 
 # --- D: falling into the pit (dev_room) ------------------------------------------------
@@ -453,6 +542,9 @@ func _section_d_pit() -> void:
 	var gap: float = r1.global_position.distance_to(r2.global_position)
 	_check(r1.is_loose() and r2.is_loose() and gap >= ICON_HALF_WIDTH,
 			"D4 after the fall r1 goes home without landing on r2 (r1 %s, r2 %s, %.1f px apart)" % [r1.global_position, r2.global_position, gap])
+	_check(r1.is_loose() and gap >= MIN_SPACING - 0.01 and r1.global_position.x >= ICON_HALF_WIDTH
+			and r1.global_position.x <= SCREEN_WIDTH - ICON_HALF_WIDTH and _footprint_supported(r1.global_position),
+			"D4 r1 lies beside its taken home: at least %.0f px from r2, on screen and fully supported (r1 %s)" % [MIN_SPACING, r1.global_position])
 	_check(_conservation_problem().is_empty(), "D4 conservation after the fall (%s)" % _conservation_problem())
 
 
@@ -982,6 +1074,38 @@ func _print_state_diff(expected: String) -> void:
 func _is_supported(feet: Vector2) -> bool:
 	var cell: Vector2i = _tiles.local_to_map(_tiles.to_local(feet))
 	return _tiles.get_cell_source_id(cell) != -1
+
+
+## True if tiles lie under the floor point and under both ends of the 80 px
+## footprint (ends taken 0.5 px inside, so a footprint ending at a tile edge counts).
+func _footprint_supported(feet: Vector2) -> bool:
+	var inset: float = FOOTPRINT_HALF_WIDTH - 0.5
+	for dx: float in [-inset, 0.0, inset]:
+		if not _is_supported(Vector2(feet.x + dx, feet.y + 1.0)):
+			return false
+	return true
+
+
+## Where every resistor is (loose spot, carried, or socket), for "nothing changed" checks.
+func _contents_text() -> String:
+	var parts: PackedStringArray = []
+	for pickup: ResistorPickup in _room.get_pickups():
+		parts.append("%s:%s@%s" % [pickup.pickup_id, "loose" if pickup.is_loose() else "-", pickup.global_position.round()])
+	for socket: CircuitSocket in _board.get_sockets():
+		parts.append("%s=%s" % [socket.socket_id, socket.get_resistor().pickup_id if socket.is_filled() else "empty"])
+	parts.append("carrying=%s" % (_carry.get_carried().pickup_id if _carry.is_carrying() else "none"))
+	return " ".join(parts)
+
+
+## True if any pickup shows its highlight frame or any socket its highlight texture.
+func _any_highlighted() -> bool:
+	for pickup: ResistorPickup in _room.get_pickups():
+		if (pickup.get_node(^"Highlight") as Sprite2D).visible:
+			return true
+	for socket: CircuitSocket in _board.get_sockets():
+		if (socket.get_node(^"Frame") as Sprite2D).texture == socket.highlight_texture:
+			return true
+	return false
 
 
 func _wire_colour() -> Color:

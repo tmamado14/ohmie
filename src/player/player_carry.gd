@@ -3,17 +3,20 @@ extends Node2D
 ## Ohmie's hands: carries at most one resistor and handles `interact`
 ## (GDD section 2, "Interaction rules").
 ##
-## A child of the player, at the player's origin (the feet). Each physics frame
-## it finds the nearest usable Interactable within `reach` of the body centre
-## and highlights it. On `interact`:
+## A child of the player, at the player's origin (the feet). Interaction only
+## works while Ohmie stands on a floor or platform: in the air nothing is
+## highlighted and every `interact` press is invalid.
+## On the ground, each physics frame it finds the nearest Interactable within
+## `reach` of the body centre that can be used with the current hands (empty
+## hands: loose resistors and filled sockets; carrying: sockets) and
+## highlights it. On `interact`:
 ##   empty hands + loose resistor -> pick up
 ##   carrying + empty socket      -> plug in
 ##   empty hands + filled socket  -> pull out
 ##   carrying + filled socket     -> swap
-##   carrying + nothing in range  -> put down at the feet (on the floor only)
+##   carrying + nothing in range  -> put down at the feet (ResistorPlacement
+##                                   picks the exact spot, or refuses)
 ##   anything else                -> invalid
-## While carrying, loose resistors are not targets (no pick-up while carrying);
-## one lying within reach also blocks putting down, so resistors never stack.
 
 signal picked_up(resistor: ResistorPickup)
 signal placed(resistor: ResistorPickup, socket: CircuitSocket)
@@ -22,12 +25,16 @@ signal swapped(placed_resistor: ResistorPickup, taken_resistor: ResistorPickup, 
 signal dropped(resistor: ResistorPickup)
 signal invalid_action
 
-## The body whose floor state decides whether a resistor can be put down.
+## The body whose floor state decides whether Ohmie can interact at all.
 @export var body: CharacterBody2D
 ## Interaction range in pixels, measured from the body centre.
 @export var reach: float = 56.0
 ## From the feet to the body centre (half the 88 px collider).
 @export var body_centre_offset: Vector2 = Vector2(0, -44)
+## How far a put-down may slide along the surface to find a valid spot.
+@export var put_down_max_slide: float = 64.0
+## Step between the spots tried when a returning resistor's home is taken.
+@export var return_home_step: float = 64.0
 
 var _carried: ResistorPickup = null
 var _target: Interactable = null
@@ -43,9 +50,13 @@ func _ready() -> void:
 func _physics_process(_delta: float) -> void:
 	if not _enabled:
 		return
-	_set_target(_find_target())
+	var grounded: bool = _is_grounded()
+	_set_target(_find_target() if grounded else null)
 	if Input.is_action_just_pressed("interact"):
-		_interact()
+		if grounded:
+			_interact()
+		else:
+			invalid_action.emit()
 
 
 ## The resistor in Ohmie's hands, or null.
@@ -69,13 +80,14 @@ func set_enabled(enabled: bool) -> void:
 		_set_target(null)
 
 
-## Sends a carried resistor back to where the level first put it (after a fall).
+## Sends a carried resistor back to where the level first put it (after a
+## fall), or beside it if another loose resistor lies there.
 func return_carried_home() -> void:
 	if _carried == null:
 		return
 	var resistor: ResistorPickup = _carried
 	_set_carried(null)
-	resistor.place_loose(resistor.home_position)
+	resistor.place_loose(_placement().find_return_spot(resistor.home_position, return_home_step))
 
 
 func _interact() -> void:
@@ -105,23 +117,29 @@ func _interact() -> void:
 			_set_carried(null)
 			socket.insert(held)
 			placed.emit(held, socket)
-	elif body == null or not body.is_on_floor() or _loose_resistor_in_reach():
+		return
+
+	var spot: Vector2 = _placement().find_put_down(global_position, put_down_max_slide)
+	if spot == ResistorPlacement.NO_SPOT:
 		invalid_action.emit()
-	else:
-		_set_carried(null)
-		held.place_loose(global_position)
-		dropped.emit(held)
+		return
+	_set_carried(null)
+	held.place_loose(spot)
+	dropped.emit(held)
+
+
+func _is_grounded() -> bool:
+	return body != null and body.is_on_floor()
 
 
 func _find_target() -> Interactable:
 	var centre: Vector2 = global_position + body_centre_offset
+	var carrying: bool = _carried != null
 	var best: Interactable = null
 	var best_distance: float = INF
 	for node: Node in get_tree().get_nodes_in_group(Interactable.GROUP):
 		var candidate: Interactable = node as Interactable
-		if candidate == null or not candidate.is_available():
-			continue
-		if _carried != null and candidate is ResistorPickup:
+		if candidate == null or not candidate.can_interact(carrying):
 			continue
 		var distance: float = centre.distance_to(candidate.get_interaction_point())
 		if distance <= reach and distance < best_distance:
@@ -130,14 +148,14 @@ func _find_target() -> Interactable:
 	return best
 
 
-func _loose_resistor_in_reach() -> bool:
-	var centre: Vector2 = global_position + body_centre_offset
+## A placement helper that knows every other loose resistor.
+func _placement() -> ResistorPlacement:
+	var others: Array[Vector2] = []
 	for node: Node in get_tree().get_nodes_in_group(Interactable.GROUP):
 		var pickup: ResistorPickup = node as ResistorPickup
-		if pickup != null and pickup.is_available() \
-				and centre.distance_to(pickup.get_interaction_point()) <= reach:
-			return true
-	return false
+		if pickup != null and pickup.is_loose() and pickup != _carried:
+			others.append(pickup.global_position)
+	return ResistorPlacement.new(get_world_2d().direct_space_state, others)
 
 
 func _set_target(target: Interactable) -> void:

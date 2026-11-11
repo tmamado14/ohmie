@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" path="res://assets/processed/socket_highlight.png" id="4_highlight"]
 
 [node name="Socket" type="Node2D"]
+z_index = 1
 script = ExtResource("1_socket")
 empty_texture = ExtResource("3_empty")
 highlight_texture = ExtResource("4_highlight")

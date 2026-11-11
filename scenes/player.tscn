@@ -28,6 +28,7 @@ body = NodePath("..")
 
 [node name="CarriedIcon" type="Node2D" parent="Carry"]
 visible = false
+z_index = 2
 position = Vector2(0, -128)
 scale = Vector2(0.75, 0.75)
 script = ExtResource("4_icon")
