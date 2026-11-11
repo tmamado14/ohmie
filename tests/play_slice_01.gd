@@ -7,7 +7,8 @@ extends SceneTree
 ## teleporting): 1/2 from the left ledge into s1 (still OPEN), 1 from the right
 ## ledge into s2 (3/2, door closed), the floor 1 into s3 (1, door open, mission
 ## sign done), pulls s3 out and plugs it back (sign reverts, then done again),
-## and walks into the door.
+## and walks into the door. Then the victory line offers the next room and
+## `interact` loads it ("Ohm's Law", the next level of the campaign).
 ##
 ## Usage (exit code 0 = all checks passed):
 ##   godot --headless --path . --script res://tests/play_slice_01.gd
@@ -18,6 +19,9 @@ const ROOM_PATH: NodePath = ^"Room"
 const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
 const TITLE: String = "Half and Half"
 const MISSION: String = "Make exactly 1 Ω between A and B to unlock the door."
+const NEXT_TITLE: String = "Ohm's Law"
+const NEXT_ROOM_LINE: String = "Press E for the next room"
+const RELOAD_FRAMES: int = 6
 
 ## Layout facts of slice_01.json.
 const SPAWN: Vector2 = Vector2(96, 640)
@@ -82,6 +86,7 @@ func _run_checks() -> int:
 	_check_start_state()
 	_check_decoy()
 	await _solve()
+	await _check_next_room()
 	return 0 if _failed == 0 else 1
 
 
@@ -193,6 +198,29 @@ func _solve() -> void:
 	_check(_room.is_complete() and _completed_count == 1,
 			"walking into the open door completes the level (player at %s, door x=%.0f)" % [_player.position, DOOR_X])
 	_check(_hud.is_level_complete_shown(), "the level-complete banner is shown")
+
+
+## After completion: the victory line offers the next room, and `interact`
+## (sent as an input event, as a key press would be) loads it.
+func _check_next_room() -> void:
+	print("-- next room")
+	_check(_hud.get_victory_line() == NEXT_ROOM_LINE,
+			"the victory line reads '%s' (got '%s')" % [NEXT_ROOM_LINE, _hud.get_victory_line()])
+	_send_action_event(&"interact", true)
+	await _wait_physics(1)
+	_send_action_event(&"interact", false)
+	await _wait_physics(RELOAD_FRAMES)
+	var room: Room = current_scene.get_node_or_null(ROOM_PATH) as Room if current_scene != null else null
+	_check(room != null and room.level_data != null and room.level_data.title == NEXT_TITLE,
+			"pressing interact loads the next room, '%s' (got '%s')" % [
+				NEXT_TITLE, room.level_data.title if room != null and room.level_data != null else "no room"])
+
+
+func _send_action_event(action: StringName, pressed: bool) -> void:
+	var event: InputEventAction = InputEventAction.new()
+	event.action = action
+	event.pressed = pressed
+	Input.parse_input_event(event)
 
 
 # --- helpers ------------------------------------------------------------------------

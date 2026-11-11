@@ -95,7 +95,10 @@ Update this section whenever a milestone step completes.
 - Scope for this version: World 1 (Old Workshop) only, holding all ten rooms. A level's optional `world` field picks `resources/themes/<world>/theme.tres`; only `old_workshop` has a theme. Worlds 2–5 and the boss are for later versions.
 - Levels 1–4 and 6–10 are not designed yet (two `level-designer` tasks were started and stopped early to save usage; nothing of theirs was kept). Briefs are in `docs/GDD.md` section 7. After that: level-to-level flow, then the collapse replay.
 - Goals: every level has a goal (`src/level/level_goal.gd`, GDD section 11). A level file carries `"goal": {"type": "resistance", "value": "...", "mission": "..."}`; the legacy `target` field still works. Only `resistance` exists; a new type is one branch in `LevelGoal`. The HUD shows a GOAL / R EQ plaque and a mission sign that reads MISSION COMPLETE while the goal is met.
-- Run play tests with `--fixed-fps 60`. Current counts: 143 unit, 11 movement, 31 dev room, 33 slice_01, 95 adversarial.
+- Goal type `current` (Ohm's law): `{"type": "current", "voltage": "6", "value": "2"}` puts a battery across A–B and is met when V / R_eq equals the value exactly (`src/circuit/ohms_law.gd`). `levels/level_02.json` ("Ohm's Law") uses it.
+- Level flow: `levels/campaign.json` lists the rooms in order (slice_01, level_02). After completing a room that has a next one, a real `interact` key event loads it; `restart` replays. No level select or saved progress yet.
+- Rough edge: the battery is drawn beside terminal A but no wire is drawn from the battery to A or back from B, so the loop does not look closed.
+- Run play tests with `--fixed-fps 60`. Current counts: 163 unit, 11 movement, 31 dev room, 35 slice_01, 24 level_02, 95 adversarial.
 - Milestone 1 (vertical slice) is playable. The game boots into `levels/slice_01.json` ("Half and Half"). `levels/dev_room.json` is a development room used by the play tests.
 - Passing as of 2026-11-11: 127 unit tests (`tests/run_tests.gd`), and the scripted play tests `tests/play_movement.gd` (11 checks), `tests/play_slice.gd` (30) and `tests/play_slice_01.gd` (25). Run each with `--headless --path . --script res://tests/<name>.gd`.
 - After adding a script with `class_name`, run `--import` once before any `--script` command, or the class name will not resolve.

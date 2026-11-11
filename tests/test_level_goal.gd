@@ -159,3 +159,112 @@ func test_level_data_exposes_goal() -> void:
 	assert_eq(level.goal.mission, MISSION)
 	assert_rational_eq(level.goal.target, "1")
 	assert_eq(level.target_text, "1", "target_text still reports the goal value")
+
+
+# --- current goals --------------------------------------------------------------
+
+const CURRENT_MISSION: String = "Ohm's law: I = V / R. Draw exactly 2 A from the 6 V battery."
+
+
+func _current_goal(voltage: Variant, value: Variant, mission: String = "") -> Dictionary:
+	var goal: Dictionary = {"type": "current"}
+	if voltage != null:
+		goal["voltage"] = voltage
+	if value != null:
+		goal["value"] = value
+	if not mission.is_empty():
+		goal["mission"] = mission
+	return {"goal": goal}
+
+
+func _short_result() -> CircuitResult:
+	var graph: CircuitGraph = CircuitGraph.new()
+	graph.add_wire("w1", "A", "B")
+	graph.set_terminals("A", "B")
+	return CircuitSolver.solve(graph)
+
+
+func test_current_goal_parses() -> void:
+	var goal: LevelGoal = LevelGoal.from_level(_current_goal("6", "2", CURRENT_MISSION), "test")
+	assert_not_null(goal)
+	if goal == null:
+		return
+	assert_eq(goal.type, LevelGoal.TYPE_CURRENT)
+	assert_rational_eq(goal.voltage, "6")
+	assert_rational_eq(goal.current, "2")
+	assert_null(goal.target, "a current goal has no resistance target")
+	assert_eq(goal.mission, CURRENT_MISSION)
+
+
+func test_current_goal_missing_voltage_is_rejected() -> void:
+	assert_null(LevelGoal.from_level(_current_goal(null, "2"), "test"))
+	assert_error_pushed("current goal needs a string 'voltage'")
+
+
+func test_current_goal_missing_value_is_rejected() -> void:
+	assert_null(LevelGoal.from_level(_current_goal("6", null), "test"))
+	assert_error_pushed("current goal needs a string 'value'")
+
+
+func test_current_goal_invalid_voltage_is_rejected() -> void:
+	assert_null(LevelGoal.from_level(_current_goal("0", "2"), "test"))
+	assert_error_pushed("voltage '0' must be an exact number > 0")
+	assert_null(LevelGoal.from_level(_current_goal("six", "2"), "test"))
+	assert_error_pushed("'six' is not a number")
+	assert_error_pushed("voltage 'six' must be an exact number > 0")
+	assert_null(LevelGoal.from_level(_current_goal(6, "2"), "test"))
+	assert_error_pushed("current goal needs a string 'voltage'")
+
+
+func test_current_goal_invalid_value_is_rejected() -> void:
+	assert_null(LevelGoal.from_level(_current_goal("6", "-2"), "test"))
+	assert_error_pushed("current value '-2' must be an exact number > 0")
+
+
+func test_current_goal_default_mission() -> void:
+	var goal: LevelGoal = LevelGoal.from_level(_current_goal("6", "3/2"), "test")
+	assert_not_null(goal)
+	if goal == null:
+		return
+	assert_eq(goal.mission, "Draw exactly 3/2 A from the 6 V battery.")
+
+
+func test_current_goal_is_met() -> void:
+	var goal: LevelGoal = LevelGoal.from_level(_current_goal("6", "2"), "test")
+	assert_not_null(goal)
+	if goal == null:
+		return
+	assert_true(goal.is_met(_series([Rational.new(1), Rational.new(2)])), "6 V across 3 Ω draws 2 A")
+	assert_false(goal.is_met(_series([Rational.new(6)])), "6 V across 6 Ω draws 1 A")
+	assert_false(goal.is_met(_open_result()), "OPEN draws no current")
+	var short: CircuitResult = _short_result()
+	assert_eq(short.status, CircuitResult.Status.OK)
+	assert_false(goal.is_met(short), "0 Ω is a short, not a match")
+	assert_false(goal.is_met(null), "no result does not meet the goal")
+
+
+func test_current_goal_labels() -> void:
+	var goal: LevelGoal = LevelGoal.from_level(_current_goal("6", "2"), "test")
+	assert_eq(goal.goal_label(), "2 A")
+	assert_eq(goal.reading_caption(), "I")
+	assert_eq(goal.reading_label(_series([Rational.new(4)])), "3/2 A")
+	assert_eq(goal.reading_label(_series([Rational.new(3)])), "2 A")
+	assert_eq(goal.reading_label(_open_result()), "0 A")
+	assert_eq(goal.reading_label(_short_result()), "SHORT")
+	var unsupported: CircuitResult = CircuitResult.new()
+	unsupported.status = CircuitResult.Status.UNSUPPORTED
+	assert_eq(goal.reading_label(unsupported), "???")
+	var error: CircuitResult = CircuitResult.new()
+	error.status = CircuitResult.Status.ERROR
+	assert_eq(goal.reading_label(error), "ERROR")
+
+
+func test_resistance_goal_caption_and_equivalent_target() -> void:
+	var goal: LevelGoal = LevelGoal.from_level(_resistance_goal("3/2"), "test")
+	assert_eq(goal.reading_caption(), "R EQ")
+	assert_rational_eq(goal.equivalent_resistance_target(), "3/2")
+
+
+func test_current_goal_equivalent_resistance_target() -> void:
+	var goal: LevelGoal = LevelGoal.from_level(_current_goal("6", "2"), "test")
+	assert_rational_eq(goal.equivalent_resistance_target(), "3")

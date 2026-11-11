@@ -89,7 +89,7 @@ func _plug_in_first_solution(room: Room) -> bool:
 	for pickup: ResistorPickup in pickups:
 		values.append(pickup.value)
 	var solutions: Array[Dictionary] = PuzzleSolver.find_solutions(circuit.build_base_graph(),
-			circuit.get_socket_descriptors(), values, room.get_target())
+			circuit.get_socket_descriptors(), values, room.get_goal().equivalent_resistance_target())
 	if solutions.is_empty():
 		push_error("screenshot: the level has no solution to plug in")
 		return false

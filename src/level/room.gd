@@ -4,7 +4,8 @@ extends Node2D
 ## door, HUD, player) and runs its flow: the board's reading, judged by the
 ## level's goal, drives the HUD and the door,
 ## the open door completes the level, `restart` reloads the scene, and falling
-## out respawns Ohmie (a carried resistor goes back to its home).
+## out respawns Ohmie (a carried resistor goes back to its home). After the
+## level is complete, `interact` loads the next level of the Campaign, if any.
 ##
 ## The level file is, in order of precedence: `level_override` (set by scripted
 ## tests; it survives `restart` reloads), a user argument
@@ -40,6 +41,8 @@ var _pickups: Array[ResistorPickup] = []
 var _was_match: bool = false
 var _complete: bool = false
 var _sfx: SfxPlayer = null
+## The campaign level after this one ("" if none), known once the level is complete.
+var _next_level: String = ""
 
 @onready var _background: Sprite2D = $Background
 @onready var _tiles: RoomTiles = $Tiles
@@ -61,7 +64,7 @@ func _ready() -> void:
 	_apply_theme()
 	_tiles.build(level_data.tile_rows)
 	_hud.set_title(level_data.title)
-	_hud.set_goal(_goal.goal_label(), _goal.mission)
+	_hud.set_goal(_goal.goal_label(), _goal.mission, _goal.reading_caption())
 	_door.position = level_data.door
 	_door.entered.connect(_on_door_entered)
 	_door.opened.connect(_play_sound.bind(&"door_open"))
@@ -74,6 +77,10 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("restart"):
 		get_viewport().set_input_as_handled()
+		get_tree().reload_current_scene()
+	elif event.is_action_pressed("interact") and _complete and not _next_level.is_empty():
+		get_viewport().set_input_as_handled()
+		level_override = _next_level
 		get_tree().reload_current_scene()
 
 
@@ -220,7 +227,9 @@ func _on_door_entered() -> void:
 		_player.play_victory()
 	if _carry != null:
 		_carry.set_enabled(false)
-	_hud.show_level_complete()
+	var campaign: Campaign = Campaign.load_from_file(Campaign.DEFAULT_PATH)
+	_next_level = campaign.next_after(level_path) if campaign != null else ""
+	_hud.show_level_complete(not _next_level.is_empty())
 	_play_sound(&"win")
 	level_completed.emit()
 

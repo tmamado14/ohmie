@@ -24,6 +24,10 @@ Solved: 1/2 Ω in series with two 1 Ω in parallel gives exactly 1 Ω, the wires
 
 ![The solved circuit reading 1 Ω with the door open](tests/screenshots/slice_01_solved.png)
 
+The second room, "Ohm's Law". A 6 V battery sits across two sockets in series and the mission asks for exactly 2 A, so the room needs 3 Ω. Two of the four resistors are decoys.
+
+![The Ohm's Law room: a 6 V battery, two series sockets, and a mission asking for 2 A](tests/screenshots/level_02_initial.png)
+
 ## Controls
 
 | Action | Keys |
@@ -31,7 +35,7 @@ Solved: 1/2 Ω in series with two 1 Ω in parallel gives exactly 1 Ω, the wires
 | Move | A / D or arrow keys |
 | Jump | Space, W or Up |
 | Drop through a platform | S or Down |
-| Pick up, plug in, pull out, swap | E |
+| Pick up, plug in, pull out, swap; next room after a win | E |
 | Restart the room | R |
 
 ## Running it

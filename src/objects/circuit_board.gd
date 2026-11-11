@@ -7,6 +7,8 @@ extends Node2D
 ## LevelCircuit.build_graph, solves it with CircuitSolver and announces the
 ## result with `resistance_changed`; `is_match` is the level goal's verdict
 ## (LevelGoal.is_met). It also announces once right after build().
+## For a goal with a battery (a current goal) it also draws the battery left of
+## terminal A with its voltage under it.
 
 signal resistance_changed(result: CircuitResult, is_match: bool)
 
@@ -22,6 +24,12 @@ const TERMINAL_LABEL_COLOR: Color = Color("f6e7c8")
 const TERMINAL_LABEL_OUTLINE: Color = Color("24180f")
 const TERMINAL_LABEL_SIZE: int = 18
 const TERMINAL_LABEL_OUTLINE_SIZE: int = 5
+const BATTERY_TEXTURE: Texture2D = preload("res://assets/props/battery_pickup.png")
+## The battery's centre relative to terminal A.
+const BATTERY_OFFSET: Vector2 = Vector2(-48, 0)
+## The voltage label's rectangle relative to the battery's centre.
+const BATTERY_LABEL_RECT: Rect2 = Rect2(-40, 20, 80, 22)
+const VOLT_SUFFIX: String = " V"
 
 @export var socket_scene: PackedScene
 
@@ -41,6 +49,7 @@ func build(circuit: LevelCircuit, goal: LevelGoal, theme: RoomTheme = null) -> v
 	_wires.name = "Wires"
 	add_child(_wires)
 	_wires.build(circuit, theme)
+	_add_battery()
 	_add_node_markers()
 	_add_components()
 	_refresh()
@@ -67,11 +76,27 @@ func _add_node_markers() -> void:
 
 func _add_terminal(at: Vector2, label_text: String) -> void:
 	_add_sprite(TERMINAL_TEXTURE, at, "Terminal" + label_text)
+	_add_label("TerminalLabel" + label_text, label_text,
+			Rect2(at + TERMINAL_LABEL_RECT.position, TERMINAL_LABEL_RECT.size))
+
+
+## Draws the battery of a goal that has one (goal.voltage set) left of terminal A.
+func _add_battery() -> void:
+	if _goal == null or _goal.voltage == null:
+		return
+	var at: Vector2 = _circuit.get_node_position(_circuit.terminal_a) + BATTERY_OFFSET
+	_add_sprite(BATTERY_TEXTURE, at, "Battery")
+	_add_label("BatteryLabel", _goal.voltage.to_text() + VOLT_SUFFIX,
+			Rect2(at + BATTERY_LABEL_RECT.position, BATTERY_LABEL_RECT.size))
+
+
+## A cream label with a dark ink outline, as used for the terminal names.
+func _add_label(label_name: String, text: String, rect: Rect2) -> void:
 	var label: Label = Label.new()
-	label.name = "TerminalLabel" + label_text
-	label.text = label_text
-	label.position = at + TERMINAL_LABEL_RECT.position
-	label.size = TERMINAL_LABEL_RECT.size
+	label.name = label_name
+	label.text = text
+	label.position = rect.position
+	label.size = rect.size
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override(&"font_size", TERMINAL_LABEL_SIZE)
