@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" path="res://src/player/player.gd" id="1_player"]
 [ext_resource type="SpriteFrames" path="res://resources/player_frames.tres" id="2_frames"]
+[ext_resource type="Script" path="res://src/player/player_carry.gd" id="3_carry"]
+[ext_resource type="Script" path="res://src/objects/resistor_icon.gd" id="4_icon"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
 size = Vector2(36, 88)
@@ -19,3 +21,13 @@ shape = SubResource("RectangleShape2D_body")
 position = Vector2(0, -60)
 sprite_frames = ExtResource("2_frames")
 animation = &"idle"
+
+[node name="Carry" type="Node2D" parent="." node_paths=PackedStringArray("body")]
+script = ExtResource("3_carry")
+body = NodePath("..")
+
+[node name="CarriedIcon" type="Node2D" parent="Carry"]
+visible = false
+position = Vector2(0, -128)
+scale = Vector2(0.75, 0.75)
+script = ExtResource("4_icon")

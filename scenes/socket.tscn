@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/objects/socket.gd" id="1_socket"]
+[ext_resource type="Script" path="res://src/objects/resistor_icon.gd" id="2_icon"]
+[ext_resource type="Texture2D" path="res://assets/processed/socket_empty.png" id="3_empty"]
+[ext_resource type="Texture2D" path="res://assets/processed/socket_highlight.png" id="4_highlight"]
+
+[node name="Socket" type="Node2D"]
+script = ExtResource("1_socket")
+empty_texture = ExtResource("3_empty")
+highlight_texture = ExtResource("4_highlight")
+
+[node name="Frame" type="Sprite2D" parent="."]
+texture = ExtResource("3_empty")
+
+[node name="Icon" type="Node2D" parent="."]
+script = ExtResource("2_icon")

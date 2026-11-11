@@ -5,10 +5,16 @@
 [ext_resource type="Texture2D" path="res://assets/environment/copper_works_background_1280x720.png" id="3_background"]
 [ext_resource type="TileSet" path="res://resources/tileset.tres" id="4_tileset"]
 [ext_resource type="Script" path="res://src/level/room_tiles.gd" id="5_tiles"]
+[ext_resource type="PackedScene" path="res://scenes/pickup.tscn" id="6_pickup"]
+[ext_resource type="Script" path="res://src/objects/circuit_board.gd" id="7_board"]
+[ext_resource type="PackedScene" path="res://scenes/socket.tscn" id="8_socket"]
+[ext_resource type="PackedScene" path="res://scenes/door.tscn" id="9_door"]
+[ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="10_hud"]
 
 [node name="Room" type="Node2D"]
 script = ExtResource("1_room")
 player_scene = ExtResource("2_player")
+pickup_scene = ExtResource("6_pickup")
 
 [node name="Background" type="Sprite2D" parent="."]
 modulate = Color(0.45, 0.45, 0.5, 1)
@@ -20,9 +26,15 @@ tile_set = ExtResource("4_tileset")
 script = ExtResource("5_tiles")
 
 [node name="Board" type="Node2D" parent="."]
+script = ExtResource("7_board")
+socket_scene = ExtResource("8_socket")
 
 [node name="Door" type="Node2D" parent="."]
+
+[node name="ExitDoor" parent="Door" instance=ExtResource("9_door")]
 
 [node name="Pickups" type="Node2D" parent="."]
 
 [node name="Hud" type="CanvasLayer" parent="."]
+
+[node name="Hud" parent="Hud" instance=ExtResource("10_hud")]

@@ -5,6 +5,8 @@ extends CharacterBody2D
 ## section 5. The origin is the bottom centre of the collider (the feet).
 ##
 ## Movement only. Carrying and interaction belong in separate scripts.
+## set_input_enabled(false) freezes control (gravity still applies), for
+## example after the level is complete.
 
 signal jumped
 signal landed
@@ -15,6 +17,7 @@ const ONE_WAY_LAYER: int = 2
 const ANIM_IDLE: StringName = &"idle"
 const ANIM_RUN: StringName = &"run"
 const ANIM_JUMP: StringName = &"jump"
+const ANIM_VICTORY: StringName = &"victory"
 
 @export var run_speed: float = 240.0
 @export var gravity: float = 1800.0
@@ -36,6 +39,7 @@ var _drop_timer: float = 0.0
 var _was_on_floor: bool = false
 var _has_fallen_out: bool = false
 var _half_width: float = 0.0
+var _input_enabled: bool = true
 
 @onready var _sprite: AnimatedSprite2D = $Sprite
 @onready var _collision: CollisionShape2D = $CollisionShape2D
@@ -48,6 +52,11 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if not _input_enabled:
+		_apply_gravity(delta)
+		velocity.x = 0.0
+		move_and_slide()
+		return
 	_update_timers(delta)
 	_apply_gravity(delta)
 	_handle_drop_through()
@@ -69,6 +78,21 @@ func respawn(at: Vector2) -> void:
 	_end_drop_through()
 	_was_on_floor = false
 	_has_fallen_out = false
+
+
+## Turns player control on or off. While off, Ohmie stands still (but falls)
+## and the animation is left alone.
+func set_input_enabled(enabled: bool) -> void:
+	_input_enabled = enabled
+	_jump_buffer_timer = 0.0
+	if not enabled:
+		velocity.x = 0.0
+
+
+## Plays the level-complete pose.
+func play_victory() -> void:
+	_sprite.flip_h = false
+	_sprite.play(ANIM_VICTORY)
 
 
 func _update_timers(delta: float) -> void:
