@@ -1,0 +1,59 @@
+{
+  "level": 3,
+  "slug": "substation_switchyard",
+  "name": "The Substation Switchyard",
+  "ece_topic": "Three-branch parallel circuit and current division",
+  "challenge": "Use three 3 \u03a9 resistors in parallel.",
+  "danger": 3,
+  "danger_mechanics": [
+    "live-wire traps",
+    "rain puddles",
+    "storm-cloud enemies"
+  ],
+  "colors": "stormy blue-green and weathered brass",
+  "resistor_inventory": [
+    "3",
+    "3",
+    "3"
+  ],
+  "target_ohms": "1",
+  "validated_solution_ohms": "1",
+  "solution_circuit": {
+    "type": "parallel",
+    "children": [
+      {
+        "ohms": 3
+      },
+      {
+        "ohms": 3
+      },
+      {
+        "ohms": 3
+      }
+    ]
+  },
+  "background": "worlds/level_03_substation_switchyard/background_1920x1080.png",
+  "unique_asset_names": [
+    "insulator_platform",
+    "copper_conductor_bridge",
+    "transformer_machine",
+    "knife_switch",
+    "live_wire_trap",
+    "rain_puddle",
+    "insulating_boot_pickup",
+    "fuse_cabinet",
+    "storm_cloud_enemy",
+    "relay_switch",
+    "wet_plank",
+    "substation_exit_gate"
+  ],
+  "unique_asset_base_path": "worlds/level_03_substation_switchyard/assets/",
+  "required_mechanics": [
+    "move",
+    "jump",
+    "collect_resistor",
+    "connect_circuit",
+    "validate_1_ohm",
+    "unlock_exit"
+  ]
+}

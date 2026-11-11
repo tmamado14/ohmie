@@ -11,12 +11,14 @@ signal resistance_changed(result: CircuitResult, is_match: bool)
 
 const NODE_DOT_TEXTURE: Texture2D = preload("res://assets/processed/node_dot.png")
 const TERMINAL_TEXTURE: Texture2D = preload("res://assets/processed/terminal.png")
+## The processed art is drawn at 2x; this brings it to its on-screen size.
+const ART_SCALE: Vector2 = Vector2(0.5, 0.5)
 ## Nodes with at least this many edges get a junction dot.
 const JUNCTION_DEGREE: int = 3
 const TERMINAL_NAMES: PackedStringArray = ["A", "B"]
 const TERMINAL_LABEL_RECT: Rect2 = Rect2(-16, -42, 32, 22)
-const TERMINAL_LABEL_COLOR: Color = Color("ffe2a0")
-const TERMINAL_LABEL_OUTLINE: Color = Color("182e3a")
+const TERMINAL_LABEL_COLOR: Color = Color("f6e7c8")
+const TERMINAL_LABEL_OUTLINE: Color = Color("24180f")
 const TERMINAL_LABEL_SIZE: int = 18
 const TERMINAL_LABEL_OUTLINE_SIZE: int = 5
 
@@ -30,14 +32,14 @@ var _last_result: CircuitResult = null
 
 
 ## Builds every visual from `circuit` and announces the first reading.
-## `target` is the value that counts as a match.
-func build(circuit: LevelCircuit, target: Rational) -> void:
+## `target` is the value that counts as a match. `theme` colours the wires.
+func build(circuit: LevelCircuit, target: Rational, theme: RoomTheme = null) -> void:
 	_circuit = circuit
 	_target = target
 	_wires = CircuitWires.new()
 	_wires.name = "Wires"
 	add_child(_wires)
-	_wires.build(circuit)
+	_wires.build(circuit, theme)
 	_add_node_markers()
 	_add_components()
 	_refresh()
@@ -82,6 +84,7 @@ func _add_sprite(texture: Texture2D, at: Vector2, sprite_name: String) -> void:
 	var sprite: Sprite2D = Sprite2D.new()
 	sprite.name = sprite_name
 	sprite.texture = texture
+	sprite.scale = ART_SCALE
 	sprite.position = at
 	add_child(sprite)
 

@@ -12,7 +12,9 @@ empty_texture = ExtResource("3_empty")
 highlight_texture = ExtResource("4_highlight")
 
 [node name="Frame" type="Sprite2D" parent="."]
+scale = Vector2(0.5, 0.5)
 texture = ExtResource("3_empty")
 
 [node name="Icon" type="Node2D" parent="."]
+position = Vector2(0, 3.5)
 script = ExtResource("2_icon")

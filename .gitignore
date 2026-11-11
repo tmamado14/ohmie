@@ -4,3 +4,6 @@
 
 # Local Claude Code MCP config (machine-specific paths)
 .mcp.json
+
+# Old art pack, kept locally only
+assets-old/

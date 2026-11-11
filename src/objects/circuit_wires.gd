@@ -1,17 +1,14 @@
 class_name CircuitWires
 extends Node2D
 ## Draws the board's wires with Line2D: a wide dark outline under a narrow
-## copper line for every edge. Wire edges run node to node; socket and fixed
+## core line for every edge. Wire edges run node to node; socket and fixed
 ## edges get a lead from each node to the component's side.
 ##
-## Colour shows the circuit state: copper when open, bright copper when closed
-## (status OK), pulsing cyan when the value matches the target.
+## Colour shows the circuit state, using the room theme's wire colours: normal
+## when open, closed when the circuit conducts (status OK), and a pulsing match
+## colour when the value matches the target.
 
-const OUTLINE_COLOR: Color = Color("182e3a")
-const COPPER_COLOR: Color = Color("b66b39")
-const CLOSED_COLOR: Color = Color("eb9a5c")
-const MATCH_COLOR: Color = Color("47d1c0")
-const OUTLINE_WIDTH: float = 8.0
+const OUTLINE_WIDTH: float = 7.0
 const COPPER_WIDTH: float = 4.0
 ## Half the drawn size of a socket or fixed resistor (104x72 frame).
 const COMPONENT_HALF_SIZE: Vector2 = Vector2(52, 36)
@@ -22,14 +19,17 @@ const PULSE_FREQUENCY: float = 1.2
 var _outline_layer: Node2D = null
 var _copper_layer: Node2D = null
 var _pulse_time: float = 0.0
+## Colours come from this theme; a default RoomTheme when none is given.
+var _theme: RoomTheme = null
 
 
 func _ready() -> void:
 	set_process(false)
 
 
-## Replaces any existing lines with the wires of `circuit`.
-func build(circuit: LevelCircuit) -> void:
+## Replaces any existing lines with the wires of `circuit`, coloured by `theme`.
+func build(circuit: LevelCircuit, theme: RoomTheme = null) -> void:
+	_theme = theme if theme != null else RoomTheme.new()
 	for child: Node in get_children():
 		child.queue_free()
 	_outline_layer = Node2D.new()
@@ -52,13 +52,18 @@ func build(circuit: LevelCircuit) -> void:
 func set_state(closed: bool, matched: bool) -> void:
 	if _copper_layer == null:
 		return
-	var color: Color = COPPER_COLOR
+	var color: Color = _theme.wire_normal
+	var outline: Color = _theme.wire_normal_outline
 	if matched:
-		color = MATCH_COLOR
+		color = _theme.wire_match
+		outline = _theme.wire_match_outline
 	elif closed:
-		color = CLOSED_COLOR
+		color = _theme.wire_closed
+		outline = _theme.wire_closed_outline
 	for child: Node in _copper_layer.get_children():
 		(child as Line2D).default_color = color
+	for child: Node in _outline_layer.get_children():
+		(child as Line2D).default_color = outline
 	_pulse_time = 0.0
 	_copper_layer.modulate = Color.WHITE
 	set_process(matched)
@@ -86,8 +91,8 @@ func _add_leads(a: Vector2, b: Vector2) -> void:
 
 
 func _add_segment(a: Vector2, b: Vector2) -> void:
-	_outline_layer.add_child(_make_line(a, b, OUTLINE_WIDTH, OUTLINE_COLOR))
-	_copper_layer.add_child(_make_line(a, b, COPPER_WIDTH, COPPER_COLOR))
+	_outline_layer.add_child(_make_line(a, b, OUTLINE_WIDTH, _theme.wire_normal_outline))
+	_copper_layer.add_child(_make_line(a, b, COPPER_WIDTH, _theme.wire_normal))
 
 
 static func _make_line(a: Vector2, b: Vector2, width: float, color: Color) -> Line2D:
@@ -97,5 +102,5 @@ static func _make_line(a: Vector2, b: Vector2, width: float, color: Color) -> Li
 	line.default_color = color
 	line.begin_cap_mode = Line2D.LINE_CAP_BOX
 	line.end_cap_mode = Line2D.LINE_CAP_BOX
-	line.antialiased = false
+	line.antialiased = true
 	return line

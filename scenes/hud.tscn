@@ -1,8 +1,14 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="1_hud"]
-[ext_resource type="Texture2D" path="res://assets/ui/hud_blank.png" id="2_frame"]
-[ext_resource type="Texture2D" path="res://assets/ui/victory_banner.png" id="3_banner"]
+[ext_resource type="Texture2D" path="res://assets/ui/decor/blank_hud_plaque.png" id="2_plaque"]
+[ext_resource type="Texture2D" path="res://assets/ui/decor/blank_victory_ribbon.png" id="3_ribbon"]
+
+[sub_resource type="SystemFont" id="SystemFont_serif"]
+font_names = PackedStringArray("Georgia", "Times New Roman", "serif")
+
+[sub_resource type="Theme" id="Theme_hud"]
+default_font = SubResource("SystemFont_serif")
 
 [node name="Hud" type="Control"]
 layout_mode = 3
@@ -12,6 +18,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme = SubResource("Theme_hud")
 script = ExtResource("1_hud")
 
 [node name="Title" type="Label" parent="."]
@@ -22,12 +29,12 @@ anchor_right = 0.5
 offset_left = -240.0
 offset_top = 20.0
 offset_right = 240.0
-offset_bottom = 56.0
+offset_bottom = 58.0
 grow_horizontal = 2
-theme_override_colors/font_color = Color(1, 0.886, 0.627, 1)
-theme_override_colors/font_outline_color = Color(0.094, 0.18, 0.227, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 26
+theme_override_colors/font_color = Color(0.9647059, 0.9058824, 0.78431374, 1)
+theme_override_colors/font_outline_color = Color(0.14117648, 0.09411765, 0.05882353, 1)
+theme_override_constants/outline_size = 7
+theme_override_font_sizes/font_size = 30
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -41,10 +48,10 @@ offset_top = -34.0
 offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_colors/font_color = Color(1, 0.886, 0.627, 1)
-theme_override_colors/font_outline_color = Color(0.094, 0.18, 0.227, 1)
+theme_override_colors/font_color = Color(0.9647059, 0.9058824, 0.78431374, 1)
+theme_override_colors/font_outline_color = Color(0.14117648, 0.09411765, 0.05882353, 1)
 theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 17
 text = "A/D move · Space jump · S drop through platform · E pick up / place · R restart"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -60,72 +67,60 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 0.55)
 
-[node name="Readout" type="NinePatchRect" parent="."]
+[node name="Readout" type="TextureRect" parent="."]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 400.0
-offset_bottom = 88.0
+offset_right = 316.0
+offset_bottom = 126.0
 mouse_filter = 2
-texture = ExtResource("2_frame")
-patch_margin_left = 12
-patch_margin_top = 12
-patch_margin_right = 12
-patch_margin_bottom = 12
+texture = ExtResource("2_plaque")
+expand_mode = 1
 
 [node name="TargetCaption" type="Label" parent="Readout"]
 layout_mode = 0
-offset_left = 16.0
-offset_top = 8.0
-offset_right = 184.0
-offset_bottom = 28.0
-theme_override_colors/font_color = Color(1, 0.886, 0.627, 1)
-theme_override_font_sizes/font_size = 13
+offset_left = 93.0
+offset_top = 56.0
+offset_right = 160.0
+offset_bottom = 74.0
+theme_override_colors/font_color = Color(0.18039216, 0.12156863, 0.101960786, 1)
+theme_override_font_sizes/font_size = 14
 text = "TARGET"
-horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="TargetValue" type="Label" parent="Readout"]
 layout_mode = 0
-offset_left = 16.0
-offset_top = 26.0
-offset_right = 184.0
-offset_bottom = 64.0
-theme_override_font_sizes/font_size = 26
+offset_left = 140.0
+offset_top = 56.0
+offset_right = 209.0
+offset_bottom = 74.0
+theme_override_colors/font_color = Color(0.18039216, 0.12156863, 0.101960786, 1)
+theme_override_font_sizes/font_size = 15
 text = "1 Ω"
-horizontal_alignment = 1
+horizontal_alignment = 2
 vertical_alignment = 1
-
-[node name="Divider" type="ColorRect" parent="Readout"]
-layout_mode = 0
-offset_left = 191.0
-offset_top = 14.0
-offset_right = 193.0
-offset_bottom = 58.0
-mouse_filter = 2
-color = Color(0.918, 0.725, 0.251, 0.6)
 
 [node name="EquivalentCaption" type="Label" parent="Readout"]
 layout_mode = 0
-offset_left = 200.0
-offset_top = 8.0
-offset_right = 368.0
-offset_bottom = 28.0
-theme_override_colors/font_color = Color(1, 0.886, 0.627, 1)
-theme_override_font_sizes/font_size = 13
-text = "EQUIVALENT"
-horizontal_alignment = 1
+offset_left = 93.0
+offset_top = 74.0
+offset_right = 160.0
+offset_bottom = 92.0
+theme_override_colors/font_color = Color(0.18039216, 0.12156863, 0.101960786, 1)
+theme_override_font_sizes/font_size = 14
+text = "R EQ"
 vertical_alignment = 1
 
 [node name="EquivalentValue" type="Label" parent="Readout"]
 layout_mode = 0
-offset_left = 200.0
-offset_top = 26.0
-offset_right = 368.0
-offset_bottom = 64.0
-theme_override_font_sizes/font_size = 26
+offset_left = 130.0
+offset_top = 74.0
+offset_right = 209.0
+offset_bottom = 92.0
+theme_override_colors/font_color = Color(0.18039216, 0.12156863, 0.101960786, 1)
+theme_override_font_sizes/font_size = 15
 text = "OPEN"
-horizontal_alignment = 1
+horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="Victory" type="Control" parent="."]
@@ -145,14 +140,27 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -160.0
-offset_top = -88.0
-offset_right = 160.0
-offset_bottom = 8.0
+offset_left = -225.0
+offset_top = -110.0
+offset_right = 225.0
+offset_bottom = 36.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-texture = ExtResource("3_banner")
+texture = ExtResource("3_ribbon")
+expand_mode = 1
+
+[node name="Message" type="Label" parent="Victory/Banner"]
+layout_mode = 0
+offset_left = 105.0
+offset_top = 33.0
+offset_right = 339.0
+offset_bottom = 85.0
+theme_override_colors/font_color = Color(0.18039216, 0.12156863, 0.101960786, 1)
+theme_override_font_sizes/font_size = 28
+text = "Circuit complete!"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="PlayAgain" type="Label" parent="Victory"]
 layout_mode = 1
@@ -162,13 +170,13 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -240.0
-offset_top = 16.0
+offset_top = 44.0
 offset_right = 240.0
-offset_bottom = 52.0
+offset_bottom = 80.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(1, 0.886, 0.627, 1)
-theme_override_colors/font_outline_color = Color(0.094, 0.18, 0.227, 1)
+theme_override_colors/font_color = Color(0.9647059, 0.9058824, 0.78431374, 1)
+theme_override_colors/font_outline_color = Color(0.14117648, 0.09411765, 0.05882353, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 22
 text = "Press R to play again"

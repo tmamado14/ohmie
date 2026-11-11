@@ -52,7 +52,7 @@ The first runs the unit tests for the circuit math and level loading. The second
 
 | Folder | Contents |
 |---|---|
-| `assets/` | Original art, audio and data |
+| `assets/` | Art, audio and data (hand-inked cartoon pack, five worlds) |
 | `src/circuit/` | Circuit math: exact rationals, network solver, puzzle solver |
 | `src/` | Player, level, objects and UI code |
 | `levels/` | Level data, one JSON file per room |

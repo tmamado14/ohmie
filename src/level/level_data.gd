@@ -9,6 +9,7 @@ extends RefCounted
 const ROW_COUNT: int = 23
 const COLUMN_COUNT: int = 40
 const TILE_CHARACTERS: String = ".#=BW!|"
+const DEFAULT_WORLD: String = "old_workshop"
 const REQUIRED_FIELDS: PackedStringArray = [
 	"id", "title", "teaches", "target", "tiles", "spawn", "door", "pickups", "circuit",
 ]
@@ -16,6 +17,8 @@ const REQUIRED_FIELDS: PackedStringArray = [
 var id: String = ""
 var title: String = ""
 var teaches: String = ""
+## Optional: the world whose theme the room uses (res://resources/themes/<world>/).
+var world: String = DEFAULT_WORLD
 ## The target resistance exactly as written in the file, for example "1" or "3/2".
 var target_text: String = ""
 ## ROW_COUNT strings of COLUMN_COUNT tile characters each, top row first.
@@ -68,6 +71,11 @@ static func from_dictionary(data: Variant, source: String) -> LevelData:
 	if level.target_text.strip_edges().is_empty():
 		push_error("LevelData: %s: field 'target' is empty" % source)
 		return null
+	if dict.has("world"):
+		if not dict["world"] is String or (dict["world"] as String).strip_edges().is_empty():
+			push_error("LevelData: %s: field 'world' must be a non-empty string" % source)
+			return null
+		level.world = dict["world"]
 
 	if not _parse_tiles(dict["tiles"], source, level):
 		return null

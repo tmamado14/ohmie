@@ -1,7 +1,7 @@
 class_name Room
 extends Node2D
-## Builds one room from a level file (tiles, pickups, circuit board, door, HUD,
-## player) and runs its flow: the board's reading drives the HUD and the door,
+## Builds one room from a level file (theme, tiles, pickups, circuit board,
+## door, HUD, player) and runs its flow: the board's reading drives the HUD and the door,
 ## the open door completes the level, `restart` reloads the scene, and falling
 ## out respawns Ohmie (a carried resistor goes back to its home).
 ##
@@ -15,6 +15,8 @@ extends Node2D
 signal level_completed
 
 const LEVEL_ARG_PREFIX: String = "--level="
+## The background is scaled to cover exactly this area (the 1280x720 room).
+const ROOM_SIZE: Vector2 = Vector2(1280, 720)
 
 ## When not empty, every Room loads this level instead of `level_path` or the
 ## command line. A static, so it outlives scene reloads; for scripted tests.
@@ -27,6 +29,8 @@ static var level_override: String = ""
 ## The parsed level, or null if loading failed.
 var level_data: LevelData = null
 
+var _theme: RoomTheme = null
+
 var _circuit: LevelCircuit = null
 var _target: Rational = null
 var _player: Player = null
@@ -36,6 +40,7 @@ var _was_match: bool = false
 var _complete: bool = false
 var _sfx: SfxPlayer = null
 
+@onready var _background: Sprite2D = $Background
 @onready var _tiles: RoomTiles = $Tiles
 @onready var _board: CircuitBoard = $Board
 @onready var _door: ExitDoor = $Door/ExitDoor
@@ -52,6 +57,7 @@ func _ready() -> void:
 		level_path = override
 	if not _load_level():
 		return
+	_apply_theme()
 	_tiles.build(level_data.tile_rows)
 	_hud.set_title(level_data.title)
 	_hud.set_target(_target)
@@ -61,7 +67,7 @@ func _ready() -> void:
 	_build_pickups()
 	_spawn_player()
 	_board.resistance_changed.connect(_on_resistance_changed)
-	_board.build(_circuit, _target)
+	_board.build(_circuit, _target, _theme)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -76,6 +82,11 @@ static func level_path_from_command_line() -> String:
 		if arg.begins_with(LEVEL_ARG_PREFIX):
 			return arg.substr(LEVEL_ARG_PREFIX.length())
 	return ""
+
+
+## The theme in use (tiles, background, music, wire colours), or null.
+func get_room_theme() -> RoomTheme:
+	return _theme
 
 
 func get_player() -> Player:
@@ -130,6 +141,19 @@ func _load_level() -> bool:
 		level_data = null
 		return false
 	return true
+
+
+func _apply_theme() -> void:
+	_theme = RoomTheme.load_for_world(level_data.world)
+	if _theme == null:
+		return
+	_tiles.tile_set = _theme.tileset
+	_background.texture = _theme.background
+	if _theme.background != null:
+		_background.scale = ROOM_SIZE / _theme.background.get_size()
+	_background.modulate = _theme.background_modulate
+	if _sfx != null:
+		_sfx.play_music(_theme.music)
 
 
 func _build_pickups() -> void:

@@ -34,9 +34,10 @@ Build order for a feature: circuit-engine, asset-integrator, gdscript-coder, lev
 ## Folder structure
 
 ```
-assets/              Original art, audio and data. READ-ONLY.
-assets/processed/    Derived and placeholder art. The only writable part of assets/.
-resources/           Godot resources built from assets (.tres: TileSet, SpriteFrames, theme).
+assets/              The user's art pack (hand-inked cartoon style, authored at 2x). READ-ONLY.
+assets/processed/    Derived and generated art. The only writable part of assets/.
+assets-old/          The first art pack. Local only (git-ignored, .gdignore). Never reference it.
+resources/themes/    Per-world theme.tres and tileset.tres, plus player_frames.tres.
 scenes/              .tscn scenes.
 src/circuit/         Pure circuit math. RefCounted only, no nodes, no engine singletons.
 src/player/          Player movement and carrying.
@@ -90,11 +91,15 @@ Tests live in `tests/test_*.gd`. Each is a script with `test_*` methods, discove
 
 Update this section whenever a milestone step completes.
 
+- Art: the game uses only the new pack in `assets/`. Sprites, tiles and props are drawn at scale 0.5 with Linear filtering on the unchanged 1280×720 / 32 px grid; the 1920×1080 background is scaled to fit (2/3). Platform tiles use `texture_origin` so the art lines up with a standing surface 7 px below the cell top. Rebuild resources with `tools/build_tilesets.gd` and `tools/build_player_frames.gd`; verify with `tools/check_resources.gd` (485 checks).
+- Scope for this version: World 1 (Old Workshop) only, holding all ten rooms. A level's optional `world` field picks `resources/themes/<world>/theme.tres`; only `old_workshop` has a theme. Worlds 2–5 and the boss are for later versions.
+- Levels 1–4 and 6–10 are not designed yet (two `level-designer` tasks were started and stopped early to save usage; nothing of theirs was kept). Briefs are in `docs/GDD.md` section 7. After that: level-to-level flow, then the collapse replay.
+- Run play tests with `--fixed-fps 60`. Current counts: 127 unit, 11 movement, 31 dev room, 25 slice_01, 95 adversarial.
 - Milestone 1 (vertical slice) is playable. The game boots into `levels/slice_01.json` ("Half and Half"). `levels/dev_room.json` is a development room used by the play tests.
 - Passing as of 2026-11-11: 127 unit tests (`tests/run_tests.gd`), and the scripted play tests `tests/play_movement.gd` (11 checks), `tests/play_slice.gd` (30) and `tests/play_slice_01.gd` (25). Run each with `--headless --path . --script res://tests/<name>.gd`.
 - After adding a script with `class_name`, run `--import` once before any `--script` command, or the class name will not resolve.
 - Autoloads are not visible to scripts started with `--script`; gameplay code looks up `Sfx` at `/root/Sfx` and tolerates it being absent.
 - A test or tool selects a level by setting `Room.level_override` before the main scene loads, or with `-- --level=res://levels/x.json`.
 - All subagents that have run reported model `claude-opus-5-5`.
-- In progress: `qa-tester` pass on the slice; results go to `docs/BUGS.md`. Next: send fixes to `gdscript-coder`, then start Milestone 2 (levels 1–10, level flow, collapse replay) per `docs/GDD.md` section 10.
+- QA pass done; bugs and their status are in `docs/BUGS.md`. Known rough edges: the readout plaque text is small at 720p; shelves painted in the background can be mistaken for platforms; `docs/ASSETS.md` still has a few stale lines above its "New pack" section.
 - Git: remote `origin` is https://github.com/tmamado14/ohmie (branch `master`). Commit as the user only, with no Claude co-author or attribution lines. Push after each completed task.

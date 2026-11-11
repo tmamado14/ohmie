@@ -1,0 +1,85 @@
+{
+  "level": 5,
+  "slug": "high_voltage_transmitter",
+  "name": "The High-Voltage Transmitter",
+  "ece_topic": "Nested mixed series-parallel resistor networks",
+  "challenge": "Build two 2 \u03a9 parallel pairs, connect the pairs in series, then parallel the result with another 2 \u03a9.",
+  "danger": 5,
+  "danger_mechanics": [
+    "high-voltage arc traps",
+    "timed switches",
+    "boss projectiles",
+    "Shorty the Short-Circuit Baron"
+  ],
+  "colors": "deep oxblood, aged ivory, copper and storm teal",
+  "resistor_inventory": [
+    "2",
+    "2",
+    "2",
+    "2",
+    "2"
+  ],
+  "target_ohms": "1",
+  "validated_solution_ohms": "1",
+  "solution_circuit": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "series",
+        "children": [
+          {
+            "type": "parallel",
+            "children": [
+              {
+                "ohms": 2
+              },
+              {
+                "ohms": 2
+              }
+            ]
+          },
+          {
+            "type": "parallel",
+            "children": [
+              {
+                "ohms": 2
+              },
+              {
+                "ohms": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "ohms": 2
+      }
+    ]
+  },
+  "background": "worlds/level_05_high_voltage_transmitter/background_1920x1080.png",
+  "unique_asset_names": [
+    "tesla_twin_coils",
+    "spark_bridge",
+    "cage_lift",
+    "emergency_switch",
+    "transmitter_console",
+    "arc_floor",
+    "insulating_shield_pickup",
+    "shorty_boss_idle",
+    "shorty_projectile",
+    "final_circuit_gate",
+    "vacuum_tube_core",
+    "final_trophy"
+  ],
+  "unique_asset_base_path": "worlds/level_05_high_voltage_transmitter/assets/",
+  "required_mechanics": [
+    "move",
+    "jump",
+    "collect_resistor",
+    "connect_circuit",
+    "validate_1_ohm",
+    "unlock_exit",
+    "timed_hazards",
+    "boss_phase"
+  ]
+}

@@ -2,8 +2,9 @@ class_name RoomTiles
 extends TileMapLayer
 ## Fills this layer from a level's tile characters (GDD section 6).
 ##
-## Uses the TileSet in res://resources/tileset.tres: one atlas source, id 0,
-## where tile ID n sits at atlas coords (n % 4, n / 4).
+## Uses the room theme's TileSet (res://resources/themes/<world>/tileset.tres):
+## one atlas source, id 0, where tile ID n sits at atlas coords (n % 4, n / 4).
+## Its tiles are 64 px; the layer is drawn at scale 0.5 so a cell is 32 px.
 
 const SOURCE_ID: int = 0
 const ATLAS_COLUMNS: int = 4

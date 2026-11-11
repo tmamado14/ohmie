@@ -1,7 +1,8 @@
 class_name SfxPlayer
 extends Node
 ## Autoload `Sfx`: plays short sound effects by name from a small pool of
-## players, and loops the background music quietly.
+## players, and loops the background music quietly. The room hands it the
+## music of its theme with play_music().
 ##
 ## Usage: Sfx.play(&"jump"). Scripts that may be compiled before autoloads
 ## exist (anything a --script tool or test loads) look it up at AUTOLOAD_PATH. Sound n is res://assets/audio/sfx_<n>.wav.
@@ -17,7 +18,6 @@ const SOUND_NAMES: Array[StringName] = [
 	&"jump", &"land", &"pickup", &"place_resistor", &"invalid", &"connect", &"door_open", &"win",
 ]
 const SOUND_PATH: String = "res://assets/audio/sfx_%s.wav"
-const MUSIC_PATH: String = "res://assets/audio/music_copper_works_loop_16s.wav"
 const POOL_SIZE: int = 6
 const AUTOLOAD_PATH: NodePath = ^"/root/Sfx"
 const HEADLESS_DISPLAY: String = "headless"
@@ -50,15 +50,24 @@ func _ready() -> void:
 	_music = AudioStreamPlayer.new()
 	_music.name = "Music"
 	_music.volume_db = music_volume_db
-	_music.stream = load(MUSIC_PATH) as AudioStream
 	add_child(_music)
-	if _enabled and _music.stream != null:
-		_music.play()
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		stop_all()
+
+
+## Loops `stream` as the background music. Keeps playing without a restart
+## when it is already the current track (for example after a room reload).
+func play_music(stream: AudioStream) -> void:
+	if _music == null or stream == null:
+		return
+	if _music.stream == stream and _music.playing:
+		return
+	_music.stream = stream
+	if _enabled:
+		_music.play()
 
 
 ## Stops the music and every effect.

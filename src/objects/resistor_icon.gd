@@ -1,6 +1,7 @@
 class_name ResistorIcon
 extends Node2D
-## Draws one resistor value, centred on this node's origin (96x64 px).
+## Draws one resistor value, centred on this node's origin (96x64 px on
+## screen: the 192x128 icon art drawn at ART_SCALE).
 ##
 ## The seven values with art use their icon. Any other value falls back to the
 ## 1 ohm icon tinted grey with the value written over its baked label.
@@ -14,11 +15,12 @@ const ICON_NAMES: Dictionary = {
 const FALLBACK_NAME: String = "1ohm"
 const FALLBACK_TINT: Color = Color(0.55, 0.55, 0.55)
 const SIZE: Vector2 = Vector2(96, 64)
-## Covers the baked value label at the bottom of the icon.
-const FALLBACK_LABEL_RECT: Rect2 = Rect2(-30, 6, 60, 24)
-const FALLBACK_LABEL_BACKGROUND: Color = Color("102a36")
-const FALLBACK_LABEL_COLOR: Color = Color("ffe2a0")
-const FALLBACK_FONT_SIZE: int = 14
+const ART_SCALE: Vector2 = Vector2(0.5, 0.5)
+## Covers the baked value plaque at the bottom of the icon (art x 57-135, y 100-124).
+const FALLBACK_LABEL_RECT: Rect2 = Rect2(-24, 17, 48, 15)
+const FALLBACK_LABEL_BACKGROUND: Color = Color("eed6b2")
+const FALLBACK_LABEL_COLOR: Color = Color("2e1f1a")
+const FALLBACK_FONT_SIZE: int = 11
 
 var _sprite: Sprite2D = null
 var _label: Label = null
@@ -27,6 +29,7 @@ var _label: Label = null
 func _init() -> void:
 	_sprite = Sprite2D.new()
 	_sprite.name = "Sprite"
+	_sprite.scale = ART_SCALE
 	add_child(_sprite)
 	_label = Label.new()
 	_label.name = "FallbackLabel"

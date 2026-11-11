@@ -1,66 +1,60 @@
-# Ohmie: Circuit Works — 2D Pixel Platformer Asset Pack (v1)
+# OHMIE — THE FIVE CIRCUITS (v3)
 
-A coherent first-level **starter kit** for a resistor-combination 2D platformer.
-The main challenge is to connect resistors in series/parallel until the circuit
-has **exactly 1 Ω** equivalent resistance.
+A standalone, engine-neutral **five-level asset pack** for the ECE-themed
+platformer. All art uses the approved original 1940s hand-inked, rubber-hose,
+watercolor-cartoon direction. The previous complete classic-cartoon v2 base
+pack is included; no need to download an earlier ZIP separately.
 
-## What is included
+## Worlds and increasing danger
 
-- `player/`: nine trimmed 128×128 transparent character poses, plus a 3×3 atlas.
-- `environment/`: 1280×720 Copper Works background; original background; 16
-  deterministic 32×32 tiles, a tileset atlas, and an enlarged tileset preview.
-- `props/`: 12 individual illustrated interaction sprites.
-- `hazards/`: 8 individual enemies/obstacles; `effects/`: 4 effect sprites.
-- `interactive/resistors/`: seven labeled, accurately color-coded resistor icons.
-- `ui/`: HUD, puzzle panel, buttons, resistor slot, hearts, victory banner.
-- `audio/`: 12 original synthesized WAV sound effects and an original simple
-  16-second chiptune music loop.
-- `data/`: sprite manifest, resistor color codes, four VALIDATED 1 Ω circuit
-  puzzles, and a sample tile/object level layout.
-- `preview/illustrative_level_scene.png`: a static composition showing the
-  visual assets together, not a running game screenshot.
-- `source_sheets/`: original full-resolution generated artwork for further art edits.
+1. **Old Electric Workshop** — 2 Ω || 2 Ω = 1 Ω. Introduces basic resistor
+   combinations, movement, gaps, and an exit gate.
+2. **Copper Foundry** — 0.5 Ω + 0.5 Ω = 1 Ω. Series networks, motorized
+   conveyors, molten-copper cartoon traps, and stamping pistons.
+3. **Substation Switchyard** — 3 Ω || 3 Ω || 3 Ω = 1 Ω. Three-way current
+   division, live-wire cartoon hazards, rain puddles, and grounding equipment.
+4. **Signal Clocktower** — 2 Ω || 3 Ω || 6 Ω = 1 Ω. Mixed values, timed relay
+   switches, analog waves, pendulum hazards, and moving platforms.
+5. **High-Voltage Transmitter** — ((2 Ω || 2 Ω) + (2 Ω || 2 Ω)) || 2 Ω = 1 Ω.
+   Nested networks, synchronized voltage arcs, a final gate, and the original
+   cartoon boss **Shorty the Short-Circuit Baron**.
 
-## Quick game-engine import
+## Files to import
 
-1. Import the PNG and WAV assets from this folder into Godot, Unity or another
-   engine. Set texture **filter to Nearest/Point** to preserve pixel edges.
-2. Use a **32×32** tile grid and the atlas `environment/tileset_32px.png`.
-   Atlas order is left-to-right, top-to-bottom; tile IDs 0–15 match `data/sample_level.json`.
-3. Use `player/*.png` as an initial pose-based character. Each is **128×128**;
-   the atlas is 384×384 in a strict 3×3 grid, indexed in this order:
-   front, side, back / idle, walk, run / jump, push_scene, victory.
-4. Import `data/sample_level.json` for an illustrative example, or build your
-   own tile map. World-space coordinates assume a 1280×720 viewport.
-5. Build circuit interaction from `data/circuit_puzzles.json` and evaluate
-   series resistance `R = sum(R_i)`; parallel resistance `1/R = sum(1/R_i)`.
-   Do not round intermediate results; use exact rational arithmetic where possible.
+- `player/`, `props/`, `hazards/`, `effects/`, `platforms/`, `interactive/`,
+  `ui/`, `environment/` — all shared assets from the classic v2 pack.
+- `worlds/level_02_...` through `worlds/level_05_...`: per-world 1920×1080
+  backgrounds; 12 transparent illustrated unique objects; source atlas;
+  distinct world-tinted 64×64 tile set; and two JSON descriptors.
+- `worlds/level_01_old_workshop/`: Level 1 JSON, with refs to shared assets.
+- `worlds/world_progression.json`: progression order, topic, target and paths.
+- `boss/shorty_*.png`: six 320×320 Shorty key poses, source sheet, and atlas.
+- `audio/`: original shared SFX, swing/chiptune cues and four new original
+  world-specific 16-second music loops.
+- `preview/`: five static illustrative game-scene compositions and a five-world
+  overview. These are not running gameplay screenshots.
+- `data/asset_manifest.json`: every file with path and byte size; PNG dimensions.
 
-## Important art/gameplay notes
+## Engine import and accuracy
 
-- Character poses are **illustration-derived key poses**, *not* a verified
-  temporal animation cycle. Add in-between frames and test pivots/hitboxes before
-  shipping. The `push_scene` pose contains a drawn resistor block: if pushing an
-  independent physics object, create an alternate arm-only push frame.
-- The source artwork is deliberately larger and more detailed than small pixel
-  sprites; the export is sampled with nearest-neighbor scaling. Inspect the
-  sprites at actual game scale before finalizing your art direction.
-- Source props are not inherently mechanically functional: you must code
-  collisions, current-path validation, switches, doors, and interaction rules.
-- The 32px tiles are hand-defined for stable engine geometry. Some end-cap tiles
-  are decorative; place middle tiles between caps for longer platforms.
-- Numeric resistor icons and color bands are exact 4-band nominal values with
-  gold tolerance (±5%). For example, **2 Ω = red-black-gold-gold**.
-- Audio is a small original synthetic prototype set; mix/master for production.
+- PNG character frames 256×256, Shorty frames 320×320, modular collision
+  tiles 64×64, backgrounds 1920×1080, WAV mono 22.05 kHz audio.
+- For hand-inked sprites, use **Linear** filtering and preserve alpha.
+- Tile IDs 0–15 are row-major 4×4; per-world JSON lists collisions and
+  illustrative object locations. Add your own controller and collision code.
+- All five sample solutions are **validated with exact rational arithmetic**.
+  Treat resistor values as nominal; 4th gold band indicates ±5% tolerance,
+  not random variation in the educational puzzle solver.
 
-## Suggested controls
+## Production limitations
 
-- A/D or arrows: move; Space: jump; E: interact or place resistor.
-- Tab: open the circuit editor; 1/2: select series or parallel wiring.
-- R: restart puzzle. Use the `ui` assets for buttons and HUD displays.
-
-## Content and scope
-
-This is a **playable-prototype asset starter pack**, not a complete shipped game's
-animation library or level collection. All generated illustrations were made
-for Ohmie; their use remains subject to the applicable image-generation terms.
+- This is a complete **asset collection for five prototype levels**, not a
+  functioning game or completed gameplay implementation.
+- Nine Ohmie poses and six Shorty poses are keyframes, not smooth frame-by-frame
+  animation sequences. Interpolation or manually drawn in-between frames are
+  still required for polished motion.
+- Level JSON provides illustrative geometry and mechanics, not tested game
+  physics, enemy AI, safety validation, or a finished level-design campaign.
+- The five worlds use hand-painted art. Decorative platform sprites may not
+  tile seamlessly; use the exact 64px collision tiles behind them.
+- All artwork was made for Ohmie, with use subject to image-generation terms.

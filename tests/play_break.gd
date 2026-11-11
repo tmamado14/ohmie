@@ -820,7 +820,8 @@ func _section_j_readout_sweep() -> void:
 		var shown: String = _hud.get_equivalent_text()
 		var colour: Color = (_hud.get_node(^"Readout/EquivalentValue") as Label).get_theme_color(&"font_color")
 		var wire_colour: Color = _wire_colour()
-		var want_wire: Color = CircuitWires.MATCH_COLOR if is_match else (CircuitWires.COPPER_COLOR if expected == "OPEN" else CircuitWires.CLOSED_COLOR)
+		var theme: RoomTheme = _room.get_room_theme()
+		var want_wire: Color = theme.wire_match if is_match else (theme.wire_normal if expected == "OPEN" else theme.wire_closed)
 		if _door.is_open():
 			open_count += 1
 		if shown != expected or _door.is_open() != is_match or (colour == Hud.COLOR_MATCH) != is_match \

@@ -2,6 +2,7 @@
   "id": "slice_01",
   "title": "Half and Half",
   "teaches": "Series and parallel in one network",
+  "world": "old_workshop",
   "target": "1",
   "tiles": [
     "........................................",
