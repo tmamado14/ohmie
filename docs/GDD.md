@@ -118,7 +118,7 @@ The player can step with `interact` or skip. Unused resistors and empty sockets 
 | Coyote time, jump buffer | 0.10 s each |
 | One-way platforms | Jump up through; hold `move_down` to drop through |
 
-**Level design limits (with safety margin):** jump up at most **3 tiles** (96 px). Jump across gaps of at most **4 tiles** (128 px) at equal height. Leave **3 tiles** of headroom wherever Ohmie must walk.
+**Level design limits (with safety margin):** jump up at most **3 tiles** (96 px). Jump across gaps of at most **4 tiles** (128 px) at equal height. Leave **3 tiles** of headroom under solid ceilings wherever Ohmie must walk (one-way platforms do not block from below, so they are exempt).
 
 Controls: A/D or arrow keys move, Space/W/Up jumps, S/Down drops through, E interacts, R restarts.
 
