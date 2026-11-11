@@ -90,6 +90,11 @@ Tests live in `tests/test_*.gd`. Each is a script with `test_*` methods, discove
 
 Update this section whenever a milestone step completes.
 
-- Phases 1–3 are complete (audit, team, GDD). No game code exists yet.
-- Next: Milestone 1, step 1. Delegate the circuit engine (`src/circuit/` plus `tests/run_tests.gd`) to `circuit-engine`, per GDD section 3. Then asset-integrator, gdscript-coder, level-designer, qa-tester.
-- On the first delegation, have the subagent state its model ID and confirm it is `claude-opus-5-5`.
+- Milestone 1 (vertical slice) is playable. The game boots into `levels/slice_01.json` ("Half and Half"). `levels/dev_room.json` is a development room used by the play tests.
+- Passing as of 2026-11-11: 127 unit tests (`tests/run_tests.gd`), and the scripted play tests `tests/play_movement.gd` (11 checks), `tests/play_slice.gd` (30) and `tests/play_slice_01.gd` (25). Run each with `--headless --path . --script res://tests/<name>.gd`.
+- After adding a script with `class_name`, run `--import` once before any `--script` command, or the class name will not resolve.
+- Autoloads are not visible to scripts started with `--script`; gameplay code looks up `Sfx` at `/root/Sfx` and tolerates it being absent.
+- A test or tool selects a level by setting `Room.level_override` before the main scene loads, or with `-- --level=res://levels/x.json`.
+- All subagents that have run reported model `claude-opus-5-5`.
+- In progress: `qa-tester` pass on the slice; results go to `docs/BUGS.md`. Next: send fixes to `gdscript-coder`, then start Milestone 2 (levels 1–10, level flow, collapse replay) per `docs/GDD.md` section 10.
+- Git: remote `origin` is https://github.com/tmamado14/ohmie (branch `master`). Commit as the user only, with no Claude co-author or attribution lines. Push after each completed task.

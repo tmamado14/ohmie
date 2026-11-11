@@ -11,11 +11,17 @@ Ohmie is a small robot in a copper factory. Every room has a half-built circuit 
 
 ## Status
 
-Early development. Milestone 1, a one-room vertical slice, is being built. See the milestone plan in [docs/GDD.md](docs/GDD.md).
+Early development, but playable. Milestone 1 (a one-room vertical slice) works end to end: run and jump, carry resistors, plug them into sockets, watch the exact live readout, and walk through the door when the circuit reads exactly 1 Ω. See the milestone plan in [docs/GDD.md](docs/GDD.md).
 
 ## Screenshots
 
-Screenshots will be added here once the vertical slice is playable.
+The first room, "Half and Half". The board is one socket in series with two in parallel. Four resistors lie around the room, and one of them is a decoy.
+
+![The room at the start: three empty sockets, readout OPEN, door closed](tests/screenshots/default_boot.png)
+
+Solved: 1/2 Ω in series with two 1 Ω in parallel gives exactly 1 Ω, the wires light up and the door opens.
+
+![The solved circuit reading 1 Ω with the door open](tests/screenshots/slice_01_solved.png)
 
 ## Controls
 
@@ -37,7 +43,10 @@ Run the tests:
 
 ```
 godot --headless --path . --script res://tests/run_tests.gd
+godot --headless --path . --script res://tests/play_slice_01.gd
 ```
+
+The first runs the unit tests for the circuit math and level loading. The second plays the first room start to finish with scripted input.
 
 ## Project layout
 
