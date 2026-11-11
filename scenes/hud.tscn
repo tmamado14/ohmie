@@ -113,7 +113,7 @@ theme_override_colors/font_color = Color(1, 0.886, 0.627, 1)
 theme_override_colors/font_outline_color = Color(0.094, 0.18, 0.227, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 16
-text = "A/D move · Space jump · S drop · E pick up / place · R restart"
+text = "A/D move · Space jump · S drop through platform · E pick up / place · R restart"
 horizontal_alignment = 1
 vertical_alignment = 1
 

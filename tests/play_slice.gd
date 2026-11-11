@@ -13,6 +13,8 @@ extends SceneTree
 ##   godot --headless --path . --script res://tests/play_slice.gd
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
+## This test is written for dev_room.json, whatever level main.tscn defaults to.
+const LEVEL_PATH: String = "res://levels/dev_room.json"
 const ROOM_PATH: NodePath = ^"Room"
 const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
 
@@ -68,6 +70,7 @@ func _run() -> void:
 
 
 func _run_checks() -> int:
+	Room.level_override = LEVEL_PATH
 	var packed: PackedScene = load(MAIN_SCENE) as PackedScene
 	if packed == null:
 		_check(false, "main scene loads")

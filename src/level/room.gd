@@ -5,14 +5,20 @@ extends Node2D
 ## the open door completes the level, `restart` reloads the scene, and falling
 ## out respawns Ohmie (a carried resistor goes back to its home).
 ##
-## The level file is `level_path`, unless the command line has a user argument
-## --level=res://levels/<file>.json (after `--`), which wins.
+## The level file is, in order of precedence: `level_override` (set by scripted
+## tests; it survives `restart` reloads), a user argument
+## --level=res://levels/<file>.json on the command line (after `--`), or
+## `level_path`.
 ## Also connects gameplay signals to the Sfx autoload.
 
 ## Emitted once when Ohmie walks into the open door.
 signal level_completed
 
 const LEVEL_ARG_PREFIX: String = "--level="
+
+## When not empty, every Room loads this level instead of `level_path` or the
+## command line. A static, so it outlives scene reloads; for scripted tests.
+static var level_override: String = ""
 
 @export_file("*.json") var level_path: String = ""
 @export var player_scene: PackedScene
@@ -39,7 +45,9 @@ var _sfx: SfxPlayer = null
 
 func _ready() -> void:
 	_sfx = get_node_or_null(SfxPlayer.AUTOLOAD_PATH) as SfxPlayer
-	var override: String = level_path_from_command_line()
+	var override: String = level_override
+	if override.is_empty():
+		override = level_path_from_command_line()
 	if not override.is_empty():
 		level_path = override
 	if not _load_level():

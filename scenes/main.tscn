@@ -5,4 +5,4 @@
 [node name="Main" type="Node"]
 
 [node name="Room" parent="." instance=ExtResource("1_room")]
-level_path = "res://levels/dev_room.json"
+level_path = "res://levels/slice_01.json"
