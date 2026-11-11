@@ -227,3 +227,117 @@ Planned goal types, each arriving with the parts it needs:
 | `power` | A part dissipates no more than its rating | Power ratings on parts |
 
 Exactness stays a pillar: where a goal is a single value it is matched as a rational; where real parts have tolerances the goal is a stated range.
+
+## 12. Version 2 design: real circuits (added 2026-11-12)
+
+This section supersedes sections 3 (model and results), 6 (level format), 7 (difficulty curve) and 11 (goal format) wherever they differ. Sections 2 (carrying and interaction rules) and 5 (movement) still hold, with "resistor" read as "part".
+
+Ohmie is becoming a full electronics game. World 1 covers basic DC networks. Later worlds add more part families (LEDs and diodes, capacitors, switches and logic gates, AC), each as new parts, new meters and new goal quantities on the same engine and the same room format.
+
+### 12.1 Principles
+
+1. **Closed circuits.** A board is a complete loop or network. Nothing is measured "between A and B" any more; there are no terminal stubs.
+2. **A real solver decides.** The engine solves the whole network exactly (nodal analysis with rationals) and gives every node voltage, branch current and power. The game never special-cases a level. Any arrangement that satisfies the mission wins, so most rooms have several solutions.
+3. **Every slot takes any part.** Batteries and resistors are both carried and plugged in. A battery in the wrong slot, or a resistor where the source should be, gives whatever physics says: usually 0 A, sometimes a short.
+4. **Meters state the mission.** Ammeters, voltmeters and ohmmeters are fixed on the board and show live readings. A mission is one short line that refers to them.
+5. **Short missions.** "Draw 2 A." Never an explanation of the method. The title can hint; the mission does not teach.
+
+### 12.2 Parts and board elements
+
+Carried parts (`parts` in the level file):
+
+| Kind | Value | Notes |
+|---|---|---|
+| `resistor` | ohms, exact | Art exists for 1/2, 1, 2, 3, 4, 6, 10. Other values use a blank resistor with the value printed. |
+| `battery` | volts, exact | Ideal source. The positive end faces the slot's `from` node, which the board marks with a `+` badge when a battery is in. |
+
+Board elements (`circuit.edges`):
+
+| Type | Meaning |
+|---|---|
+| `wire` | Zero resistance. |
+| `slot` | Holds one part of any kind. Empty is an open circuit. |
+| `resistor` | Fixed resistor, cannot be removed. |
+| `battery` | Fixed battery, plus at `from`. |
+| `lamp` | A fixed resistor drawn as a bulb. Lit while its current is inside its rated range, dark below, blown above. |
+| `ammeter` | Ideal. Reads the current flowing `from` → `to`. |
+| `voltmeter` | Ideal. Reads V(`from`) − V(`to`). |
+| `ohmmeter` | Ideal. Reads the resistance between its two nodes with all sources off (a battery counts as a wire). Shows `OL` when open. |
+
+Circuit states the player can see: no current (wires plain), energized (wires bright), mission met (wires teal), and **short** (a source with no resistance in its loop, or conflicting sources): meters show `SHORT`, wires flash, the invalid sound plays, the door stays shut. A short does no damage in World 1.
+
+### 12.3 Goals
+
+```json
+"mission": "Draw 2 A.",
+"goal": [ { "of": "am1", "quantity": "current", "equals": "2" } ]
+```
+
+A goal is a list of conditions, all of which must hold. Each names an element, a quantity (`current`, `voltage`, `resistance`, `power`) and either `equals` (exact) or a `min`/`max` range (inclusive). The door is open while every condition holds.
+
+The readout plaque lists each condition: its target and the live value, green when met. The mission sign shows only the mission line.
+
+### 12.4 Level format (version 2)
+
+```json
+{
+  "id": "w1_02",
+  "title": "Resistance Is Futile",
+  "world": "old_workshop",
+  "mission": "Draw 2 A.",
+  "goal": [ { "of": "am1", "quantity": "current", "equals": "2" } ],
+  "tiles": ["40 characters per row, 23 rows"],
+  "spawn": [96, 640],
+  "door": [1180, 640],
+  "parts": [
+    { "id": "b1", "kind": "battery",  "value": "6", "pos": [300, 640] },
+    { "id": "r1", "kind": "resistor", "value": "3", "pos": [520, 551] }
+  ],
+  "circuit": {
+    "nodes": { "n1": [400, 300], "n2": [624, 300] },
+    "edges": [
+      { "id": "s1",  "type": "slot",    "from": "n1", "to": "n2" },
+      { "id": "am1", "type": "ammeter", "from": "n2", "to": "n3" },
+      { "id": "w1",  "type": "wire",    "from": "n3", "to": "n4" }
+    ]
+  }
+}
+```
+
+Tiles, positions, reach and geometry rules are unchanged from section 6. Slots, fixed parts, lamps and meters are 104×72 and sit on horizontal edges whose nodes are 224 px apart where space allows (never under 128). There is one format; the old `terminals`, `socket`, `fixed`, `pickups` and `target` fields are gone, and existing levels are migrated.
+
+### 12.5 World 1: the Old Workshop (DC basics)
+
+Ten rooms, then three optional overtime rooms. Values below are the lead's starting point; the level designer tunes them with the solver and must report every solution.
+
+| # | Title | Mission | Board | Parts in the room | Idea |
+|---|---|---|---|---|---|
+| 1 | Closing Time | Light the lamp. | One loop: a slot and a lamp | 6 V | Carry, plug in, close a loop |
+| 2 | Resistance Is Futile | Draw 2 A. | One loop: two slots and an ammeter | 6 V; 2, 3, 6 Ω | I = V / R: pick the resistor |
+| 3 | Ohm Sweet Ohm | Draw 3 A. | One loop: two slots and an ammeter | 3 V, 9 V; 1, 3, 6 Ω | Pick the source too. Two answers; the room makes one cheaper |
+| 4 | Chain Gang | Draw 1 A. | Fixed 6 V, two slots in series, ammeter | 1, 2, 3, 4 Ω | Series resistors add |
+| 5 | Parallel Parking | Draw 5 A. | Fixed 6 V, two slots in parallel, ammeter on the main line | 2, 3, 6 Ω | Parallel branches add their currents |
+| 6 | Divide and Conquer | Put 2 V on the meter. | Fixed 6 V, two slots in series, voltmeter across the second | 1, 2, 3, 4 Ω | Voltage divider. Two answers |
+| 7 | Half and Half | Make 1 Ω. | Ohmmeter across one slot in series with two in parallel | 1/2, 1, 1, 2 Ω | Series and parallel together; reading resistance |
+| 8 | Assault and Battery | Draw 3 A. | Two slots in series for sources, a fixed 3 Ω, ammeter | 3 V, 6 V, 9 V | Series sources add |
+| 9 | Light Duty | Light the lamp. Don't blow it. | One loop: two slots and a 2 Ω lamp rated 1 to 3/2 A | 6, 9, 12 V; 2, 4, 6, 10 Ω | A safe operating range. Many answers, some pop the bulb |
+| 10 | Ohm Stretch | Draw 2 A. Put 4 V on the meter. | Source slot, a series slot, two parallel slots; ammeter on the main line, voltmeter across the pair | 6 V, 12 V; 1, 2, 3, 4, 4, 6 Ω | Everything so far, two conditions at once |
+
+Overtime rooms (optional, reached after room 10):
+
+| # | Title | Mission | Board | Idea |
+|---|---|---|---|---|
+| 11 | Watt's Up | Burn 12 W in the heater. | Source slot, series slot, a fixed 3 Ω heater | Power: P = I²R |
+| 12 | A Bridge Too Far | Zero the bridge. Keep 3 A flowing. | Fixed source, a Wheatstone bridge with two fixed arms and two slots, an ammeter across the bridge and one on the supply | A balanced bridge. Not reducible by series and parallel |
+| 13 | Loop Hole | Put 4 V on the meter. | Two loops sharing a resistor, a source slot in each, voltmeter on the shared resistor | Two sources, two loops |
+
+Platforming rises as before: rooms 1–3 are nearly flat with rises of at most two tiles; from room 4 sockets sit at different heights; from room 7 a small pit may appear; overtime rooms are the hardest to move through.
+
+### 12.6 Order of work
+
+1. Engine: DC solver, goal conditions, puzzle search (`circuit-engine`).
+2. Art: battery part, blank resistor, meters, lamp, polarity badges (`asset-integrator`).
+3. Game: part model, generic slots, version 2 level format, meters and lamps on the board, short state, readout for several conditions, validator, migration of the development room (`gdscript-coder`).
+4. Levels: the thirteen rooms, each with solver output and a scripted route kept in `tests/` (`level-designer`).
+5. QA pass (`qa-tester`).
+6. After that: level select with saved progress, then the collapse replay for the ohmmeter rooms.
