@@ -15,7 +15,7 @@ extends Node
 ## releases a playing stream.
 
 const SOUND_NAMES: Array[StringName] = [
-	&"jump", &"land", &"pickup", &"place_resistor", &"invalid", &"connect", &"door_open", &"win",
+	&"jump", &"land", &"pickup", &"place_resistor", &"invalid", &"connect", &"door_open", &"win", &"switch",
 ]
 const SOUND_PATH: String = "res://assets/audio/sfx_%s.wav"
 const POOL_SIZE: int = 6

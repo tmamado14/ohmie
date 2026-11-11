@@ -1,1 +1,30 @@
-{ "levels": ["res://levels/w1_02.json", "res://levels/w1_07.json"] }
+{
+	"worlds": [
+		{
+			"id": "old_workshop",
+			"number": 1,
+			"name": "Old Workshop",
+			"topic": "DC basics",
+			"locked": false,
+			"rooms": [
+				{ "number": 1, "file": "res://levels/w1_01.json" },
+				{ "number": 2, "file": "res://levels/w1_02.json" },
+				{ "number": 3, "file": "res://levels/w1_03.json" },
+				{ "number": 4, "file": "res://levels/w1_04.json" },
+				{ "number": 5, "file": "res://levels/w1_05.json" },
+				{ "number": 6, "file": "res://levels/w1_06.json" },
+				{ "number": 7, "file": "res://levels/w1_07.json" },
+				{ "number": 8, "file": "res://levels/w1_08.json" },
+				{ "number": 9, "file": "res://levels/w1_09.json" },
+				{ "number": 10, "file": "res://levels/w1_10.json" },
+				{ "number": 11, "file": "res://levels/w1_11.json", "overtime": true },
+				{ "number": 12, "file": "res://levels/w1_12.json", "overtime": true },
+				{ "number": 13, "file": "res://levels/w1_13.json", "overtime": true }
+			]
+		},
+		{ "id": "copper_foundry", "number": 2, "name": "Copper Foundry", "topic": "Coming soon", "locked": true, "rooms": [] },
+		{ "id": "substation_switchyard", "number": 3, "name": "Substation Switchyard", "topic": "Coming soon", "locked": true, "rooms": [] },
+		{ "id": "signal_clocktower", "number": 4, "name": "Signal Clocktower", "topic": "Coming soon", "locked": true, "rooms": [] },
+		{ "id": "high_voltage_transmitter", "number": 5, "name": "High-Voltage Transmitter", "topic": "Coming soon", "locked": true, "rooms": [] }
+	]
+}

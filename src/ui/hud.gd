@@ -21,6 +21,11 @@ const MISSION_DONE_HEADING: String = "MISSION COMPLETE"
 ## The line under the victory banner.
 const VICTORY_NEXT_ROOM: String = "Press E for the next room"
 const VICTORY_PLAY_AGAIN: String = "Press R to play again"
+## The same lines when the game was started through the menus (Esc opens the map).
+const VICTORY_NEXT_ROOM_MAP: String = "Press E for the next room · Esc for the map"
+const VICTORY_MAP_PLAY_AGAIN: String = "Press Esc for the map · R to play again"
+## Appended to the control hint when Esc opens the map.
+const MAP_HINT: String = " · Esc map"
 ## Caption of the target row when the goal has one condition.
 const GOAL_CAPTION: String = "GOAL"
 ## Between the reading and the target on a two-condition row.
@@ -50,6 +55,7 @@ var _met: Array[bool] = []
 @onready var _mission_heading: Label = $MissionSign/Text/Heading
 @onready var _mission_text: Label = $MissionSign/Text/Mission
 @onready var _title: Label = $Title
+@onready var _hint: Label = $Hint
 @onready var _victory: Control = $Victory
 @onready var _victory_dim: ColorRect = $VictoryDim
 @onready var _victory_line: Label = $Victory/PlayAgain
@@ -70,6 +76,16 @@ func set_title(text: String) -> void:
 ## The one-line mission on the sign.
 func set_mission(text: String) -> void:
 	_mission_text.text = text
+
+
+## Adds " · Esc map" to the control hint (once) when `shown`, removes it otherwise.
+func set_map_hint_shown(shown: bool) -> void:
+	var base: String = _hint.text.trim_suffix(MAP_HINT)
+	_hint.text = base + MAP_HINT if shown else base
+
+
+func get_hint_text() -> String:
+	return _hint.text
 
 
 ## One entry per goal condition (at most MAX_ROWS are shown): its quantity
@@ -96,9 +112,13 @@ func show_readings(readings: PackedStringArray, met: Array[bool], goal_met: bool
 
 
 ## Shows the victory banner; the line under it invites to the next room when
-## there is one, otherwise to play again.
-func show_level_complete(has_next_room: bool = false) -> void:
-	_victory_line.text = VICTORY_NEXT_ROOM if has_next_room else VICTORY_PLAY_AGAIN
+## there is one, otherwise to play again. With `map_lines` (the game was
+## started through the menus) the line also offers Esc for the map.
+func show_level_complete(has_next_room: bool = false, map_lines: bool = false) -> void:
+	if map_lines:
+		_victory_line.text = VICTORY_NEXT_ROOM_MAP if has_next_room else VICTORY_MAP_PLAY_AGAIN
+	else:
+		_victory_line.text = VICTORY_NEXT_ROOM if has_next_room else VICTORY_PLAY_AGAIN
 	_victory_dim.visible = true
 	_victory.visible = true
 

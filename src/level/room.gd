@@ -5,12 +5,19 @@ extends Node2D
 ## level's goal, drives the HUD and the door; the open door completes the
 ## level, `restart` reloads the scene, and falling out respawns Ohmie (a
 ## carried part goes back to its home). After the level is complete,
-## `interact` loads the next level of the Campaign, if any.
+## `interact` loads the next built room of the Campaign, if any, and the room
+## is recorded as completed in GameSession's Progress (saved to disk only when
+## the game was started through the menus).
+##
+## When the game was started through the menus (GameSession.from_menus), Esc
+## (`menu_back`) returns to the level select, the next room is loaded with a
+## fade, and the victory line mentions the map. Otherwise Esc does nothing.
 ##
 ## The level file is, in order of precedence: `level_override` (set by scripted
 ## tests; it survives `restart` reloads), a user argument
-## --level=res://levels/<file>.json on the command line (after `--`), the
-## campaign's first level when `start_from_campaign` is set, or `level_path`.
+## --level=res://levels/<file>.json on the command line (after `--`), the room
+## chosen in the menus (GameSession.room_file), the campaign's first built room
+## when `start_from_campaign` is set, or `level_path`.
 ## Also connects gameplay signals to the Sfx autoload.
 
 ## Emitted once when Ohmie walks into the open door.
@@ -65,6 +72,7 @@ func _ready() -> void:
 	_tiles.build(level_data.tile_rows)
 	_hud.set_title(level_data.title)
 	_hud.set_mission(_goal.mission)
+	_hud.set_map_hint_shown(GameSession.from_menus)
 	var symbols: PackedStringArray = PackedStringArray()
 	var targets: PackedStringArray = PackedStringArray()
 	for i: int in _goal.condition_count():
@@ -85,10 +93,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("restart"):
 		get_viewport().set_input_as_handled()
 		get_tree().reload_current_scene()
+	elif event.is_action_pressed("menu_back") and GameSession.from_menus:
+		get_viewport().set_input_as_handled()
+		ScreenFade.go_to(get_tree(), ScreenFade.LEVEL_SELECT)
 	elif event.is_action_pressed("interact") and _complete and not _next_level.is_empty():
 		get_viewport().set_input_as_handled()
-		level_override = _next_level
-		get_tree().reload_current_scene()
+		if GameSession.from_menus:
+			GameSession.room_file = _next_level
+			ScreenFade.go_to(get_tree(), ScreenFade.GAME)
+		else:
+			level_override = _next_level
+			get_tree().reload_current_scene()
 
 
 ## The value of a --level=<path> user argument, or "" if there is none.
@@ -148,10 +163,12 @@ func _choose_level_path() -> String:
 	var from_command_line: String = level_path_from_command_line()
 	if not from_command_line.is_empty():
 		return from_command_line
+	if GameSession.from_menus and not GameSession.room_file.is_empty():
+		return GameSession.room_file
 	if start_from_campaign:
 		var campaign: Campaign = Campaign.load_from_file(Campaign.DEFAULT_PATH)
-		if campaign != null and not campaign.first().is_empty():
-			return campaign.first()
+		if campaign != null and not campaign.first_built_room().is_empty():
+			return campaign.first_built_room()
 	return level_path
 
 
@@ -241,9 +258,15 @@ func _on_door_entered() -> void:
 		_player.play_victory()
 	if _carry != null:
 		_carry.set_enabled(false)
+	var progress: Progress = GameSession.progress()
+	progress.mark_completed(level_path)
 	var campaign: Campaign = Campaign.load_from_file(Campaign.DEFAULT_PATH)
-	_next_level = campaign.next_after(level_path) if campaign != null else ""
-	_hud.show_level_complete(not _next_level.is_empty())
+	_next_level = campaign.next_built_after(level_path) if campaign != null else ""
+	if GameSession.from_menus and not _next_level.is_empty():
+		var world: CampaignWorld = campaign.world_of(_next_level)
+		if not progress.is_unlocked(world, world.find_room(_next_level)):
+			_next_level = ""
+	_hud.show_level_complete(not _next_level.is_empty(), GameSession.from_menus)
 	_play_sound(&"win")
 	level_completed.emit()
 
