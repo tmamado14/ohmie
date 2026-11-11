@@ -10,7 +10,7 @@ extends SceneTree
 ## Invariants checked on every frame of the spam tests:
 ##   conservation: every resistor is in exactly one state (loose, carried or
 ##     plugged), loose <=> visible, and the level's resistor count never changes;
-##   readout: the HUD text equals Hud.format_reading(solver result for the
+##   readout: the HUD text equals LevelGoal.reading_label(solver result for the
 ##     current socket contents) and the door is open exactly on a match.
 ##
 ## A check that exposes a real bug FAILS (and stays failing until the bug is
@@ -1020,8 +1020,8 @@ func _readout_problem() -> String:
 		if socket.is_filled():
 			filled[socket.socket_id] = socket.get_value()
 	var result: CircuitResult = CircuitSolver.solve(_room.get_circuit().build_graph(filled))
-	var want: String = Hud.format_reading(result)
-	var is_match: bool = result.matches(_room.get_target())
+	var want: String = _room.get_goal().reading_label(result)
+	var is_match: bool = _room.get_goal().is_met(result)
 	if _hud.get_equivalent_text() != want:
 		return "HUD '%s' but solver '%s'" % [_hud.get_equivalent_text(), want]
 	if _door.is_open() != is_match:

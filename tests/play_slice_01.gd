@@ -5,8 +5,9 @@ extends SceneTree
 ## First checks the decoy with the circuit API: 2 + (1 || 1) = 5/2, no match.
 ## Then solves the level start to finish through the input map only (no
 ## teleporting): 1/2 from the left ledge into s1 (still OPEN), 1 from the right
-## ledge into s2 (3/2, door closed), the floor 1 into s3 (1, door open), and
-## walks into the door.
+## ledge into s2 (3/2, door closed), the floor 1 into s3 (1, door open, mission
+## sign done), pulls s3 out and plugs it back (sign reverts, then done again),
+## and walks into the door.
 ##
 ## Usage (exit code 0 = all checks passed):
 ##   godot --headless --path . --script res://tests/play_slice_01.gd
@@ -16,6 +17,7 @@ const LEVEL_PATH: String = "res://levels/slice_01.json"
 const ROOM_PATH: NodePath = ^"Room"
 const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
 const TITLE: String = "Half and Half"
+const MISSION: String = "Make exactly 1 Ω between A and B to unlock the door."
 
 ## Layout facts of slice_01.json.
 const SPAWN: Vector2 = Vector2(96, 640)
@@ -88,6 +90,12 @@ func _check_start_state() -> void:
 	_check(_room.level_data.title == TITLE, "level title is '%s' (got '%s')" % [TITLE, _room.level_data.title])
 	_check(_hud.get_equivalent_text() == "OPEN", "initial readout is OPEN (got '%s')" % _hud.get_equivalent_text())
 	_check(not _door.is_open(), "door starts closed")
+	_check(_room.get_goal() != null and _room.get_goal().mission == MISSION,
+			"the level's mission is '%s'" % MISSION)
+	_check(_hud.get_mission_text() == _room.get_goal().mission,
+			"the mission sign shows the level's mission (got '%s')" % _hud.get_mission_text())
+	_check(_hud.get_goal_text() == "1 Ω", "the plaque shows GOAL 1 Ω (got '%s')" % _hud.get_goal_text())
+	_check(not _hud.is_mission_complete_shown(), "the mission sign starts not done")
 	_check(_player.position.distance_to(SPAWN) <= POSITION_TOLERANCE and _player.is_on_floor(),
 			"player starts on the floor at spawn (%s)" % _player.position)
 
@@ -163,6 +171,17 @@ func _solve() -> void:
 	_check(_hud.get_equivalent_text() == "1 Ω" and _door.is_open(),
 			"1/2 + (1 || 1): readout 1 Ω and the door opens (got '%s')" % _hud.get_equivalent_text())
 	_check(_room.get_board().get_last_result().matches(_room.get_target()), "board reports a match")
+	_check(_hud.is_mission_complete_shown(), "at 1 Ω the mission sign shows its done state")
+
+	# Pull the s3 resistor out: the sign reverts. Plug it back: done again.
+	await _interact()
+	_check(_carry.get_carried() == one_floor and not _socket("s3").is_filled(),
+			"pulls the 1 Ω back out of s3")
+	_check(not _hud.is_mission_complete_shown() and not _door.is_open(),
+			"pulled out: mission sign no longer done, door closed (readout '%s')" % _hud.get_equivalent_text())
+	await _interact()
+	_check(_socket("s3").get_resistor() == one_floor and _hud.is_mission_complete_shown() and _door.is_open(),
+			"plugged back: mission sign done again, door open (readout '%s')" % _hud.get_equivalent_text())
 
 	# Walk into the door.
 	Input.action_press("move_right")

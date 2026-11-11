@@ -37,10 +37,11 @@ func _run() -> int:
 	if not LevelPickup.parse_all(level.pickups, path, pickups):
 		print("INVALID  %s: pickups are invalid (see error above)" % path)
 		return EXIT_FAIL
-	var target: Rational = Rational.parse(level.target_text)
-	if target == null or not target.is_valid() or target.sign() <= 0:
-		print("INVALID  %s: target '%s' is not a value > 0" % [path, level.target_text])
+	var goal: LevelGoal = level.goal
+	if goal.type != LevelGoal.TYPE_RESISTANCE:
+		print("INVALID  %s: goal type '%s' cannot be validated" % [path, goal.type])
 		return EXIT_FAIL
+	var target: Rational = goal.target
 
 	var sockets: Array[Dictionary] = circuit.get_socket_descriptors()
 	var values: Array[Rational] = []
@@ -50,7 +51,8 @@ func _run() -> int:
 		value_texts.append(pickup.ohms.to_text())
 
 	print("Level:      %s \"%s\"" % [level.id, level.title])
-	print("Target:     %s ohm" % target.to_text())
+	print("Goal:       %s, value %s ohm" % [goal.type, target.to_text()])
+	print("Mission:    %s" % goal.mission)
 	var socket_ids: Array[String] = []
 	for socket: Dictionary in sockets:
 		socket_ids.append("%s (%s-%s)" % [socket["id"], socket["from"], socket["to"]])

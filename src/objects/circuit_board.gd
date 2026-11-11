@@ -5,7 +5,8 @@ extends Node2D
 ##
 ## Whenever a socket's contents change it builds the graph through
 ## LevelCircuit.build_graph, solves it with CircuitSolver and announces the
-## result with `resistance_changed`. It also announces once right after build().
+## result with `resistance_changed`; `is_match` is the level goal's verdict
+## (LevelGoal.is_met). It also announces once right after build().
 
 signal resistance_changed(result: CircuitResult, is_match: bool)
 
@@ -25,17 +26,17 @@ const TERMINAL_LABEL_OUTLINE_SIZE: int = 5
 @export var socket_scene: PackedScene
 
 var _circuit: LevelCircuit = null
-var _target: Rational = null
+var _goal: LevelGoal = null
 var _sockets: Array[CircuitSocket] = []
 var _wires: CircuitWires = null
 var _last_result: CircuitResult = null
 
 
 ## Builds every visual from `circuit` and announces the first reading.
-## `target` is the value that counts as a match. `theme` colours the wires.
-func build(circuit: LevelCircuit, target: Rational, theme: RoomTheme = null) -> void:
+## `goal` decides what counts as a match. `theme` colours the wires.
+func build(circuit: LevelCircuit, goal: LevelGoal, theme: RoomTheme = null) -> void:
 	_circuit = circuit
-	_target = target
+	_goal = goal
 	_wires = CircuitWires.new()
 	_wires.name = "Wires"
 	add_child(_wires)
@@ -125,7 +126,7 @@ func _refresh() -> void:
 		if socket.is_filled():
 			filled[socket.socket_id] = socket.get_value()
 	var result: CircuitResult = CircuitSolver.solve(_circuit.build_graph(filled))
-	var is_match: bool = result.matches(_target)
+	var is_match: bool = _goal != null and _goal.is_met(result)
 	_last_result = result
 	_wires.set_state(result.status == CircuitResult.Status.OK, is_match)
 	resistance_changed.emit(result, is_match)

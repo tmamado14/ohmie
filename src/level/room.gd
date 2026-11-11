@@ -1,7 +1,8 @@
 class_name Room
 extends Node2D
 ## Builds one room from a level file (theme, tiles, pickups, circuit board,
-## door, HUD, player) and runs its flow: the board's reading drives the HUD and the door,
+## door, HUD, player) and runs its flow: the board's reading, judged by the
+## level's goal, drives the HUD and the door,
 ## the open door completes the level, `restart` reloads the scene, and falling
 ## out respawns Ohmie (a carried resistor goes back to its home).
 ##
@@ -32,7 +33,7 @@ var level_data: LevelData = null
 var _theme: RoomTheme = null
 
 var _circuit: LevelCircuit = null
-var _target: Rational = null
+var _goal: LevelGoal = null
 var _player: Player = null
 var _carry: PlayerCarry = null
 var _pickups: Array[ResistorPickup] = []
@@ -60,14 +61,14 @@ func _ready() -> void:
 	_apply_theme()
 	_tiles.build(level_data.tile_rows)
 	_hud.set_title(level_data.title)
-	_hud.set_target(_target)
+	_hud.set_goal(_goal.goal_label(), _goal.mission)
 	_door.position = level_data.door
 	_door.entered.connect(_on_door_entered)
 	_door.opened.connect(_play_sound.bind(&"door_open"))
 	_build_pickups()
 	_spawn_player()
 	_board.resistance_changed.connect(_on_resistance_changed)
-	_board.build(_circuit, _target, _theme)
+	_board.build(_circuit, _goal, _theme)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -113,8 +114,14 @@ func get_circuit() -> LevelCircuit:
 	return _circuit
 
 
+## The level's goal (what solves it and the mission text), or null.
+func get_goal() -> LevelGoal:
+	return _goal
+
+
+## The goal's target resistance, or null when the goal is not a resistance goal.
 func get_target() -> Rational:
-	return _target
+	return _goal.target if _goal != null else null
 
 
 func get_pickups() -> Array[ResistorPickup]:
@@ -135,11 +142,7 @@ func _load_level() -> bool:
 		push_error("Room: level '%s' has an invalid circuit" % level_path)
 		level_data = null
 		return false
-	_target = Rational.parse(level_data.target_text)
-	if _target == null or not _target.is_valid() or _target.sign() <= 0:
-		push_error("Room: level '%s' has an invalid target '%s'" % [level_path, level_data.target_text])
-		level_data = null
-		return false
+	_goal = level_data.goal
 	return true
 
 
@@ -201,7 +204,7 @@ func _spawn_player() -> void:
 
 
 func _on_resistance_changed(result: CircuitResult, is_match: bool) -> void:
-	_hud.show_reading(result, is_match)
+	_hud.show_reading(_goal.reading_label(result), is_match)
 	if is_match and not _was_match:
 		_play_sound(&"connect")
 	_was_match = is_match

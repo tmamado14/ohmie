@@ -2,7 +2,8 @@ class_name LevelData
 extends RefCounted
 ## One level as described in GDD section 6, parsed from a JSON file.
 ##
-## Parsing only: no circuit math and no resistance parsing happens here.
+## Parsing only: no circuit math happens here. The goal (the optional "goal"
+## object, or the legacy "target" field) is parsed by LevelGoal.
 ## `pickups` and `circuit` are stored as parsed and only checked for the right
 ## container type; the objects that use them validate their own contents.
 
@@ -11,7 +12,7 @@ const COLUMN_COUNT: int = 40
 const TILE_CHARACTERS: String = ".#=BW!|"
 const DEFAULT_WORLD: String = "old_workshop"
 const REQUIRED_FIELDS: PackedStringArray = [
-	"id", "title", "teaches", "target", "tiles", "spawn", "door", "pickups", "circuit",
+	"id", "title", "teaches", "tiles", "spawn", "door", "pickups", "circuit",
 ]
 
 var id: String = ""
@@ -19,7 +20,10 @@ var title: String = ""
 var teaches: String = ""
 ## Optional: the world whose theme the room uses (res://resources/themes/<world>/).
 var world: String = DEFAULT_WORLD
-## The target resistance exactly as written in the file, for example "1" or "3/2".
+## What solves the level and the mission text (never null on a loaded level).
+var goal: LevelGoal = null
+## The goal's target resistance as text, for example "1" or "3/2". Kept for
+## older callers; prefer `goal`.
 var target_text: String = ""
 ## ROW_COUNT strings of COLUMN_COUNT tile characters each, top row first.
 var tile_rows: PackedStringArray = PackedStringArray()
@@ -60,17 +64,18 @@ static func from_dictionary(data: Variant, source: String) -> LevelData:
 			return null
 
 	var level: LevelData = LevelData.new()
-	for field: String in ["id", "title", "teaches", "target"]:
+	for field: String in ["id", "title", "teaches"]:
 		if not dict[field] is String:
 			push_error("LevelData: %s: field '%s' must be a string" % [source, field])
 			return null
 	level.id = dict["id"]
 	level.title = dict["title"]
 	level.teaches = dict["teaches"]
-	level.target_text = dict["target"]
-	if level.target_text.strip_edges().is_empty():
-		push_error("LevelData: %s: field 'target' is empty" % source)
+	level.goal = LevelGoal.from_level(dict, source)
+	if level.goal == null:
 		return null
+	if level.goal.target != null:
+		level.target_text = level.goal.target.to_text()
 	if dict.has("world"):
 		if not dict["world"] is String or (dict["world"] as String).strip_edges().is_empty():
 			push_error("LevelData: %s: field 'world' must be a non-empty string" % source)

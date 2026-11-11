@@ -4,6 +4,7 @@ A 2D platformer where the puzzle is a resistor network. Built with Godot 4.7.
 
 Ohmie is a small robot in a copper factory. Every room has a half-built circuit on the wall and a locked door. Carry resistors to the circuit's sockets, one at a time, until the equivalent resistance is **exactly 1 Ω**. Then the door opens.
 
+- **Every room has a mission.** For now the mission is an exact resistance. Later worlds add voltage sources, LEDs and logic gates, each with its own kind of goal.
 - **The whole circuit is always on screen.** Every level is one room.
 - **Platforming chooses the circuit.** Where a resistor lies and how hard a socket is to reach decide which solution is practical.
 - **Exact math.** Values are fractions, never rounded. 1/3 + 2/3 is 1.
