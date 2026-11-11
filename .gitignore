@@ -1,3 +1,6 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Local Claude Code MCP config (machine-specific paths)
+.mcp.json
