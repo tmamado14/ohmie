@@ -1,0 +1,744 @@
+{
+  "package": "Ohmie Circuit Works",
+  "version": "1.0",
+  "tile_size": 32,
+  "player_frame_px": [
+    128,
+    128
+  ],
+  "sprite_atlas_columns": 3,
+  "sprite_pose_order": [
+    "front",
+    "side",
+    "back",
+    "idle",
+    "walk",
+    "run",
+    "jump",
+    "push_scene",
+    "victory"
+  ],
+  "props": [
+    "resistor_crate",
+    "series_console",
+    "parallel_console",
+    "lever_switch",
+    "exit_door_closed",
+    "exit_door_open",
+    "battery_pickup",
+    "ohm_orb",
+    "checkpoint",
+    "lift_platform",
+    "pressure_button",
+    "insulated_bridge"
+  ],
+  "hazards_and_effects": [
+    "jelly_enemy",
+    "short_circuit_bot",
+    "spark_orb_enemy",
+    "spike_strip",
+    "tesla_coil",
+    "live_wire",
+    "bounce_pad",
+    "fan_hazard",
+    "spark_burst",
+    "electric_puff",
+    "victory_sparkle",
+    "damage_flash"
+  ],
+  "target_ohms": 1,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 3835
+    },
+    {
+      "path": "audio/music_copper_works_loop_16s.wav",
+      "bytes": 705644
+    },
+    {
+      "path": "audio/sfx_bounce.wav",
+      "bytes": 9304
+    },
+    {
+      "path": "audio/sfx_connect.wav",
+      "bytes": 10186
+    },
+    {
+      "path": "audio/sfx_door_open.wav",
+      "bytes": 17684
+    },
+    {
+      "path": "audio/sfx_enemy_zap.wav",
+      "bytes": 7540
+    },
+    {
+      "path": "audio/sfx_hurt.wav",
+      "bytes": 8642
+    },
+    {
+      "path": "audio/sfx_invalid.wav",
+      "bytes": 11068
+    },
+    {
+      "path": "audio/sfx_jump.wav",
+      "bytes": 9744
+    },
+    {
+      "path": "audio/sfx_land.wav",
+      "bytes": 4452
+    },
+    {
+      "path": "audio/sfx_pickup.wav",
+      "bytes": 11288
+    },
+    {
+      "path": "audio/sfx_place_resistor.wav",
+      "bytes": 6216
+    },
+    {
+      "path": "audio/sfx_switch.wav",
+      "bytes": 5336
+    },
+    {
+      "path": "audio/sfx_win.wav",
+      "bytes": 25622
+    },
+    {
+      "path": "data/circuit_puzzles.json",
+      "bytes": 2037
+    },
+    {
+      "path": "data/resistor_color_codes.json",
+      "bytes": 735
+    },
+    {
+      "path": "data/sample_level.json",
+      "bytes": 8900
+    },
+    {
+      "path": "effects/damage_flash.png",
+      "bytes": 5482,
+      "dimensions_px": [
+        64,
+        64
+      ]
+    },
+    {
+      "path": "effects/electric_puff.png",
+      "bytes": 7362,
+      "dimensions_px": [
+        64,
+        64
+      ]
+    },
+    {
+      "path": "effects/spark_burst.png",
+      "bytes": 5232,
+      "dimensions_px": [
+        64,
+        64
+      ]
+    },
+    {
+      "path": "effects/victory_sparkle.png",
+      "bytes": 4638,
+      "dimensions_px": [
+        64,
+        64
+      ]
+    },
+    {
+      "path": "environment/copper_works_background_1280x720.png",
+      "bytes": 1180582,
+      "dimensions_px": [
+        1280,
+        720
+      ]
+    },
+    {
+      "path": "environment/copper_works_background_original.png",
+      "bytes": 1888144,
+      "dimensions_px": [
+        1672,
+        941
+      ]
+    },
+    {
+      "path": "environment/tiles/ground_fill.png",
+      "bytes": 181,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/ground_top.png",
+      "bytes": 208,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/ground_top_left.png",
+      "bytes": 209,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/ground_top_right.png",
+      "bytes": 221,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/platform_left.png",
+      "bytes": 194,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/platform_middle.png",
+      "bytes": 184,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/platform_right.png",
+      "bytes": 192,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/platform_single.png",
+      "bytes": 199,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/reinforced_block.png",
+      "bytes": 212,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/support_beam.png",
+      "bytes": 197,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/wall_panel.png",
+      "bytes": 197,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/warning_panel.png",
+      "bytes": 186,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/wire_corner.png",
+      "bytes": 191,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/wire_horizontal.png",
+      "bytes": 121,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/wire_t_junction.png",
+      "bytes": 226,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tiles/wire_vertical.png",
+      "bytes": 227,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "environment/tileset_32px.png",
+      "bytes": 1160,
+      "dimensions_px": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "environment/tileset_preview_4x.png",
+      "bytes": 3031,
+      "dimensions_px": [
+        512,
+        512
+      ]
+    },
+    {
+      "path": "hazards/bounce_pad.png",
+      "bytes": 8306,
+      "dimensions_px": [
+        112,
+        60
+      ]
+    },
+    {
+      "path": "hazards/fan_hazard.png",
+      "bytes": 18165,
+      "dimensions_px": [
+        104,
+        104
+      ]
+    },
+    {
+      "path": "hazards/jelly_enemy.png",
+      "bytes": 10454,
+      "dimensions_px": [
+        80,
+        80
+      ]
+    },
+    {
+      "path": "hazards/live_wire.png",
+      "bytes": 9898,
+      "dimensions_px": [
+        112,
+        50
+      ]
+    },
+    {
+      "path": "hazards/short_circuit_bot.png",
+      "bytes": 14133,
+      "dimensions_px": [
+        88,
+        88
+      ]
+    },
+    {
+      "path": "hazards/spark_orb_enemy.png",
+      "bytes": 10341,
+      "dimensions_px": [
+        76,
+        76
+      ]
+    },
+    {
+      "path": "hazards/spike_strip.png",
+      "bytes": 11800,
+      "dimensions_px": [
+        112,
+        60
+      ]
+    },
+    {
+      "path": "hazards/tesla_coil.png",
+      "bytes": 15581,
+      "dimensions_px": [
+        88,
+        110
+      ]
+    },
+    {
+      "path": "interactive/resistors/resistor_0p5ohm.png",
+      "bytes": 1141,
+      "dimensions_px": [
+        96,
+        64
+      ]
+    },
+    {
+      "path": "interactive/resistors/resistor_10ohm.png",
+      "bytes": 1007,
+      "dimensions_px": [
+        96,
+        64
+      ]
+    },
+    {
+      "path": "interactive/resistors/resistor_1ohm.png",
+      "bytes": 809,
+      "dimensions_px": [
+        96,
+        64
+      ]
+    },
+    {
+      "path": "interactive/resistors/resistor_2ohm.png",
+      "bytes": 939,
+      "dimensions_px": [
+        96,
+        64
+      ]
+    },
+    {
+      "path": "interactive/resistors/resistor_3ohm.png",
+      "bytes": 938,
+      "dimensions_px": [
+        96,
+        64
+      ]
+    },
+    {
+      "path": "interactive/resistors/resistor_4ohm.png",
+      "bytes": 878,
+      "dimensions_px": [
+        96,
+        64
+      ]
+    },
+    {
+      "path": "interactive/resistors/resistor_6ohm.png",
+      "bytes": 947,
+      "dimensions_px": [
+        96,
+        64
+      ]
+    },
+    {
+      "path": "player/back.png",
+      "bytes": 10971,
+      "dimensions_px": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "player/front.png",
+      "bytes": 11794,
+      "dimensions_px": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "player/idle.png",
+      "bytes": 11630,
+      "dimensions_px": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "player/jump.png",
+      "bytes": 12256,
+      "dimensions_px": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "player/ohmie_poses_atlas_128.png",
+      "bytes": 113340,
+      "dimensions_px": [
+        384,
+        384
+      ]
+    },
+    {
+      "path": "player/push_scene.png",
+      "bytes": 16245,
+      "dimensions_px": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "player/run.png",
+      "bytes": 13690,
+      "dimensions_px": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "player/side.png",
+      "bytes": 11363,
+      "dimensions_px": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "player/victory.png",
+      "bytes": 14111,
+      "dimensions_px": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "player/walk.png",
+      "bytes": 11364,
+      "dimensions_px": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "preview/illustrative_level_scene.png",
+      "bytes": 1149637,
+      "dimensions_px": [
+        1280,
+        720
+      ]
+    },
+    {
+      "path": "props/battery_pickup.png",
+      "bytes": 7627,
+      "dimensions_px": [
+        64,
+        64
+      ]
+    },
+    {
+      "path": "props/checkpoint.png",
+      "bytes": 12236,
+      "dimensions_px": [
+        88,
+        128
+      ]
+    },
+    {
+      "path": "props/exit_door_closed.png",
+      "bytes": 24419,
+      "dimensions_px": [
+        108,
+        160
+      ]
+    },
+    {
+      "path": "props/exit_door_open.png",
+      "bytes": 26417,
+      "dimensions_px": [
+        108,
+        160
+      ]
+    },
+    {
+      "path": "props/insulated_bridge.png",
+      "bytes": 16829,
+      "dimensions_px": [
+        160,
+        100
+      ]
+    },
+    {
+      "path": "props/lever_switch.png",
+      "bytes": 13739,
+      "dimensions_px": [
+        104,
+        104
+      ]
+    },
+    {
+      "path": "props/lift_platform.png",
+      "bytes": 20836,
+      "dimensions_px": [
+        160,
+        112
+      ]
+    },
+    {
+      "path": "props/ohm_orb.png",
+      "bytes": 11165,
+      "dimensions_px": [
+        72,
+        72
+      ]
+    },
+    {
+      "path": "props/parallel_console.png",
+      "bytes": 22317,
+      "dimensions_px": [
+        136,
+        104
+      ]
+    },
+    {
+      "path": "props/pressure_button.png",
+      "bytes": 9643,
+      "dimensions_px": [
+        112,
+        76
+      ]
+    },
+    {
+      "path": "props/resistor_crate.png",
+      "bytes": 19983,
+      "dimensions_px": [
+        120,
+        120
+      ]
+    },
+    {
+      "path": "props/series_console.png",
+      "bytes": 17238,
+      "dimensions_px": [
+        128,
+        104
+      ]
+    },
+    {
+      "path": "source_sheets/hazards_sheet.png",
+      "bytes": 1788300,
+      "dimensions_px": [
+        1536,
+        1024
+      ]
+    },
+    {
+      "path": "source_sheets/ohmie_vertical_character_sheet.png",
+      "bytes": 1581122,
+      "dimensions_px": [
+        1536,
+        1024
+      ]
+    },
+    {
+      "path": "source_sheets/props_sheet.png",
+      "bytes": 1347875,
+      "dimensions_px": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "ui/button_connect.png",
+      "bytes": 1897,
+      "dimensions_px": [
+        112,
+        44
+      ]
+    },
+    {
+      "path": "ui/button_pause.png",
+      "bytes": 1963,
+      "dimensions_px": [
+        112,
+        44
+      ]
+    },
+    {
+      "path": "ui/button_reset.png",
+      "bytes": 1587,
+      "dimensions_px": [
+        112,
+        44
+      ]
+    },
+    {
+      "path": "ui/button_resume.png",
+      "bytes": 1961,
+      "dimensions_px": [
+        112,
+        44
+      ]
+    },
+    {
+      "path": "ui/button_start.png",
+      "bytes": 1810,
+      "dimensions_px": [
+        112,
+        44
+      ]
+    },
+    {
+      "path": "ui/circuit_panel.png",
+      "bytes": 4386,
+      "dimensions_px": [
+        448,
+        144
+      ]
+    },
+    {
+      "path": "ui/heart_empty.png",
+      "bytes": 209,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "ui/heart_full.png",
+      "bytes": 289,
+      "dimensions_px": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "ui/hud_blank.png",
+      "bytes": 585,
+      "dimensions_px": [
+        256,
+        72
+      ]
+    },
+    {
+      "path": "ui/hud_target_1ohm.png",
+      "bytes": 5452,
+      "dimensions_px": [
+        384,
+        72
+      ]
+    },
+    {
+      "path": "ui/resistor_slot_empty.png",
+      "bytes": 720,
+      "dimensions_px": [
+        72,
+        72
+      ]
+    },
+    {
+      "path": "ui/resistor_slot_selected.png",
+      "bytes": 678,
+      "dimensions_px": [
+        72,
+        72
+      ]
+    },
+    {
+      "path": "ui/victory_banner.png",
+      "bytes": 5368,
+      "dimensions_px": [
+        320,
+        96
+      ]
+    }
+  ]
+}
