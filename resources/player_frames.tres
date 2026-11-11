@@ -1,0 +1,63 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/player/back.png" id="1_auq3r"]
+[ext_resource type="Texture2D" path="res://assets/player/front.png" id="2_v5o4b"]
+[ext_resource type="Texture2D" path="res://assets/player/jump.png" id="3_ockak"]
+[ext_resource type="Texture2D" path="res://assets/player/idle.png" id="4_tvwwy"]
+[ext_resource type="Texture2D" path="res://assets/player/walk.png" id="5_7ndyq"]
+[ext_resource type="Texture2D" path="res://assets/player/run.png" id="6_gl188"]
+[ext_resource type="Texture2D" path="res://assets/player/victory.png" id="7_xt3xs"]
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_auq3r")
+}],
+"loop": 0,
+"name": &"back",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_v5o4b")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("3_ockak")
+}],
+"loop": 0,
+"name": &"jump",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("4_tvwwy")
+}],
+"loop": 0,
+"name": &"notice",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("5_7ndyq")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_gl188")
+}],
+"loop": 1,
+"name": &"run",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("7_xt3xs")
+}],
+"loop": 0,
+"name": &"victory",
+"speed": 1.0
+}]

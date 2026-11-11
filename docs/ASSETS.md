@@ -6,7 +6,7 @@ Audited 2026-11-11 against Godot 4.7.2 (Compatibility renderer). Maintained by t
 
 - Everything under `assets/` (except `assets/processed/`) is an original and is read-only. Never edit, move, or delete those files.
 - Derived or new art goes in `assets/processed/`. Godot resources built from art (`.tres`) go in `resources/`.
-- Texture filtering is set project-wide to Nearest, so no per-file import overrides are needed.
+- Texture filtering is meant to be Nearest project-wide (`rendering/textures/canvas_textures/default_texture_filter=0` in `project.godot`), so no per-file overrides are needed. As of 2026-11-11 that line is **not yet present** in `project.godot`, so Godot's default (Linear) applies until it is added.
 
 **Import result:** `godot --headless --import` processed all 91 files (78 PNG, 13 WAV) with exit code 0 and no errors or warnings.
 
@@ -93,7 +93,7 @@ All 13 files are PCM WAV, mono, 22050 Hz, 16-bit. Godot imports them as `AudioSt
 
 | File | Length | Verdict |
 |---|---|---|
-| `music_copper_works_loop_16s.wav` | 16.0 s | **Usable with changes.** Imported with looping off. Set `edit/loop_mode` to Forward in its `.import` file. Short loop, so play it quietly. |
+| `music_copper_works_loop_16s.wav` | 16.0 s | **Done.** Its `.import` sidecar now has `edit/loop_mode=2` (Forward), `loop_begin=0`, `loop_end=-1` (end of file). The WAV itself is unchanged. Loads as `AudioStreamWAV` with `loop_mode == LOOP_FORWARD` across the whole file. Short loop, so play it quietly. |
 | `sfx_jump`, `sfx_land`, `sfx_pickup`, `sfx_place_resistor`, `sfx_connect`, `sfx_invalid`, `sfx_door_open`, `sfx_win` | 0.10–0.58 s | **Usable as is.** All used in the slice. |
 | `sfx_bounce`, `sfx_enemy_zap`, `sfx_hurt`, `sfx_switch` | 0.12–0.21 s | **Usable as is.** Later milestones. |
 
@@ -108,16 +108,64 @@ All 13 files are PCM WAV, mono, 22050 Hz, 16-bit. Godot imports them as `AudioSt
 | `preview/illustrative_level_scene.png` | Reference only. Target look for the slice. |
 | `source_sheets/*.png` (3 files) | Not used in game. High-resolution sources for future art edits. Excluded from export later. |
 
+## Processed and generated
+
+Everything here is rebuilt by a script in `tools/`. Do not hand-edit the outputs; change the script and re-run it. All commands run from the project root with the console Godot build; run `--headless --path . --import` after regenerating PNGs.
+
+| Command | Produces |
+|---|---|
+| `--headless --path . --script res://tools/build_tileset.gd` | `resources/tileset.tres` |
+| `--headless --path . --script res://tools/build_player_frames.gd` | `resources/player_frames.tres` |
+| `--headless --path . --script res://tools/generate_placeholders.gd` | the five PNGs in `assets/processed/` |
+| `--headless --path . --script res://tools/check_resources.gd` | nothing; verifies all of the above plus the music loop (exit 0 = pass) |
+
+### TileSet: `res://resources/tileset.tres`
+
+- One `TileSetAtlasSource`, **source id 0**, texture `res://assets/environment/tileset_32px.png`, `tile_size` and `texture_region_size` 32×32, 16 tiles, alternative 0 only.
+- **Tile ID n is at atlas coords `Vector2i(n % 4, n / 4)`.** Example: `layer.set_cell(cell, 0, Vector2i(id % 4, id / 4))`.
+- Physics layer 0: `collision_layer = 1` ("world"), `collision_mask = 0`. Full 32×32 square on IDs 0 ground_top_left, 1 ground_top, 2 ground_top_right, 3 ground_fill, 12 wall_panel, 13 warning_panel, 14 reinforced_block.
+- Physics layer 1: `collision_layer = 2` ("one-way platform"), `collision_mask = 0`. One polygon with `one_way = true` on IDs 4 platform_left, 5 platform_middle, 6 platform_right, 7 platform_single, covering pixel rows 7–20 full width (local points y −9 to +5). `check_resources.gd` confirms the platform art really occupies rows 7–20.
+- No collision: IDs 8 wire_horizontal, 9 wire_vertical, 10 wire_corner, 11 wire_t_junction, 15 support_beam.
+- Both masks are 0 on purpose: static tiles never need to scan, and a non-zero tile mask would make the platforms collide with the player even after the player clears bit 2 from its own mask (Godot collides a pair if either side's mask matches). The player should use mask `1 | 2` normally and drop bit 2 to fall through a platform.
+
+### Player animations: `res://resources/player_frames.tres`
+
+`SpriteFrames` built from the 128×128 poses in `assets/player/`. No `default` animation exists, so set `animation` explicitly (start with `idle`). Feet sit on y=124 of each frame, so use a bottom-centre offset (for example `offset = Vector2(0, -60)` with `centered = true`, or `centered = false` with `offset = Vector2(-64, -124)`). Side poses face right; use `flip_h` for left.
+
+| Animation | Frames | FPS | Loop |
+|---|---|---|---|
+| `idle` | front.png | 1 | yes |
+| `run` | walk.png, run.png | 8 | yes |
+| `jump` | jump.png | 1 | no |
+| `victory` | victory.png | 1 | no |
+| `back` | back.png | 1 | no |
+| `notice` | idle.png | 1 | no |
+
+### Placeholder art (`assets/processed/`, from `tools/generate_placeholders.gd`)
+
+Palette sampled from the tileset and UI slot: dark teal `#182E3A` outline, panel `#102A36`, copper `#B66B39`, orange `#ECAA57`, gold `#EAB940`, cream `#FFE2A0`, cyan `#4BD3C2`. Every pixel is set directly: hard edges, no anti-aliasing, transparent background.
+
+| Resource path | Size | What it is |
+|---|---|---|
+| `res://assets/processed/socket_empty.png` | 104×72 | World socket for a 96×64 resistor icon. Dark outline, 1 px cyan border, gold corner dots, semi-opaque (alpha 200) dark inner panel. Copper lead stubs on both side edges, rows 34–37 (centred on y=36), open at the outer edge so a wire ending at (0, 36) or (103, 36) looks connected. Draw the resistor icon at offset (4, 4). |
+| `res://assets/processed/socket_highlight.png` | 104×72 | Same layout with a 3 px gold/cream/gold border and cyan corner dots. Swap in when the socket is the interaction target. |
+| `res://assets/processed/pickup_highlight.png` | 104×72 | Gold/cream/gold 3 px frame with a dark 1 px outline and a fully transparent centre (the frame is the outer 4 px). Draw centred on a loose 96×64 resistor icon, that is at icon position − (4, 4). |
+| `res://assets/processed/node_dot.png` | 16×16 | Copper junction dot, about 14 px across, dark outline, orange highlight. Centre it on the junction point. |
+| `res://assets/processed/terminal.png` | 32×32 | Gold terminal post, about 30 px across: dark outline, shaded gold rim, inner cap with a dark centre hole. No plus or minus sign, so it can mark either end. Centre it on the terminal point. |
+
 ## Missing for the vertical slice
 
-| Gap | Decision |
-|---|---|
-| World socket that fits a 96×64 resistor, in empty and highlighted states | Placeholder made by `asset-integrator` in `assets/processed/`, based on the UI slot style. |
-| Wires connecting sockets, terminals and junctions | Drawn in code with `Line2D` from level data, in the tileset's copper colour. Wire tiles stay decorative. |
-| Circuit terminals (the two points resistance is measured between) | `battery_pickup.png` for the source, a small generated node dot for junctions. |
-| "Carrying" indicator | The resistor icon shown above Ohmie's head. No new art. |
-| Interact prompt ("E") | Text label. No new art. |
-| UI font with an Ω glyph | Godot's default font, which includes Ω. A pixel font is a Milestone 2 task. |
-| True run and idle animation cycles | Not filled. 2-frame run from existing poses. |
-| TileSet resource with collision, SpriteFrames for the player | Built by `asset-integrator` in `resources/`. |
-| Resistor icons for values other than the seven supplied | Not needed yet. Levels 1–10 are restricted to the seven values. |
+| Gap | Decision | Status |
+|---|---|---|
+| World socket that fits a 96×64 resistor, in empty and highlighted states | Placeholder in `assets/processed/`, based on the UI slot style. | **Filled:** `socket_empty.png`, `socket_highlight.png`. |
+| Highlight around a loose resistor that is the interaction target | Placeholder frame. | **Filled:** `pickup_highlight.png`. |
+| Wires connecting sockets, terminals and junctions | Drawn in code with `Line2D` from level data, in the tileset's copper colour (`#B66B39`, outline `#182E3A`). Wire tiles stay decorative. | Code task (gdscript-coder). |
+| Circuit terminals (the two points resistance is measured between) | Generated gold terminal post; generated copper dot for junctions. `battery_pickup.png` stays available as a decorative source marker. | **Filled:** `terminal.png`, `node_dot.png`. |
+| "Carrying" indicator | The resistor icon shown above Ohmie's head. No new art. | No art needed. |
+| Interact prompt ("E") | Text label. No new art. | No art needed. |
+| UI font with an Ω glyph | Godot's default font, which includes Ω. A pixel font is a Milestone 2 task. | Deferred. |
+| True run and idle animation cycles | 2-frame run from existing poses. | Not filled (accepted). |
+| TileSet resource with collision | Built in `resources/`. | **Filled:** `resources/tileset.tres`. |
+| SpriteFrames for the player | Built in `resources/`. | **Filled:** `resources/player_frames.tres`. |
+| Looping music | `.import` sidecar edit only. | **Filled:** loop mode Forward. |
+| Resistor icons for values other than the seven supplied | Not needed yet. Levels 1–10 are restricted to the seven values. | Deferred. |
