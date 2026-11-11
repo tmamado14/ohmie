@@ -33,12 +33,14 @@ Ohmie is a small battery-backed robot in a copper factory. Every room has a half
 ### Interaction rules
 
 - Ohmie carries at most **one** resistor. It floats above their head.
-- `interact` (E) acts on the nearest interactable within 56 px, which is highlighted:
+- Ohmie must be **standing** on a floor or platform to interact. In the air, nothing is highlighted and `interact` does nothing. This keeps a socket or resistor on a ledge from being reached by hopping underneath it.
+- With empty hands the valid targets are loose resistors and filled sockets. While carrying, the valid targets are sockets.
+- `interact` (E) acts on the nearest valid target within 56 px, which is highlighted:
   - Empty hands at a loose resistor: pick it up.
   - Carrying at an empty socket: plug it in.
   - Empty hands at a filled socket: pull the resistor out.
   - Carrying at a filled socket: swap.
-  - Carrying with nothing in range: put the resistor down at Ohmie's feet.
+  - Carrying with nothing in range: put the resistor down at Ohmie's feet. It always ends up fully on screen, fully supported by the surface, and not on top of another loose resistor; it slides a little to manage that, or the action is refused.
 - `restart` (R) resets the room.
 - The door is open exactly while the readout equals the target. Change the circuit and it shuts again.
 - Walking into the open door completes the level, whether or not Ohmie is carrying something.
