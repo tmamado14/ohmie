@@ -28,7 +28,8 @@ The long-term aim is a full electronics game. World 1 covers basic DC networks. 
 
 - Ohmie carries at most **one** part. It floats above their head.
 - Ohmie must be **standing** on a floor or platform to interact. In the air nothing is highlighted and the interact key does nothing, so a part or slot on a ledge cannot be reached by hopping underneath it.
-- With empty hands the valid targets are loose parts and filled slots. While carrying, the valid targets are slots. The nearest valid target within 56 px of Ohmie's body centre is highlighted.
+- Ohmie must also be standing **at the target's level**: on the surface a loose part rests on, or on the surface a slot sits above. A part on a ledge cannot be taken from the floor beneath it.
+- With empty hands the valid targets are loose parts and filled slots. While carrying, the valid targets are slots. The nearest valid target within 56 px of Ohmie's body centre is highlighted and shows a small name tag with its value.
 - The interact key (E):
   - empty hands at a loose part: pick it up;
   - carrying at an empty slot: plug it in;
@@ -174,7 +175,7 @@ Basic DC networks. Ten rooms, then three optional overtime rooms that open after
 
 Mission variety is deliberate: the player lights lamps (1, 9), sets a current (2, 3), builds a resistance (4, 7), sets branch currents (5), sets a voltage (6, 8, 13), meets two conditions at once (5, 10, 12), hits a power (11) and zeroes a bridge (12). No more than two rooms in a row ask for the same kind of reading.
 
-Platforming rises alongside: rooms 1–3 are nearly flat; from room 4 slots sit at different heights and the order of trips matters; the overtime rooms add bounce pads, enemies and hazards.
+Platforming rises alongside: room 1 is flat; rooms 2 and 3 each add a ledge or two that need a held jump; from room 4 slots sit at different heights and the order of trips matters; the overtime rooms add bounce pads, enemies and hazards.
 
 ## 8. Screens and flow
 
@@ -186,7 +187,7 @@ Splash (engine card, then the producer card) → title → world select → leve
 ## 9. Presentation
 
 - **Art.** A hand-inked 1940s cartoon look with watercolour texture. Art is authored at twice its on-screen size and drawn at half scale on a 1280 × 720 layout, so it stays sharp on a 1080p window.
-- **Readability.** The background is dimmed slightly. Slots and loose parts draw in front of Ohmie; wires, meters and the door draw behind.
+- **Readability.** The background is dimmed slightly. Ohmie draws in front of the board; the part being carried draws in front of everything. The highlighted target's name tag keeps its value readable while Ohmie stands over it. All numerals are full-height lining figures.
 - **Sound.** Jump, land, pick up, place, invalid action, mission met, door, win, bounce, hurt. One looping music track per world.
 
 ## 10. Roadmap
