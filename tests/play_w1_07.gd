@@ -9,8 +9,10 @@ extends SceneTree
 ## ledge into s2 (3/2 Ω, door closed), the floor 1 into s3 (1 Ω, door open,
 ## mission sign done), pulls s3 out and plugs it back (sign reverts, then done
 ## again), and walks into the door. The plaque reading and the ohmmeter on the
-## board agree at every step. w1_07 is the campaign's last room, so the victory
-## line offers to play again and `interact` loads nothing.
+## board agree at every step. The room that follows is read from the campaign
+## at run time (Campaign.next_built_after): when there is one, the victory line
+## offers it and `interact` loads it; when w1_07 is the last built room, the
+## line offers to play again and `interact` keeps the completed room.
 ##
 ## Usage (exit code 0 = all checks passed):
 ##   godot --headless --path . --fixed-fps 60 --script res://tests/play_w1_07.gd
@@ -21,8 +23,6 @@ const ROOM_PATH: NodePath = ^"Room"
 const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
 const TITLE: String = "Half and Half"
 const MISSION: String = "Make 1 Ω."
-## w1_07 is the campaign's last room.
-const PLAY_AGAIN_LINE: String = "Press R to play again"
 const RELOAD_FRAMES: int = 6
 
 ## Layout facts of w1_07.json.
@@ -88,7 +88,7 @@ func _run_checks() -> int:
 	_check_start_state()
 	_check_decoy()
 	await _solve()
-	await _check_last_room()
+	await _check_next_room()
 	return 0 if _failed == 0 else 1
 
 
@@ -207,20 +207,30 @@ func _solve() -> void:
 	_check(_hud.is_level_complete_shown(), "the level-complete banner is shown")
 
 
-## After completion in the campaign's last room: the victory line offers to
-## play again, and `interact` (sent as an input event, as a key press would
-## be) does not load another room.
-func _check_last_room() -> void:
-	print("-- last room")
-	_check(_hud.get_victory_line() == PLAY_AGAIN_LINE,
-			"the victory line reads '%s' (got '%s')" % [PLAY_AGAIN_LINE, _hud.get_victory_line()])
+## After completion, with the following room taken from the campaign: the
+## victory line offers it and `interact` (sent as an input event, as a key
+## press would be) loads it; or, when this is the last built room, the line
+## offers to play again and `interact` keeps the completed room.
+func _check_next_room() -> void:
+	print("-- next room")
+	var campaign: Campaign = Campaign.load_from_file(Campaign.DEFAULT_PATH)
+	var next_file: String = campaign.next_built_after(LEVEL_PATH) if campaign != null else ""
+	var next_data: LevelData = LevelData.load_from_file(next_file) if not next_file.is_empty() else null
+	var expected_line: String = Hud.VICTORY_NEXT_ROOM if next_data != null else Hud.VICTORY_PLAY_AGAIN
+	_check(_hud.get_victory_line() == expected_line,
+			"the victory line reads '%s' (got '%s')" % [expected_line, _hud.get_victory_line()])
 	_send_action_event(&"interact", true)
 	await _wait_physics(1)
 	_send_action_event(&"interact", false)
 	await _wait_physics(RELOAD_FRAMES)
 	var room: Room = current_scene.get_node_or_null(ROOM_PATH) as Room if current_scene != null else null
-	_check(room == _room and room.is_complete(),
-			"pressing interact in the last room keeps the completed room")
+	if next_data != null:
+		_check(room != null and room.level_data != null and room.level_data.title == next_data.title,
+				"pressing interact loads the next room, %s '%s' (got '%s')" % [next_file, next_data.title,
+					room.level_data.title if room != null and room.level_data != null else "no room"])
+	else:
+		_check(room == _room and room.is_complete(), "last built room: pressing interact keeps the completed room")
+	Room.level_override = ""
 
 
 ## The plaque's reading and the ohmmeter on the board both read `expected`.

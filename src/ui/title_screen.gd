@@ -1,7 +1,8 @@
 class_name TitleScreen
 extends Control
-## The title screen: the bobbing "Ohmie" logotype with its bolt, the
-## "Circuit Adventure" ribbon, Ohmie busy on the workshop floor, and the menu
+## The title screen: the bobbing "Ohmie" logotype (it scales in on arrival)
+## with its glowing bolt, the "Circuit Adventure" ribbon, a full-size Ohmie
+## busy on the workshop floor left of the menu, and the menu
 ## (Play, Quit). Up/down or the mouse select, Enter/Space/E or a click confirm.
 ## Play goes to the world select; Quit closes the game. Starts the menu music.
 
@@ -20,8 +21,13 @@ const QUIT: String = "Quit"
 const LOGO_RECT: Rect2 = Rect2(240, 28, 800, 220)
 const LOGO_FONT_SIZE: int = 176
 const LOGO_TILT_DEGREES: float = -3.0
-const BOLT_RECT: Rect2 = Rect2(962, 26, 76, 122)
+## Right of the "e" with a clear gap, low enough to keep off the top edge at the top of the bob.
+const BOLT_RECT: Rect2 = Rect2(990, 36, 76, 122)
 const BOLT_TILT_DEGREES: float = 16.0
+## Warm additive glow behind the bolt, centred on it, pulsing slowly.
+const BOLT_GLOW_SIZE: Vector2 = Vector2(210, 210)
+const BOLT_GLOW_COLOR: Color = Color(1.0, 0.78, 0.3, 0.85)
+const BOLT_GLOW_MIN_ALPHA: float = 0.45
 ## A soft dark pool behind the logo and ribbon so the cream letters stand off the posters.
 const HALO_RECT: Rect2 = Rect2(180, -40, 920, 470)
 const HALO_ALPHA: float = 0.5
@@ -32,8 +38,16 @@ const SUBTITLE_FONT_SIZE: int = 34
 const BUTTON_CENTER_X: float = 640.0
 const FIRST_BUTTON_Y: float = 392.0
 const BUTTON_SPACING: float = 112.0
-const OHMIE_START: Vector2 = Vector2(250, 656)
-const OHMIE_RUN_DISTANCE: float = 190.0
+## Ohmie on the floor strip left of the menu. At scale 1.0 the character is
+## about 192 px tall in its 256 px frames; 1.1 makes him about 211 px.
+const OHMIE_START: Vector2 = Vector2(268, 664)
+const OHMIE_SCALE: float = 1.1
+## Short enough that his victory stars and jump arms stay left of the selection bolt beside the buttons.
+const OHMIE_RUN_DISTANCE: float = 80.0
+const OHMIE_RUN_SPEED: float = 220.0
+const OHMIE_HOP_HEIGHT: float = 96.0
+const OHMIE_HOP_SECONDS: float = 0.34
+const OHMIE_IDLE_SECONDS: float = 2.4
 const HINT_RECT: Rect2 = Rect2(340, 664, 600, 36)
 const VERSION_RECT: Rect2 = Rect2(900, 680, 360, 30)
 
@@ -41,13 +55,19 @@ const VERSION_RECT: Rect2 = Rect2(900, 680, 360, 30)
 const BOB_PIXELS: float = 6.0
 const BOB_SECONDS: float = 3.2
 const HINT_BLINK_SECONDS: float = 0.9
-const BOLT_PULSE_SECONDS: float = 1.6
+const BOLT_PULSE_SECONDS: float = 2.4
+## Logo entrance: starts this small and transparent, then eases out (back) to full size.
+const LOGO_INTRO_SCALE: float = 0.7
+const LOGO_INTRO_DELAY: float = 0.15
+const LOGO_INTRO_SECONDS: float = 0.75
+const LOGO_INTRO_FADE_SECONDS: float = 0.3
 const QUIT_AUDIO_FRAMES: int = 10
 
 var _buttons: Array[TealButton] = []
 var _selected: int = 0
 var _logo: Control = null
 var _bolt: TextureRect = null
+var _bolt_glow: TextureRect = null
 var _time: float = 0.0
 
 
@@ -59,9 +79,15 @@ func _ready() -> void:
 	var ohmie: TitleOhmie = TitleOhmie.new()
 	ohmie.name = "Ohmie"
 	ohmie.position = OHMIE_START
+	ohmie.sprite_scale = OHMIE_SCALE
 	ohmie.run_distance = OHMIE_RUN_DISTANCE
+	ohmie.run_speed = OHMIE_RUN_SPEED
+	ohmie.hop_height = OHMIE_HOP_HEIGHT
+	ohmie.hop_seconds = OHMIE_HOP_SECONDS
+	ohmie.idle_seconds = OHMIE_IDLE_SECONDS
 	add_child(ohmie)
 	_select(0, false)
+	_play_logo_intro()
 	MenuSound.play_music(self)
 
 
@@ -71,8 +97,10 @@ func _process(delta: float) -> void:
 		_logo.position.y = LOGO_RECT.position.y + sin(_time * TAU / BOB_SECONDS) * BOB_PIXELS
 	if _bolt != null:
 		var pulse: float = 0.5 + 0.5 * sin(_time * TAU / BOLT_PULSE_SECONDS)
-		_bolt.scale = Vector2.ONE * (1.0 + 0.06 * pulse)
+		_bolt.scale = Vector2.ONE * (1.0 + 0.05 * pulse)
 		_bolt.modulate = Color(1.0 + 0.25 * pulse, 1.0 + 0.2 * pulse, 1.0)
+		_bolt_glow.modulate.a = lerpf(BOLT_GLOW_MIN_ALPHA, 1.0, pulse)
+		_bolt_glow.scale = Vector2.ONE * (0.9 + 0.15 * pulse)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -126,6 +154,9 @@ func _build_logo() -> void:
 	word.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	MenuStyle.place(word, Rect2(Vector2.ZERO, LOGO_RECT.size))
 	_logo.add_child(word)
+	_bolt_glow = _build_bolt_glow()
+	_logo.add_child(_bolt_glow)
+	_logo.move_child(_bolt_glow, 0)  # behind the letters
 	var bolt_texture: AtlasTexture = AtlasTexture.new()
 	bolt_texture.atlas = BOLT
 	bolt_texture.region = BOLT_REGION
@@ -138,6 +169,40 @@ func _build_logo() -> void:
 	_bolt.pivot_offset = BOLT_RECT.size * 0.5
 	_bolt.rotation_degrees = BOLT_TILT_DEGREES
 	_logo.add_child(_bolt)
+
+
+## A soft warm radial glow, added onto the wall behind the bolt (logo-local).
+func _build_bolt_glow() -> TextureRect:
+	var gradient: Gradient = Gradient.new()
+	gradient.set_color(0, BOLT_GLOW_COLOR)
+	gradient.set_color(1, Color(BOLT_GLOW_COLOR, 0.0))
+	var texture: GradientTexture2D = GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(0.5, 0.0)
+	var additive: CanvasItemMaterial = CanvasItemMaterial.new()
+	additive.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	var glow: TextureRect = TextureRect.new()
+	glow.name = "BoltGlow"
+	glow.texture = texture
+	glow.material = additive
+	glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var center: Vector2 = BOLT_RECT.get_center() - LOGO_RECT.position
+	MenuStyle.place(glow, Rect2(center - BOLT_GLOW_SIZE * 0.5, BOLT_GLOW_SIZE))
+	glow.pivot_offset = BOLT_GLOW_SIZE * 0.5
+	return glow
+
+
+## The logotype scales in from LOGO_INTRO_SCALE with an ease-out-back overshoot while it fades in.
+func _play_logo_intro() -> void:
+	_logo.scale = Vector2.ONE * LOGO_INTRO_SCALE
+	_logo.modulate.a = 0.0
+	var tween: Tween = create_tween().set_parallel()
+	tween.tween_property(_logo, "scale", Vector2.ONE, LOGO_INTRO_SECONDS).set_delay(LOGO_INTRO_DELAY) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(_logo, "modulate:a", 1.0, LOGO_INTRO_FADE_SECONDS).set_delay(LOGO_INTRO_DELAY)
 
 
 func _build_ribbon() -> void:

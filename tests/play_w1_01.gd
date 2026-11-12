@@ -8,7 +8,8 @@ extends SceneTree
 ## (2 A, lamp lit, door open, + badge on the left at s1's `from` node), pulls
 ## it out again (the wrong arrangement this room has: an open loop, 0 A, lamp
 ## dark, door shut), plugs it back and walks into the door. The plaque and the
-## lamp agree at every step.
+## lamp agree at every step. Then puts range targets (1–3/2 A) on the plaque,
+## alone and on two-condition rows, and checks that every value fits.
 ##
 ## Usage (exit code 0 = all checks passed):
 ##   godot --headless --path . --fixed-fps 60 --script res://tests/play_w1_01.gd
@@ -73,8 +74,34 @@ func _run_checks() -> int:
 
 	_check_start_state()
 	await _solve()
+	await _check_range_targets_fit()
 	Room.level_override = ""
 	return 0 if _failed == 0 else 1
+
+
+## Range targets never overflow the plaque: on one-condition and two-condition
+## rows ("3/2 A  →  1–3/2 A") every value is no wider than its slot and ends at
+## the plaque's right text edge. Done last, as it replaces the room's goal rows.
+func _check_range_targets_fit() -> void:
+	print("-- range targets on the plaque")
+	var cases: Array[Array] = [
+		[PackedStringArray(["I"]), PackedStringArray(["1–3/2 A"]), PackedStringArray(["3/2 A"])],
+		[PackedStringArray(["I", "V"]), PackedStringArray(["1–3/2 A", "1/3–5/2 V"]), PackedStringArray(["13/12 A", "13/12 V"])],
+	]
+	for c: Array in cases:
+		_hud.set_goal_rows(c[0], c[1])
+		var met: Array[bool] = [false, false]
+		_hud.show_readings(c[2], met, false)
+		await process_frame
+		for row: int in 2:
+			var label: Label = _hud.get_node(NodePath("Readout/Row%dValue" % row)) as Label
+			var font_size: int = label.get_theme_font_size(&"font_size")
+			var text_width: float = label.get_theme_font(&"font").get_string_size(label.text,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+			var right: float = label.position.x + label.size.x
+			_check(text_width <= label.size.x and right <= Hud.VALUE_RIGHT + 0.5,
+					"plaque row %d '%s' fits (%.0f px text in %.0f px, right edge %.0f of %.0f, font %d)" % [
+						row, label.text, text_width, label.size.x, right, Hud.VALUE_RIGHT, font_size])
 
 
 func _check_start_state() -> void:

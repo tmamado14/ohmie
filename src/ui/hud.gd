@@ -193,11 +193,15 @@ func _set_row(row: int, caption: String, value: String, met: bool, caption_width
 	caption_label.text = caption
 	caption_label.position = Vector2(CAPTION_LEFT, ROW_TOPS[row])
 	caption_label.size = Vector2(caption_width, ROW_HEIGHT)
+	# Fit the font to the slot first: a Label is never narrower than its text,
+	# so sizing it before shrinking would stretch it past the plaque's right edge.
+	var width: float = VALUE_RIGHT - CAPTION_LEFT - caption_width
 	value_label.text = value
+	value_label.add_theme_font_size_override(&"font_size", TextFit.fit_font_size(
+			value_label.get_theme_font(&"font"), value, VALUE_MAX_FONT_SIZE, VALUE_MIN_FONT_SIZE, width))
 	value_label.position = Vector2(CAPTION_LEFT + caption_width, ROW_TOPS[row])
-	value_label.size = Vector2(VALUE_RIGHT - CAPTION_LEFT - caption_width, ROW_HEIGHT)
+	value_label.size = Vector2(width, ROW_HEIGHT)
 	value_label.add_theme_color_override(&"font_color", COLOR_MATCH if met else COLOR_INK)
-	TextFit.apply(value_label, VALUE_MAX_FONT_SIZE, VALUE_MIN_FONT_SIZE)
 
 
 func _set_mission_done(done: bool) -> void:

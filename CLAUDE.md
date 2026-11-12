@@ -79,7 +79,9 @@ In PowerShell, set `$godot` to that path first, then:
 |---|---|
 | Re-import assets after adding files | `& $godot --headless --path . --import` |
 | Run all tests (exit code 0 means pass) | `& $godot --headless --path . --script res://tests/run_tests.gd` |
-| Check the game boots without errors | `& $godot --headless --path . --quit-after 120` |
+| Check the menus boot without errors (reaches the title) | `& $godot --headless --path . --fixed-fps 60 --quit-after 480` |
+| Load one room directly | `& $godot --headless --path . --fixed-fps 60 --quit-after 300 res://scenes/main.tscn -- --level=res://levels/<file>.json` |
+| Delete saved progress (for a fresh first run) | `& $godot --headless --path . --script res://tools/reset_progress.gd -- --yes` |
 | Validate a level is solvable | `& $godot --headless --path . --script res://tools/validate_level.gd -- res://levels/<file>.json` |
 | Play the game | `& $godot --path .` |
 
