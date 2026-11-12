@@ -29,6 +29,8 @@ The team, defined in `.claude/agents/` (all pinned to `claude-opus-5-5`):
 | `level-designer` | `levels/*.json`, each proven solvable. |
 | `qa-tester` | Running, breaking and reporting bugs to the lead. Never fixes game code. |
 
+Reports: when a subagent finishes, the lead saves its final report word for word to `reports/NN_<agent>_<topic>.md` (local only, git-ignored), with a three-line header: date, agent, and the lead's verdict (accepted, accepted with follow-ups, or sent back). The user reads these. The lead still gives the user a short summary in chat.
+
 Build order for a feature: circuit-engine, asset-integrator, gdscript-coder, level-designer, qa-tester. The lead reviews each result before the next task. A failure goes back to the same agent as a focused fix task; the lead does not rewrite it. Subagents do not commit. The lead commits after each completed task with a clear message.
 
 ## Folder structure
