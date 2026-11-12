@@ -6,7 +6,9 @@ It does **not** cover the art and audio in `assets/`, the screenshots in `docs/i
 
 ## Art and audio
 
-The art and audio in `assets/` were made for Ohmie: Circuit Adventure. The illustrations were created with the help of generative image tools and then selected, sliced and arranged for the game. Small pieces under `assets/processed/` are drawn by the scripts in `tools/`.
+Ohmie: Circuit Adventure is a free, open-source educational project. It is not sold.
+
+The art and audio in `assets/` were made for it. The illustrations were created with the help of generative image tools and then selected, sliced and arranged for the game. The theme music (`assets/audio/Ohmie BGM.mp3`) was made with Suno and is used here on a non-commercial basis under Suno's terms. Small pieces under `assets/processed/` are drawn by the scripts in `tools/`.
 
 Copyright (c) 2026 Timothy Amado, to the extent copyright applies. All rights reserved.
 
