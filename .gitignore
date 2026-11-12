@@ -29,3 +29,6 @@ assets/boss/shorty_original_six_pose_sheet.png*
 *.tmp
 .DS_Store
 Thumbs.db
+
+# Subagent reports saved for the project owner to read (local only)
+reports/
