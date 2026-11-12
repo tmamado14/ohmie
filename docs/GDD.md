@@ -315,11 +315,11 @@ Ten rooms, then three optional overtime rooms. Values below are the lead's start
 | 1 | Closing Time | Light the lamp. | One loop: a slot and a lamp | 6 V | Carry, plug in, close a loop |
 | 2 | Resistance Is Futile | Draw 2 A. | One loop: two slots and an ammeter | 6 V; 2, 3, 6 Ω | I = V / R: pick the resistor |
 | 3 | Ohm Sweet Ohm | Draw 3 A. | One loop: two slots and an ammeter | 3 V, 9 V; 1, 3, 6 Ω | Pick the source too. Two answers; the room makes one cheaper |
-| 4 | Chain Gang | Draw 1 A. | Fixed 6 V, two slots in series, ammeter | 1, 2, 3, 4 Ω | Series resistors add |
-| 5 | Parallel Parking | Draw 5 A. | Fixed 6 V, two slots in parallel, ammeter on the main line | 2, 3, 6 Ω | Parallel branches add their currents |
+| 4 | Chain Gang | Make 6 Ω. | Two slots in series closed by an ohmmeter | 1, 2, 3, 4 Ω | Series resistors add |
+| 5 | Parallel Parking | 3 A on top. 2 A below. | Fixed 6 V, two parallel branches, each a slot with its own ammeter | 2, 3, 6 Ω | Each parallel branch sees the full voltage and carries its own current |
 | 6 | Divide and Conquer | Put 2 V on the meter. | Fixed 6 V, two slots in series, voltmeter across the second | 1, 2, 3, 4 Ω | Voltage divider. Two answers |
 | 7 | Half and Half | Make 1 Ω. | Ohmmeter across one slot in series with two in parallel | 1/2, 1, 1, 2 Ω | Series and parallel together; reading resistance |
-| 8 | Assault and Battery | Draw 3 A. | Two slots in series for sources, a fixed 3 Ω, ammeter | 3 V, 6 V, 9 V | Series sources add |
+| 8 | Assault and Battery | Put 9 V on the meter. | Two slots in series for sources, a fixed 3 Ω with a voltmeter across it | 3 V, 6 V, 9 V | Series sources add |
 | 9 | Light Duty | Light the lamp. Don't blow it. | One loop: two slots and a 2 Ω lamp rated 1 to 3/2 A | 6, 9, 12 V; 2, 4, 6, 10 Ω | A safe operating range. Many answers, some pop the bulb |
 | 10 | Ohm Stretch | Draw 2 A. Put 4 V on the meter. | Source slot, a series slot, two parallel slots; ammeter on the main line, voltmeter across the pair | 6 V, 12 V; 1, 2, 3, 4, 4, 6 Ω | Everything so far, two conditions at once |
 
@@ -330,6 +330,8 @@ Overtime rooms (optional, reached after room 10):
 | 11 | Watt's Up | Burn 12 W in the heater. | Source slot, series slot, a fixed 3 Ω heater | Power: P = I²R |
 | 12 | A Bridge Too Far | Zero the bridge. Keep 3 A flowing. | Fixed source, a Wheatstone bridge with two fixed arms and two slots, an ammeter across the bridge and one on the supply | A balanced bridge. Not reducible by series and parallel |
 | 13 | Loop Hole | Put 4 V on the meter. | Two loops sharing a resistor, a source slot in each, voltmeter on the shared resistor | Two sources, two loops |
+
+Mission variety is deliberate: across the thirteen rooms the player lights lamps (1, 9), sets an exact current (2, 3), builds a resistance (4, 7), sets branch currents (5), sets a voltage (6, 8, 13), meets two conditions at once (5, 10, 12), hits a power (11) and zeroes a bridge (12). No more than two rooms in a row ask for the same kind of thing.
 
 Platforming rises as before: rooms 1–3 are nearly flat with rises of at most two tiles; from room 4 sockets sit at different heights; from room 7 a small pit may appear; overtime rooms are the hardest to move through.
 
