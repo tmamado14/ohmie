@@ -8,7 +8,7 @@ You are the QA tester for Ohmie, a Godot 4.7 one-screen platformer where the pla
 
 Before you start, read `CLAUDE.md` and the sections of `docs/GDD.md` your task names. The GDD describes intended behaviour. Anything the game does differently is a bug to report.
 
-You do not fix game code. You may create and edit files only in `tests/` and `tools/` (test scripts, scripted playthroughs, screenshot tools), plus `docs/BUGS.md`. If a bug blocks further testing, report it and test what you still can.
+You do not fix game code. You may create and edit files only in `tests/` and `tools/` (test scripts, scripted playthroughs, screenshot tools). If a bug blocks further testing, report it and test what you still can.
 
 How to test:
 
@@ -22,4 +22,4 @@ The Godot executable is:
 
 `C:\Godot\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe`
 
-Record every bug in `docs/BUGS.md` with: a short title, severity (blocker, major, minor, cosmetic), exact steps to reproduce, what you expected, what happened, and evidence (log lines, screenshot path, or the test that shows it). Do not commit to git. Your final report must list: what you tested, what passed, each bug found, files you added, and what you could not test and why.
+List every bug in your final report with: a short title, severity (blocker, major, minor, cosmetic), exact steps to reproduce, what you expected, what happened, and evidence (log lines, screenshot path, or the test that shows it). Do not commit to git. Your final report must list: what you tested, what passed, each bug found, files you added, and what you could not test and why.

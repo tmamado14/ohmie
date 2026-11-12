@@ -105,8 +105,17 @@ func _check_start_state() -> void:
 			and _hud.get_target_text(1) == BOTTOM_TARGET,
 			"the goal has two conditions, %s first and %s second (got %d: '%s', '%s')" % [TOP_TARGET, BOTTOM_TARGET,
 				_hud.get_condition_count(), _hud.get_target_text(0), _hud.get_target_text(1)])
-	_check(_hud.get_row_caption(0) == "I" and _hud.get_row_caption(1) == "I",
-			"both plaque rows are captioned I (got '%s' / '%s')" % [_hud.get_row_caption(0), _hud.get_row_caption(1)])
+	_check(_hud.get_row_caption(0) == "I top" and _hud.get_row_caption(1) == "I below",
+			"the plaque rows are captioned 'I top' and 'I below' (got '%s' / '%s')" % [_hud.get_row_caption(0), _hud.get_row_caption(1)])
+	for row: int in 2:
+		var caption: Label = _hud.get_node(NodePath("Readout/Row%dCaption" % row)) as Label
+		var font_size: int = caption.get_theme_font_size(&"font_size")
+		var text_width: float = caption.get_theme_font(&"font").get_string_size(caption.text,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var value: Label = _hud.get_node(NodePath("Readout/Row%dValue" % row)) as Label
+		_check(text_width <= caption.size.x and caption.position.x + caption.size.x <= value.position.x,
+				"plaque row %d caption fits its column (text %.1f px, column %.1f px, font %d)" % [row, text_width,
+					caption.size.x, font_size])
 	_check_readings("0 A", "0 A", "initial reading")
 	_check(not _hud.is_mission_complete_shown(), "the mission sign starts not done")
 	_check(not _door.is_open(), "door starts closed")

@@ -358,3 +358,23 @@ func test_rejects_bad_lamp_ratings() -> void:
 	data = _lamp_board()
 	data["edges"][3]["rated_min"] = "0"
 	_assert_rejected(data, "must have 'rated_min' > 0", "zero rating")
+
+
+func test_edge_label_is_optional_and_parsed() -> void:
+	var data: Dictionary = _loop_board()
+	data["edges"][5]["label"] = " top "
+	var circuit: LevelCircuit = _parse(data)
+	assert_not_null(circuit)
+	if circuit == null:
+		return
+	assert_eq(circuit.get_edge("am1").label, "top", "label is trimmed")
+	assert_eq(circuit.get_edge("s1").label, "", "no label means empty")
+
+
+func test_rejects_bad_edge_label() -> void:
+	var data: Dictionary = _loop_board()
+	data["edges"][5]["label"] = ""
+	_assert_rejected(data, "edge 'am1' needs 'label' as a non-empty string", "empty label")
+	data = _loop_board()
+	data["edges"][5]["label"] = 3
+	_assert_rejected(data, "edge 'am1' needs 'label' as a non-empty string", "number label")

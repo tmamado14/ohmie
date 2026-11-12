@@ -1,0 +1,34 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/objects/static_hazard.gd" id="1_hazard"]
+[ext_resource type="Texture2D" path="res://assets/hazards/live_wire.png" id="2_tex"]
+[ext_resource type="Script" path="res://src/objects/hurtbox.gd" id="3_hurtbox"]
+[ext_resource type="Script" path="res://src/objects/part_blocker.gd" id="4_blocker"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hurt"]
+size = Vector2(52, 30)
+
+[node name="LiveWire" type="Node2D"]
+script = ExtResource("1_hazard")
+flicker = true
+
+[node name="Body" type="Node2D" parent="."]
+
+[node name="Sprite" type="Sprite2D" parent="Body"]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("2_tex")
+offset = Vector2(0, -44)
+
+[node name="Hurtbox" type="Area2D" parent="."]
+position = Vector2(0, -27)
+collision_layer = 16
+collision_mask = 4
+monitorable = false
+script = ExtResource("3_hurtbox")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("RectangleShape2D_hurt")
+
+[node name="PartBlocker" type="Node2D" parent="."]
+script = ExtResource("4_blocker")
+size = Vector2(80, 48)

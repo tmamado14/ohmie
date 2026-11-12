@@ -8,6 +8,17 @@
 [sub_resource type="SystemFont" id="SystemFont_serif"]
 font_names = PackedStringArray("Georgia", "Times New Roman", "serif")
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_victory_line"]
+content_margin_left = 20.0
+content_margin_top = 4.0
+content_margin_right = 20.0
+content_margin_bottom = 6.0
+bg_color = Color(0.0627451, 0.039215688, 0.02745098, 0.78)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
 [sub_resource type="Theme" id="Theme_hud"]
 default_font = SubResource("SystemFont_serif")
 
@@ -220,6 +231,7 @@ theme_override_colors/font_color = Color(0.9647059, 0.9058824, 0.78431374, 1)
 theme_override_colors/font_outline_color = Color(0.14117648, 0.09411765, 0.05882353, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_victory_line")
 text = "Press R to play again"
 horizontal_alignment = 1
 vertical_alignment = 1

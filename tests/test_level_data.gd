@@ -5,6 +5,7 @@ extends TestCase
 const DEV_ROOM: String = "res://levels/dev_room.json"
 const LEVEL_FILES: Array[String] = [
 	"res://levels/dev_room.json", "res://levels/w1_02.json", "res://levels/w1_07.json",
+	"res://levels/dev_hazards.json",
 ]
 
 
@@ -256,3 +257,118 @@ func test_part_needs_a_positive_value() -> void:
 	assert_error_pushed("needs a value > 0")
 	assert_null(Part.create(Part.Kind.BATTERY, null))
 	assert_error_pushed("needs a value > 0")
+
+
+# --- LevelObject (the optional "objects" list) ----------------------------------------
+
+func _object_level(objects: Array) -> Dictionary:
+	var data: Dictionary = _valid_level()
+	data["objects"] = objects
+	return data
+
+
+func test_objects_are_optional() -> void:
+	var level: LevelData = LevelData.from_dictionary(_valid_level(), "test")
+	assert_not_null(level)
+	if level != null:
+		assert_eq(level.objects.size(), 0)
+
+
+func test_each_object_type_parses() -> void:
+	var level: LevelData = LevelData.from_dictionary(_object_level([
+		{"type": "bounce_pad", "pos": [400, 640]},
+		{"type": "patroller", "kind": "jelly", "pos": [600, 640], "left": 520, "right": 760, "speed": 90},
+		{"type": "patroller", "kind": "bot", "pos": [600, 640], "left": 600, "right": 600},
+		{"type": "floater", "kind": "spark_orb", "from": [300, 400], "to": [300, 560], "speed": 50.5},
+		{"type": "floater", "kind": "spark_orb", "from": [300, 400], "to": [500, 400]},
+		{"type": "hazard", "kind": "spikes", "pos": [900, 640]},
+		{"type": "hazard", "kind": "live_wire", "pos": [1000, 640]},
+	]), "test")
+	assert_not_null(level)
+	if level == null:
+		return
+	assert_eq(level.objects.size(), 7)
+	var pad: LevelObject = level.objects[0]
+	assert_eq(pad.type, LevelObject.TYPE_BOUNCE_PAD)
+	assert_eq(pad.kind, "")
+	assert_eq(pad.position, Vector2(400, 640))
+	var jelly: LevelObject = level.objects[1]
+	assert_eq(jelly.type, LevelObject.TYPE_PATROLLER)
+	assert_eq(jelly.kind, LevelObject.KIND_JELLY)
+	assert_eq(jelly.position, Vector2(600, 640))
+	assert_eq(jelly.left, 520.0)
+	assert_eq(jelly.right, 760.0)
+	assert_eq(jelly.speed, 90.0)
+	var bot: LevelObject = level.objects[2]
+	assert_eq(bot.kind, LevelObject.KIND_BOT)
+	assert_eq(bot.speed, LevelObject.DEFAULT_PATROLLER_SPEED, "patroller speed defaults to 60")
+	var orb: LevelObject = level.objects[3]
+	assert_eq(orb.type, LevelObject.TYPE_FLOATER)
+	assert_eq(orb.kind, LevelObject.KIND_SPARK_ORB)
+	assert_eq(orb.from_point, Vector2(300, 400))
+	assert_eq(orb.to_point, Vector2(300, 560))
+	assert_eq(orb.position, Vector2(300, 400), "a floater starts at 'from'")
+	assert_eq(orb.speed, 50.5)
+	assert_eq(level.objects[4].speed, LevelObject.DEFAULT_FLOATER_SPEED, "floater speed defaults to 80")
+	assert_eq(level.objects[5].type, LevelObject.TYPE_HAZARD)
+	assert_eq(level.objects[5].kind, LevelObject.KIND_SPIKES)
+	assert_eq(level.objects[5].position, Vector2(900, 640))
+	assert_eq(level.objects[6].kind, LevelObject.KIND_LIVE_WIRE)
+
+
+func test_objects_must_be_an_array() -> void:
+	var data: Dictionary = _valid_level()
+	data["objects"] = {"type": "bounce_pad"}
+	_assert_rejected(data, "field 'objects' must be an array", "objects as an object")
+	_assert_rejected(_object_level(["pad"]), "objects[0] must be an object", "entry not an object")
+
+
+func test_unknown_object_type_is_rejected() -> void:
+	_assert_rejected(_object_level([{"type": "fan", "pos": [1, 2]}]),
+			"objects[0] has unknown or missing 'type' 'fan'", "unknown type")
+	_assert_rejected(_object_level([{"pos": [1, 2]}]),
+			"objects[0] has unknown or missing 'type'", "missing type")
+
+
+func test_unknown_object_kind_is_rejected() -> void:
+	_assert_rejected(_object_level([{"type": "hazard", "kind": "lava", "pos": [1, 2]}]),
+			"objects[0] (hazard) has unknown or missing 'kind' 'lava'", "unknown hazard kind")
+	_assert_rejected(_object_level([{"type": "patroller", "kind": "spark_orb", "pos": [5, 2], "left": 0, "right": 10}]),
+			"objects[0] (patroller) has unknown or missing 'kind' 'spark_orb'", "floater kind on a patroller")
+	_assert_rejected(_object_level([{"type": "floater", "from": [1, 2], "to": [1, 9]}]),
+			"objects[0] (floater) has unknown or missing 'kind'", "missing kind")
+	_assert_rejected(_object_level([{"type": "bounce_pad", "kind": "big", "pos": [1, 2]}]),
+			"objects[0] (bounce_pad) has unknown field 'kind'", "a pad has no kinds")
+
+
+func test_object_missing_pos_is_rejected() -> void:
+	_assert_rejected(_object_level([{"type": "bounce_pad"}]),
+			"objects[0] (bounce_pad) needs 'pos' as two numbers", "pad without pos")
+	_assert_rejected(_object_level([{"type": "hazard", "kind": "spikes", "pos": [1]}]),
+			"objects[0] (hazard) needs 'pos' as two numbers", "hazard with a bad pos")
+	_assert_rejected(_object_level([{"type": "patroller", "kind": "jelly", "left": 0, "right": 10}]),
+			"objects[0] (patroller) needs 'pos' as two numbers", "patroller without pos")
+	_assert_rejected(_object_level([{"type": "floater", "kind": "spark_orb", "from": [1, 2]}]),
+			"objects[0] (floater) needs 'to' as two numbers", "floater without to")
+	_assert_rejected(_object_level([{"type": "patroller", "kind": "jelly", "pos": [5, 2], "right": 10}]),
+			"objects[0] (patroller) needs 'left' as a number", "patroller without left")
+
+
+func test_patroller_left_greater_than_right_is_rejected() -> void:
+	_assert_rejected(_object_level([{"type": "patroller", "kind": "jelly", "pos": [600, 640], "left": 700, "right": 500}]),
+			"has 'left' 700 greater than 'right' 500", "left > right")
+	_assert_rejected(_object_level([{"type": "patroller", "kind": "jelly", "pos": [400, 640], "left": 500, "right": 700}]),
+			"has 'pos' x 400 outside 'left'..'right'", "start outside the range")
+
+
+func test_non_positive_speed_is_rejected() -> void:
+	for speed: Variant in [0, -60, "60"]:
+		_assert_rejected(_object_level([{"type": "patroller", "kind": "bot", "pos": [600, 640], "left": 500,
+				"right": 700, "speed": speed}]), "(patroller) needs 'speed' as a number > 0", "patroller speed %s" % str(speed))
+		_assert_rejected(_object_level([{"type": "floater", "kind": "spark_orb", "from": [1, 2], "to": [1, 9],
+				"speed": speed}]), "(floater) needs 'speed' as a number > 0", "floater speed %s" % str(speed))
+
+
+func test_unknown_object_field_is_rejected() -> void:
+	_assert_rejected(_object_level([{"type": "hazard", "kind": "spikes", "pos": [1, 2], "speed": 3}]),
+			"(hazard) has unknown field 'speed'", "speed on a static hazard")

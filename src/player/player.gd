@@ -6,7 +6,11 @@ extends CharacterBody2D
 ##
 ## Movement only. Carrying and interaction belong in separate scripts.
 ## set_input_enabled(false) freezes control (gravity still applies), for
-## example after the level is complete.
+## example after the level is complete. set_frozen(true) stops Ohmie
+## completely (no movement, no gravity, a bright tint): the beat after a zap.
+## bounce() launches him upward from a bounce pad; until he starts falling,
+## releasing jump does not cut that launch short. set_blinking() shows the
+## invulnerability blink after a respawn.
 
 signal jumped
 signal landed
@@ -32,6 +36,12 @@ const ANIM_VICTORY: StringName = &"victory"
 ## Horizontal range the collider is kept inside.
 @export var screen_left: float = 0.0
 @export var screen_right: float = 1280.0
+## Sprite tint while frozen by a zap.
+@export var frozen_tint: Color = Color(1.7, 1.7, 2.0, 1.0)
+## Seconds per on/off cycle of the invulnerability blink.
+@export var blink_period: float = 0.1
+## Sprite opacity during the "off" half of a blink.
+@export var blink_alpha: float = 0.25
 
 var _coyote_timer: float = 0.0
 var _jump_buffer_timer: float = 0.0
@@ -40,6 +50,11 @@ var _was_on_floor: bool = false
 var _has_fallen_out: bool = false
 var _half_width: float = 0.0
 var _input_enabled: bool = true
+## True from a bounce until Ohmie starts falling: the variable-jump cut is off.
+var _bouncing: bool = false
+var _frozen: bool = false
+var _blinking: bool = false
+var _blink_time: float = 0.0
 
 @onready var _sprite: AnimatedSprite2D = $Sprite
 @onready var _collision: CollisionShape2D = $CollisionShape2D
@@ -52,6 +67,8 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _frozen:
+		return
 	if not _input_enabled:
 		_apply_gravity(delta)
 		velocity.x = 0.0
@@ -78,6 +95,7 @@ func respawn(at: Vector2) -> void:
 	_end_drop_through()
 	_was_on_floor = false
 	_has_fallen_out = false
+	_bouncing = false
 
 
 ## Turns player control on or off. While off, Ohmie stands still (but falls)
@@ -89,10 +107,59 @@ func set_input_enabled(enabled: bool) -> void:
 		velocity.x = 0.0
 
 
+## Launches Ohmie straight up from a bounce pad: feet at `surface_y`, upward
+## speed `speed`. Clears coyote time and a buffered jump, so a held or tapped
+## jump neither adds to nor cuts the launch. Ignored while frozen.
+func bounce(surface_y: float, speed: float) -> void:
+	if _frozen:
+		return
+	position.y = surface_y
+	velocity.y = -speed
+	_coyote_timer = 0.0
+	_jump_buffer_timer = 0.0
+	_bouncing = true
+
+
+## True from a bounce until Ohmie starts falling.
+func is_bouncing() -> bool:
+	return _bouncing
+
+
+## Stops all movement (no input, no gravity) and tints the sprite, or resumes.
+func set_frozen(frozen: bool) -> void:
+	_frozen = frozen
+	velocity = Vector2.ZERO
+	_jump_buffer_timer = 0.0
+	_sprite.modulate = frozen_tint if frozen else Color.WHITE
+	if frozen:
+		_sprite.pause()
+	else:
+		_sprite.play()
+
+
+func is_frozen() -> bool:
+	return _frozen
+
+
+## Starts or stops the invulnerability blink.
+func set_blinking(blinking: bool) -> void:
+	_blinking = blinking
+	_blink_time = 0.0
+	_sprite.self_modulate.a = 1.0
+
+
 ## Plays the level-complete pose.
 func play_victory() -> void:
 	_sprite.flip_h = false
 	_sprite.play(ANIM_VICTORY)
+
+
+func _process(delta: float) -> void:
+	if not _blinking:
+		return
+	_blink_time += delta
+	var on: bool = fmod(_blink_time, blink_period) < blink_period * 0.5
+	_sprite.self_modulate.a = 1.0 if on else blink_alpha
 
 
 func _update_timers(delta: float) -> void:
@@ -129,8 +196,9 @@ func _handle_jump() -> void:
 		velocity.y = -jump_velocity
 		_jump_buffer_timer = 0.0
 		_coyote_timer = 0.0
+		_bouncing = false
 		jumped.emit()
-	elif Input.is_action_just_released("jump") and velocity.y < 0.0:
+	elif Input.is_action_just_released("jump") and velocity.y < 0.0 and not _bouncing:
 		velocity.y *= jump_release_factor
 
 
@@ -150,6 +218,8 @@ func _clamp_to_screen() -> void:
 
 func _update_floor_state() -> void:
 	var on_floor: bool = is_on_floor()
+	if on_floor or velocity.y >= 0.0:
+		_bouncing = false
 	if on_floor and not _was_on_floor:
 		landed.emit()
 	_was_on_floor = on_floor

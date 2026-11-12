@@ -15,7 +15,8 @@ extends Node2D
 ##   empty hands + filled slot    -> pull out
 ##   carrying + filled slot       -> swap
 ##   carrying + nothing in range  -> put down at the feet (PartPlacement
-##                                   picks the exact spot, or refuses)
+##                                   picks the exact spot, or refuses; never
+##                                   on a PartBlocker's area)
 ##   anything else                -> invalid
 
 signal picked_up(part: PartPickup)
@@ -148,14 +149,20 @@ func _find_target() -> Interactable:
 	return best
 
 
-## A placement helper that knows every other loose part.
+## A placement helper that knows every other loose part and every area where
+## a part may not lie (bounce pads, static hazards).
 func _placement() -> PartPlacement:
 	var others: Array[Vector2] = []
 	for node: Node in get_tree().get_nodes_in_group(Interactable.GROUP):
 		var pickup: PartPickup = node as PartPickup
 		if pickup != null and pickup.is_loose() and pickup != _carried:
 			others.append(pickup.global_position)
-	return PartPlacement.new(get_world_2d().direct_space_state, others)
+	var blocked: Array[Rect2] = []
+	for node: Node in get_tree().get_nodes_in_group(PartBlocker.GROUP):
+		var blocker: PartBlocker = node as PartBlocker
+		if blocker != null:
+			blocked.append(blocker.get_global_rect())
+	return PartPlacement.new(get_world_2d().direct_space_state, others, blocked)
 
 
 func _set_target(target: Interactable) -> void:

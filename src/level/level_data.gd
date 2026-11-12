@@ -4,6 +4,9 @@ extends RefCounted
 ## tiles, positions, parts, the circuit and the goal (every condition must name
 ## an element of the circuit that has that quantity).
 ##
+## An optional "objects" list holds bounce pads, enemies and hazards
+## (LevelObject).
+##
 ## Parsing only: no circuit math happens here. Any problem pushes an error that
 ## names the file and the field, and the loader returns null.
 
@@ -14,7 +17,7 @@ const DEFAULT_WORLD: String = "old_workshop"
 const REQUIRED_FIELDS: PackedStringArray = [
 	"id", "title", "mission", "goal", "tiles", "spawn", "door", "parts", "circuit",
 ]
-const OPTIONAL_FIELDS: PackedStringArray = ["world", "teaches"]
+const OPTIONAL_FIELDS: PackedStringArray = ["world", "teaches", "objects"]
 
 var id: String = ""
 var title: String = ""
@@ -35,6 +38,8 @@ var door: Vector2 = Vector2.ZERO
 ## The carried parts lying in the room, in file order.
 var parts: Array[LevelPart] = []
 var circuit: LevelCircuit = null
+## Bounce pads, enemies and hazards, in file order (empty when the file has none).
+var objects: Array[LevelObject] = []
 
 
 ## Reads and parses a level file. Returns null and pushes an error on any problem.
@@ -100,6 +105,8 @@ static func from_dictionary(data: Variant, source: String) -> LevelData:
 	level.door = door_point
 
 	if not LevelPart.parse_all(dict["parts"], source, level.parts):
+		return null
+	if dict.has("objects") and not LevelObject.parse_all(dict["objects"], source, level.objects):
 		return null
 	level.circuit = LevelCircuit.from_dictionary(dict["circuit"], source)
 	if level.circuit == null:

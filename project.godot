@@ -12,9 +12,9 @@ config_version=5
 
 config/name="Ohmie: Circuit Adventure"
 run/main_scene="res://scenes/boot.tscn"
-config/producer="TUP ECE"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
+config/producer="TUP ECE"
 
 [autoload]
 
@@ -111,6 +111,8 @@ menu_back={
 2d_physics/layer_2="one_way"
 2d_physics/layer_3="player"
 2d_physics/layer_4="interactable"
+2d_physics/layer_5="hazard"
+2d_physics/layer_6="utility"
 
 [rendering]
 

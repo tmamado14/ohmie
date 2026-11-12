@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/objects/hit_flash.gd" id="1_flash"]
+[ext_resource type="Texture2D" path="res://assets/effects/damage_flash.png" id="2_burst"]
+[ext_resource type="Texture2D" path="res://assets/effects/electric_puff.png" id="3_puff"]
+
+[node name="HitFlash" type="Node2D"]
+z_index = 3
+script = ExtResource("1_flash")
+
+[node name="Puff" type="Sprite2D" parent="."]
+texture = ExtResource("3_puff")
+
+[node name="Burst" type="Sprite2D" parent="."]
+texture = ExtResource("2_burst")

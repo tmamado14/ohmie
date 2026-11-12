@@ -2,7 +2,7 @@
 
 A 2D puzzle platformer where every room is a real electric circuit. Built with Godot 4.7.
 
-![Title screen](tests/screenshots/menus/title.png)
+![Title screen](docs/images/title.png)
 
 Ohmie is a small striped resistor with legs, loose in an old electrical workshop. Each room has an unfinished circuit wired across the wall, a handful of batteries and resistors lying around, and a locked door. Carry the parts to the circuit's slots, one at a time, until the circuit does what the mission asks. Then the door opens.
 
@@ -52,19 +52,19 @@ Four more worlds are planned (Copper Foundry, Substation Switchyard, Signal Cloc
 
 Choosing a room. Rooms unlock in order, and progress is saved.
 
-![Level select: thirteen room tiles with completed, unlocked and locked states](tests/screenshots/menus/level_select.png)
+![Level select: thirteen room tiles with completed, unlocked and locked states](docs/images/level_select.png)
 
 "Resistance Is Futile", solved. The 6 V battery and the 3 Ω resistor drive exactly 2 A through the ammeter, the wires light up and the door opens.
 
-![A closed loop with a battery, a resistor and an ammeter reading 2 A](tests/screenshots/w1_02_solved.png)
+![A closed loop with a battery, a resistor and an ammeter reading 2 A](docs/images/room_02_resistance_is_futile.png)
 
 "Parallel Parking". Each branch has its own ammeter, so which resistor goes in which branch matters.
 
-![Two parallel branches reading 3 A and 2 A](tests/screenshots/w1_05_solved.png)
+![Two parallel branches reading 3 A and 2 A](docs/images/room_05_parallel_parking.png)
 
 "A Bridge Too Far". The right pair of resistors balances the bridge: the middle ammeter reads 0 A while 3 A flows from the supply.
 
-![A Wheatstone bridge with the bridge ammeter reading 0 A](tests/screenshots/w1_12_solved.png)
+![A Wheatstone bridge with the bridge ammeter reading 0 A](docs/images/room_12_a_bridge_too_far.png)
 
 ## Controls
 
@@ -88,7 +88,7 @@ Ohmie carries one part at a time and has to be standing to use it.
 
 ## Status
 
-In development. World 1 is playable from the title screen through all thirteen rooms. In progress: enemies, hazards and bounce pads for the overtime rooms. Planned next: a step-by-step replay showing how each solved network simplifies, then World 2.
+In development. World 1 is playable from the title screen through all thirteen rooms. Bounce pads, patrolling enemies and hazards are implemented and are being placed in the overtime rooms. Planned next: a step-by-step replay showing how each solved network simplifies, then World 2.
 
 ## For developers
 

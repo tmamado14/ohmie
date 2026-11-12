@@ -8,7 +8,12 @@ extends Control
 ## The plaque has two text rows. With one goal condition they read
 ## "GOAL  2 A" and "I  3/2 A" (the reading turns green while the condition is
 ## met). With two conditions each row reads "I  3/2 A  →  2 A", green while that
-## condition is met. Values shrink to fit the parchment.
+## condition is met. Values shrink to fit the parchment. A caption may carry
+## the meter's label ("I top"); such captions get a wider column and shrink to
+## fit it.
+##
+## The line under the victory banner sits on a dark rounded strip sized to its
+## text, so it stays readable over anything behind it.
 ##
 ## Only shows what it is given through its methods (plain strings and flags);
 ## it never looks at the board, the circuit or the level.
@@ -41,6 +46,12 @@ const CAPTION_LEFT: float = 131.0
 const VALUE_RIGHT: float = 296.0
 const SINGLE_CAPTION_WIDTH: float = 59.0
 const MULTI_CAPTION_WIDTH: float = 22.0
+## Caption column on two-condition rows when a caption is longer than a symbol.
+const LABELLED_CAPTION_WIDTH: float = 64.0
+## Space kept between a shrunk caption and its value.
+const CAPTION_GAP: float = 4.0
+const CAPTION_MAX_FONT_SIZE: int = 19
+const CAPTION_MIN_FONT_SIZE: int = 10
 const VALUE_MAX_FONT_SIZE: int = 21
 const VALUE_MIN_FONT_SIZE: int = 10
 
@@ -88,8 +99,9 @@ func get_hint_text() -> String:
 	return _hint.text
 
 
-## One entry per goal condition (at most MAX_ROWS are shown): its quantity
-## symbol ("I", "V", "R", "P") and its target ("2 A", "1–3/2 V").
+## One entry per goal condition (at most MAX_ROWS are shown): its caption (the
+## quantity symbol "I", "V", "R", "P", optionally followed by the element's
+## label: "I top") and its target ("2 A", "1–3/2 V").
 func set_goal_rows(symbols: PackedStringArray, targets: PackedStringArray) -> void:
 	_symbols = symbols.duplicate()
 	_targets = targets.duplicate()
@@ -119,6 +131,7 @@ func show_level_complete(has_next_room: bool = false, map_lines: bool = false) -
 		_victory_line.text = VICTORY_NEXT_ROOM_MAP if has_next_room else VICTORY_MAP_PLAY_AGAIN
 	else:
 		_victory_line.text = VICTORY_NEXT_ROOM if has_next_room else VICTORY_PLAY_AGAIN
+	_fit_victory_line()
 	_victory_dim.visible = true
 	_victory.visible = true
 
@@ -183,14 +196,21 @@ func _render_rows() -> void:
 		_set_row(0, GOAL_CAPTION, _targets[0], false, SINGLE_CAPTION_WIDTH)
 		_set_row(1, _symbols[0], _readings[0], _met[0], SINGLE_CAPTION_WIDTH)
 		return
+	var caption_width: float = MULTI_CAPTION_WIDTH
+	for symbol: String in _symbols:
+		if symbol.length() > 1:
+			caption_width = LABELLED_CAPTION_WIDTH
 	for i: int in mini(_symbols.size(), MAX_ROWS):
-		_set_row(i, _symbols[i], _readings[i] + ARROW + _targets[i], _met[i], MULTI_CAPTION_WIDTH)
+		_set_row(i, _symbols[i], _readings[i] + ARROW + _targets[i], _met[i], caption_width)
 
 
 func _set_row(row: int, caption: String, value: String, met: bool, caption_width: float) -> void:
 	var caption_label: Label = _captions[row]
 	var value_label: Label = _values[row]
 	caption_label.text = caption
+	caption_label.add_theme_font_size_override(&"font_size", TextFit.fit_font_size(
+			caption_label.get_theme_font(&"font"), caption, CAPTION_MAX_FONT_SIZE, CAPTION_MIN_FONT_SIZE,
+			caption_width - CAPTION_GAP))
 	caption_label.position = Vector2(CAPTION_LEFT, ROW_TOPS[row])
 	caption_label.size = Vector2(caption_width, ROW_HEIGHT)
 	# Fit the font to the slot first: a Label is never narrower than its text,
@@ -202,6 +222,14 @@ func _set_row(row: int, caption: String, value: String, met: bool, caption_width
 	value_label.position = Vector2(CAPTION_LEFT + caption_width, ROW_TOPS[row])
 	value_label.size = Vector2(width, ROW_HEIGHT)
 	value_label.add_theme_color_override(&"font_color", COLOR_MATCH if met else COLOR_INK)
+
+
+## Sizes the victory line (and so its backing strip) to its text, centred.
+func _fit_victory_line() -> void:
+	_victory_line.reset_size()
+	var width: float = _victory_line.get_combined_minimum_size().x
+	_victory_line.offset_left = -width * 0.5
+	_victory_line.offset_right = width * 0.5
 
 
 func _set_mission_done(done: bool) -> void:

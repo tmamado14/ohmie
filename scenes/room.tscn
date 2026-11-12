@@ -8,6 +8,15 @@
 [ext_resource type="PackedScene" path="res://scenes/socket.tscn" id="8_socket"]
 [ext_resource type="PackedScene" path="res://scenes/door.tscn" id="9_door"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="10_hud"]
+[ext_resource type="Script" path="res://src/level/room_objects.gd" id="11_objects"]
+[ext_resource type="PackedScene" path="res://scenes/objects/bounce_pad.tscn" id="12_pad"]
+[ext_resource type="PackedScene" path="res://scenes/objects/jelly.tscn" id="13_jelly"]
+[ext_resource type="PackedScene" path="res://scenes/objects/short_circuit_bot.tscn" id="14_bot"]
+[ext_resource type="PackedScene" path="res://scenes/objects/spark_orb.tscn" id="15_orb"]
+[ext_resource type="PackedScene" path="res://scenes/objects/spike_strip.tscn" id="16_spikes"]
+[ext_resource type="PackedScene" path="res://scenes/objects/live_wire.tscn" id="17_wire"]
+[ext_resource type="Script" path="res://src/level/player_respawn.gd" id="18_respawn"]
+[ext_resource type="PackedScene" path="res://scenes/objects/hit_flash.tscn" id="19_flash"]
 
 [node name="Room" type="Node2D"]
 script = ExtResource("1_room")
@@ -29,7 +38,20 @@ socket_scene = ExtResource("8_socket")
 
 [node name="ExitDoor" parent="Door" instance=ExtResource("9_door")]
 
+[node name="Objects" type="Node2D" parent="."]
+script = ExtResource("11_objects")
+bounce_pad_scene = ExtResource("12_pad")
+jelly_scene = ExtResource("13_jelly")
+bot_scene = ExtResource("14_bot")
+spark_orb_scene = ExtResource("15_orb")
+spikes_scene = ExtResource("16_spikes")
+live_wire_scene = ExtResource("17_wire")
+
 [node name="Parts" type="Node2D" parent="."]
+
+[node name="Respawn" type="Node2D" parent="."]
+script = ExtResource("18_respawn")
+hit_flash_scene = ExtResource("19_flash")
 
 [node name="Hud" type="CanvasLayer" parent="."]
 

@@ -4,8 +4,11 @@ extends Node2D
 ## door, HUD, player) and runs its flow: the board's solution, judged by the
 ## level's goal, drives the HUD and the door; the open door completes the
 ## level, `restart` reloads the scene, and falling out respawns Ohmie (a
-## carried part goes back to its home). After the level is complete,
-## `interact` loads the next built room of the Campaign, if any, and the room
+## carried part goes back to its home). The level's bounce pads, enemies and
+## hazards are built by RoomObjects: a pad's `bounced` launches Ohmie, a
+## hazard's touch zaps him. A zap and a pit fall share one respawn path,
+## PlayerRespawn (a zap first freezes Ohmie for a short hit beat). After the
+## level is complete, `interact` loads the next built room of the Campaign, if any, and the room
 ## is recorded as completed in GameSession's Progress (saved to disk only when
 ## the game was started through the menus).
 ##
@@ -22,6 +25,8 @@ extends Node2D
 
 ## Emitted once when Ohmie walks into the open door.
 signal level_completed
+## Emitted once per accepted zap (an enemy or hazard touched Ohmie).
+signal zapped
 
 const LEVEL_ARG_PREFIX: String = "--level="
 ## The background is scaled to cover exactly this area (the 1280x720 room).
@@ -61,6 +66,8 @@ var _next_level: String = ""
 @onready var _door: ExitDoor = $Door/ExitDoor
 @onready var _part_container: Node2D = $Parts
 @onready var _hud: Hud = $Hud/Hud
+@onready var _objects: RoomObjects = $Objects
+@onready var _respawn: PlayerRespawn = $Respawn
 
 
 func _ready() -> void:
@@ -76,13 +83,16 @@ func _ready() -> void:
 	var symbols: PackedStringArray = PackedStringArray()
 	var targets: PackedStringArray = PackedStringArray()
 	for i: int in _goal.condition_count():
-		symbols.append(_goal.symbol(i))
+		symbols.append(_row_caption(i))
 		targets.append(_goal.target_text(i))
 	_hud.set_goal_rows(symbols, targets)
 	_door.position = level_data.door
 	_door.entered.connect(_on_door_entered)
 	_door.opened.connect(_play_sound.bind(&"door_open"))
 	_build_parts()
+	_objects.build(level_data.objects)
+	_objects.touched.connect(_on_object_touched)
+	_objects.bounced.connect(_on_object_bounced)
 	_spawn_player()
 	_board.circuit_changed.connect(_on_circuit_changed)
 	_board.shorted.connect(_play_sound.bind(&"invalid"))
@@ -146,6 +156,16 @@ func get_circuit() -> LevelCircuit:
 ## The level's goal (mission and conditions), or null.
 func get_goal() -> LevelGoal:
 	return _goal
+
+
+## The level's bounce pads, enemies and hazards.
+func get_objects() -> RoomObjects:
+	return _objects
+
+
+## Ohmie's respawn path (pit falls and zaps).
+func get_respawn() -> PlayerRespawn:
+	return _respawn
 
 
 ## Every carried part of the level, in file order.
@@ -222,6 +242,7 @@ func _spawn_player() -> void:
 	add_child(_player)
 	_player.respawn(level_data.spawn)
 	_player.fell_out.connect(_on_player_fell_out)
+	_respawn.zapped.connect(zapped.emit)
 	_player.jumped.connect(_play_sound.bind(&"jump"))
 	_player.landed.connect(_play_sound.bind(&"land"))
 	_carry = _player.get_node_or_null(^"Carry") as PlayerCarry
@@ -234,6 +255,7 @@ func _spawn_player() -> void:
 	_carry.swapped.connect(_play_sound.bind(&"place_resistor").unbind(3))
 	_carry.dropped.connect(_play_sound.bind(&"place_resistor").unbind(1))
 	_carry.invalid_action.connect(_play_sound.bind(&"invalid"))
+	_respawn.setup(_player, _carry, level_data.spawn)
 
 
 func _on_circuit_changed(solution: DcSolution, goal_met: bool) -> void:
@@ -276,7 +298,29 @@ func _play_sound(sound: StringName) -> void:
 		_sfx.play(sound)
 
 
+## The plaque caption of condition `index`: its quantity symbol, followed by
+## the element's label when the circuit gives it one ("I top").
+func _row_caption(index: int) -> String:
+	var symbol: String = _goal.symbol(index)
+	var edge: LevelCircuit.Edge = _circuit.get_edge(_goal.conditions[index].element_id)
+	if edge == null or edge.label.is_empty():
+		return symbol
+	return "%s %s" % [symbol, edge.label]
+
+
 func _on_player_fell_out() -> void:
-	if _carry != null:
-		_carry.return_carried_home()
-	_player.respawn(level_data.spawn)
+	_respawn.respawn_now()
+
+
+func _on_object_touched(body: Node2D, sound: StringName) -> void:
+	if body != _player or _complete:
+		return
+	if _respawn.zap():
+		_play_sound(sound)
+
+
+func _on_object_bounced(body: Node2D, surface_y: float, launch_speed: float) -> void:
+	if body != _player or _complete or _player.is_frozen():
+		return
+	_player.bounce(surface_y, launch_speed)
+	_play_sound(&"bounce")

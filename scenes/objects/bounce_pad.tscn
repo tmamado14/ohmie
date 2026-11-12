@@ -1,0 +1,31 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/objects/bounce_pad.gd" id="1_pad"]
+[ext_resource type="Texture2D" path="res://assets/hazards/bounce_pad.png" id="2_tex"]
+[ext_resource type="Script" path="res://src/objects/part_blocker.gd" id="3_blocker"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_trigger"]
+size = Vector2(60, 80)
+
+[node name="BouncePad" type="Node2D"]
+script = ExtResource("1_pad")
+
+[node name="Body" type="Node2D" parent="."]
+
+[node name="Sprite" type="Sprite2D" parent="Body"]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("2_tex")
+offset = Vector2(0, -54)
+
+[node name="Trigger" type="Area2D" parent="."]
+collision_layer = 32
+collision_mask = 4
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Trigger"]
+position = Vector2(0, -50)
+shape = SubResource("RectangleShape2D_trigger")
+
+[node name="PartBlocker" type="Node2D" parent="."]
+script = ExtResource("3_blocker")
+size = Vector2(48, 56)

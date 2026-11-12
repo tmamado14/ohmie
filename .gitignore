@@ -7,3 +7,25 @@
 
 # Old art pack, kept locally only
 assets-old/
+
+# Screenshots produced by tests and tools (the README uses docs/images/)
+tests/screenshots/
+
+# Art source material that the game does not load
+assets/preview/
+assets/source_sheets/
+assets/data/
+assets/README.md
+assets/worlds/*/source_assets_sheet.png*
+assets/worlds/*/source_background.png*
+assets/worlds/*/sample_level.json
+assets/worlds/*/level_config.json
+assets/worlds/world_progression.json
+assets/environment/*_original.png*
+assets/environment/tileset_preview_3x.png*
+assets/boss/shorty_original_six_pose_sheet.png*
+
+# Godot editor and OS clutter
+*.tmp
+.DS_Store
+Thumbs.db

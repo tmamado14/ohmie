@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/objects/patroller.gd" id="1_patroller"]
+[ext_resource type="Texture2D" path="res://assets/hazards/jelly_enemy.png" id="2_tex"]
+[ext_resource type="Script" path="res://src/objects/hurtbox.gd" id="3_hurtbox"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hurt"]
+size = Vector2(40, 36)
+
+[node name="Jelly" type="Node2D"]
+script = ExtResource("1_patroller")
+wobble_amount = 0.06
+wobble_speed = 7.0
+
+[node name="Body" type="Node2D" parent="."]
+
+[node name="Sprite" type="Sprite2D" parent="Body"]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("2_tex")
+offset = Vector2(0, -63)
+
+[node name="Hurtbox" type="Area2D" parent="."]
+position = Vector2(2, -27)
+collision_layer = 16
+collision_mask = 4
+monitorable = false
+script = ExtResource("3_hurtbox")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("RectangleShape2D_hurt")

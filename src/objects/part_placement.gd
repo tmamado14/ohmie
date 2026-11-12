@@ -2,8 +2,10 @@ class_name PartPlacement
 extends RefCounted
 ## Finds where a loose part may lie: a floor point whose 80 px footprint is
 ## fully on screen, fully supported by solid ground or a platform (physics
-## layers 1 and 2) at one surface height, and not within MIN_SPACING of another
-## loose part. Used for putting down and for sending a part home.
+## layers 1 and 2) at one surface height, not within MIN_SPACING of another
+## loose part, and not overlapping a blocked area (a bounce pad or a static
+## hazard: the footprint is HALF_FOOTPRINT * 2 wide and FOOTPRINT_HEIGHT
+## tall). Used for putting down and for sending a part home.
 ##
 ## Geometry only: it asks the physics space, it does not move anything.
 
@@ -11,6 +13,8 @@ extends RefCounted
 const NO_SPOT: Vector2 = Vector2(INF, INF)
 ## Half the part's footprint width.
 const HALF_FOOTPRINT: float = 40.0
+## Height of the part's footprint above its floor point (the 64 px icon).
+const FOOTPRINT_HEIGHT: float = 64.0
 ## Floor-point x range that keeps the 96 px icon fully on the 1280 px screen.
 const SCREEN_MIN_X: float = 48.0
 const SCREEN_MAX_X: float = 1232.0
@@ -31,13 +35,17 @@ const SLIDE_STEP: float = 1.0
 
 var _space: PhysicsDirectSpaceState2D = null
 var _others: Array[Vector2] = []
+var _blocked: Array[Rect2] = []
 
 
 ## `space`: the world to probe. `others`: floor points of the other loose
-## parts (not the one being placed).
-func _init(space: PhysicsDirectSpaceState2D, others: Array[Vector2]) -> void:
+## parts (not the one being placed). `blocked`: global areas a footprint may
+## not overlap (touching edges is allowed).
+func _init(space: PhysicsDirectSpaceState2D, others: Array[Vector2],
+		blocked: Array[Rect2] = []) -> void:
 	_space = space
 	_others = others
+	_blocked = blocked
 
 
 ## Spot for putting a part down at `feet` (Ohmie's feet on a surface):
@@ -78,7 +86,8 @@ func find_return_spot(home: Vector2, step: float) -> Vector2:
 
 ## The resting floor point for a part at `at` (x, and the surface height
 ## to check), or NO_SPOT if it would be off screen, unsupported or too close to
-## another loose part. The returned y is the probed surface height.
+## another loose part, or overlapping a blocked area. The returned y is the
+## probed surface height.
 func valid_spot_at(at: Vector2) -> Vector2:
 	if at.x < SCREEN_MIN_X or at.x > SCREEN_MAX_X:
 		return NO_SPOT
@@ -90,7 +99,7 @@ func valid_spot_at(at: Vector2) -> Vector2:
 			or absf(_surface_y(at.x + reach, at.y) - surface_y) > SURFACE_TOLERANCE:
 		return NO_SPOT
 	var spot: Vector2 = Vector2(at.x, surface_y)
-	if _crowded(spot):
+	if _crowded(spot) or _on_blocked_area(spot):
 		return NO_SPOT
 	return spot
 
@@ -108,6 +117,16 @@ func _surface_y(x: float, near_y: float) -> float:
 	if absf(hit_y - near_y) > SURFACE_TOLERANCE:
 		return INF
 	return hit_y
+
+
+## True when the footprint standing on `spot` overlaps a blocked area.
+func _on_blocked_area(spot: Vector2) -> bool:
+	var footprint: Rect2 = Rect2(spot.x - HALF_FOOTPRINT, spot.y - FOOTPRINT_HEIGHT,
+			HALF_FOOTPRINT * 2.0, FOOTPRINT_HEIGHT)
+	for area: Rect2 in _blocked:
+		if footprint.intersects(area):
+			return true
+	return false
 
 
 func _crowded(spot: Vector2) -> bool:

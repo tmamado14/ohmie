@@ -19,6 +19,8 @@ extends RefCounted
 ##                              current is within rated_min..rated_max amps
 ##   ammeter, voltmeter, ohmmeter   ideal meters (see DcNetwork)
 ## Every value is a string such as "3/2" and must be > 0.
+## Any edge may carry an optional "label" (a short non-empty string such as
+## "top"); the readout plaque shows it after the quantity symbol ("I top").
 
 const TYPE_WIRE: String = "wire"
 const TYPE_SLOT: String = "slot"
@@ -40,6 +42,8 @@ const POWER_TYPES: PackedStringArray = [TYPE_RESISTOR, TYPE_LAMP, TYPE_BATTERY, 
 const CIRCUIT_KEYS: PackedStringArray = ["nodes", "edges"]
 const EDGE_KEYS: PackedStringArray = ["id", "type", "from", "to"]
 const LAMP_RATING_KEYS: PackedStringArray = ["rated_min", "rated_max"]
+## Optional on every edge.
+const LABEL_KEY: String = "label"
 
 
 ## One edge of the board as written in the level file.
@@ -55,6 +59,8 @@ class Edge:
 	## Lamps only: the current range in amperes in which the lamp is lit.
 	var rated_min: Rational = null
 	var rated_max: Rational = null
+	## Optional short name for the readout plaque, e.g. "top" ("" if none).
+	var label: String = ""
 
 	func _init(edge_id: String, edge_type: String, a: String, b: String) -> void:
 		id = edge_id
@@ -276,6 +282,7 @@ func _parse_edge(raw: Dictionary, index: int, source: String) -> Edge:
 				source, id, type, ", ".join(EDGE_TYPES)])
 		return null
 	var allowed: PackedStringArray = EDGE_KEYS.duplicate()
+	allowed.append(LABEL_KEY)
 	if VALUE_TYPES.has(type):
 		allowed.append("value")
 	if type == TYPE_LAMP:
@@ -295,6 +302,11 @@ func _parse_edge(raw: Dictionary, index: int, source: String) -> Edge:
 		push_error("LevelCircuit: %s: edge '%s' starts and ends at the same node '%s'" % [source, id, from_node])
 		return null
 	var edge: Edge = Edge.new(id, type, from_node, to_node)
+	if raw.has(LABEL_KEY):
+		if not raw[LABEL_KEY] is String or String(raw[LABEL_KEY]).strip_edges().is_empty():
+			push_error("LevelCircuit: %s: edge '%s' needs '%s' as a non-empty string" % [source, id, LABEL_KEY])
+			return null
+		edge.label = String(raw[LABEL_KEY]).strip_edges()
 	if VALUE_TYPES.has(type):
 		edge.value = _parse_positive(raw, "value", type, id, source)
 		if edge.value == null:

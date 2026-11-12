@@ -61,9 +61,9 @@
       { "id": "w4", "type": "wire", "from": "jt", "to": "jb" },
       { "id": "w5", "type": "wire", "from": "tr", "to": "rt" },
       { "id": "w6", "type": "wire", "from": "rt", "to": "rb" },
-      { "id": "am_top", "type": "ammeter", "from": "jt", "to": "mt" },
+      { "id": "am_top", "type": "ammeter", "from": "jt", "to": "mt", "label": "top" },
       { "id": "s_top", "type": "slot", "from": "mt", "to": "rt" },
-      { "id": "am_bot", "type": "ammeter", "from": "jb", "to": "mb" },
+      { "id": "am_bot", "type": "ammeter", "from": "jb", "to": "mb", "label": "below" },
       { "id": "s_bot", "type": "slot", "from": "mb", "to": "rb" }
     ]
   }
