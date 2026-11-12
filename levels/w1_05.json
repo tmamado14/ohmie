@@ -1,10 +1,13 @@
 {
   "id": "w1_05",
   "title": "Parallel Parking",
-  "teaches": "Parallel branches add their currents",
+  "teaches": "Each parallel branch gets the full voltage and draws its own current",
   "world": "old_workshop",
-  "mission": "Draw 5 A.",
-  "goal": [ { "of": "am1", "quantity": "current", "equals": "5" } ],
+  "mission": "3 A on top. 2 A below.",
+  "goal": [
+    { "of": "am_top", "quantity": "current", "equals": "3" },
+    { "of": "am_bot", "quantity": "current", "equals": "2" }
+  ],
   "tiles": [
     "........................................",
     "........................................",
@@ -34,32 +37,34 @@
   "door": [100, 640],
   "parts": [
     { "id": "r6", "kind": "resistor", "value": "6", "pos": [1104, 640] },
-    { "id": "r3", "kind": "resistor", "value": "3", "pos": [520, 640] },
+    { "id": "r3", "kind": "resistor", "value": "3", "pos": [976, 640] },
     { "id": "r2", "kind": "resistor", "value": "2", "pos": [288, 583] }
   ],
   "circuit": {
     "nodes": {
-      "tl": [352, 280],
-      "bt": [576, 280],
-      "a1": [640, 280],
+      "tl": [416, 280],
+      "b1": [528, 280],
+      "b2": [752, 280],
       "tr": [864, 280],
-      "j2": [864, 443],
-      "q": [864, 596],
-      "p": [640, 596],
-      "j1": [640, 443],
-      "l1": [352, 443]
+      "jt": [416, 443],
+      "mt": [640, 443],
+      "rt": [864, 443],
+      "jb": [416, 596],
+      "mb": [640, 596],
+      "rb": [864, 596]
     },
     "edges": [
-      { "id": "bat1", "type": "battery", "from": "tl", "to": "bt", "value": "6" },
-      { "id": "w1", "type": "wire", "from": "bt", "to": "a1" },
-      { "id": "am1", "type": "ammeter", "from": "tr", "to": "a1" },
-      { "id": "w2", "type": "wire", "from": "tr", "to": "j2" },
-      { "id": "w3", "type": "wire", "from": "j2", "to": "q" },
-      { "id": "s1", "type": "slot", "from": "p", "to": "q" },
-      { "id": "w4", "type": "wire", "from": "p", "to": "j1" },
-      { "id": "s2", "type": "slot", "from": "j1", "to": "j2" },
-      { "id": "w5", "type": "wire", "from": "j1", "to": "l1" },
-      { "id": "w6", "type": "wire", "from": "l1", "to": "tl" }
+      { "id": "bat1", "type": "battery", "from": "b1", "to": "b2", "value": "6" },
+      { "id": "w1", "type": "wire", "from": "b1", "to": "tl" },
+      { "id": "w2", "type": "wire", "from": "b2", "to": "tr" },
+      { "id": "w3", "type": "wire", "from": "tl", "to": "jt" },
+      { "id": "w4", "type": "wire", "from": "jt", "to": "jb" },
+      { "id": "w5", "type": "wire", "from": "tr", "to": "rt" },
+      { "id": "w6", "type": "wire", "from": "rt", "to": "rb" },
+      { "id": "am_top", "type": "ammeter", "from": "jt", "to": "mt" },
+      { "id": "s_top", "type": "slot", "from": "mt", "to": "rt" },
+      { "id": "am_bot", "type": "ammeter", "from": "jb", "to": "mb" },
+      { "id": "s_bot", "type": "slot", "from": "mb", "to": "rb" }
     ]
   }
 }

@@ -1,16 +1,20 @@
 extends SceneTree
 ## Scripted headless playthrough of res://levels/w1_05.json ("Parallel
-## Parking": a fixed 6 V battery and the ammeter am1 on the main line, slot s1
-## on the floor and slot s2 on a high platform in parallel; resistors 2, 3 and
-## 6 ohm; goal: am1 reads 5 A = 6/2 + 6/3).
+## Parking": a fixed 6 V battery feeding two parallel branches; the top branch
+## is the ammeter am_top in series with slot s_top on a high platform, the
+## bottom branch is the ammeter am_bot in series with slot s_bot on the floor;
+## resistors 2, 3 and 6 ohm; goal: am_top reads 3 A AND am_bot reads 2 A, so
+## 2 ohm on top and 3 ohm below).
 ##
-## First checks with the circuit API that the branch currents add (each
-## resistor alone draws 6/R; only 2 with 3 makes 5 A; the 6 ohm decoy never
-## does). Then plays the room from the right-hand spawn through the input map
-## only (no teleporting): the tempting 6 ohm by the spawn into s1 (1 A), the
-## 3 ohm from mid-floor up over the side platform into s2 (1 + 2 = 3 A: wrong,
-## door closed), down and left to hop onto the low ledge for the 2 ohm, back to
-## s1 to swap out the 6 ohm (3 + 2 = 5 A, door open), then left into the door.
+## First checks with the circuit API that each branch gets the full 6 V and
+## draws 6/R on its own (the swapped pair reads 2 A on top and 3 A below; the
+## 6 ohm decoy always reads 1 A). Then plays the room from the right-hand spawn
+## through the input map only (no teleporting): the tempting 3 ohm by the spawn
+## up over the side platform into s_top (2 A on top), down and left to hop onto
+## the low ledge for the 2 ohm, back into s_bot (2 A on top, 3 A below: the
+## swapped arrangement, door shut), the 2 ohm pulled out and carried up to swap
+## with the 3 ohm in s_top (3 A on top: only the top row green), the 3 ohm
+## carried down into s_bot (both rows green, door open), then left into the door.
 ##
 ## Usage (exit code 0 = all checks passed):
 ##   godot --headless --path . --fixed-fps 60 --script res://tests/play_w1_05.gd
@@ -20,22 +24,27 @@ const LEVEL_PATH: String = "res://levels/w1_05.json"
 const ROOM_PATH: NodePath = ^"Room"
 const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
 const TITLE: String = "Parallel Parking"
-const MISSION: String = "Draw 5 A."
-const METER_ID: String = "am1"
+const MISSION: String = "3 A on top. 2 A below."
+const TOP_METER_ID: String = "am_top"
+const BOTTOM_METER_ID: String = "am_bot"
+const TOP_TARGET: String = "3 A"
+const BOTTOM_TARGET: String = "2 A"
+## Between the reading and the target on a two-condition plaque row (Hud.ARROW).
+const ARROW: String = "  →  "
 
 ## Layout facts of w1_05.json.
 const SPAWN: Vector2 = Vector2(1200, 640)
 const FLOOR_Y: float = 640.0
 const SIDE_PLATFORM_Y: float = 551.0  # row 17, columns 28..31 (x 896..1024)
-const S2_PLATFORM_Y: float = 487.0  # row 15, columns 21..25 (x 672..832)
+const S_TOP_PLATFORM_Y: float = 487.0  # row 15, columns 21..25 (x 672..832)
 const LOW_LEDGE_Y: float = 583.0  # row 18, columns 7..11 (x 224..384)
-const SIX_X: float = 1104.0  # 6 ohm on the floor by the spawn
-const THREE_X: float = 520.0  # 3 ohm on the floor
+const THREE_X: float = 976.0  # 3 ohm on the floor under the side platform
 const TWO_X: float = 288.0  # 2 ohm on the low ledge
-const S1_X: float = 752.0  # s1 is used from the floor
-const S2_X: float = 752.0  # s2 is used from the high platform, straight above s1
+const S_BOT_X: float = 752.0  # s_bot is used from the floor
+const S_TOP_X: float = 752.0  # s_top is used from the high platform, straight above s_bot
+const OFF_S_TOP_PLATFORM_X: float = 640.0  # left of the high platform's left end (x 672)
 const TO_SIDE_PLATFORM_JUMP_X: float = 960.0
-const TO_S2_PLATFORM_JUMP_X: float = 910.0
+const TO_S_TOP_PLATFORM_JUMP_X: float = 910.0
 const DOOR_X: float = 100.0
 
 const POSITION_TOLERANCE: float = 6.0
@@ -81,6 +90,7 @@ func _run_checks() -> int:
 	await _wait_physics(SETTLE_FRAMES)
 
 	_check_start_state()
+	_check_board_layout()
 	_check_parallel()
 	await _solve()
 	Room.level_override = ""
@@ -91,94 +101,116 @@ func _check_start_state() -> void:
 	print("-- start")
 	_check(_room.level_data.title == TITLE, "level title is '%s' (got '%s')" % [TITLE, _room.level_data.title])
 	_check(_hud.get_mission_text() == MISSION, "the mission sign shows '%s' (got '%s')" % [MISSION, _hud.get_mission_text()])
-	_check(_hud.get_row_caption(0) == "GOAL" and _hud.get_row_value(0) == "5 A" and _hud.get_row_caption(1) == "I",
-			"the plaque shows GOAL 5 A and an I row (got '%s %s' / '%s')" % [_hud.get_row_caption(0),
-				_hud.get_row_value(0), _hud.get_row_caption(1)])
-	_check_reading("0 A", "initial reading")
+	_check(_hud.get_condition_count() == 2 and _hud.get_target_text(0) == TOP_TARGET
+			and _hud.get_target_text(1) == BOTTOM_TARGET,
+			"the goal has two conditions, %s first and %s second (got %d: '%s', '%s')" % [TOP_TARGET, BOTTOM_TARGET,
+				_hud.get_condition_count(), _hud.get_target_text(0), _hud.get_target_text(1)])
+	_check(_hud.get_row_caption(0) == "I" and _hud.get_row_caption(1) == "I",
+			"both plaque rows are captioned I (got '%s' / '%s')" % [_hud.get_row_caption(0), _hud.get_row_caption(1)])
+	_check_readings("0 A", "0 A", "initial reading")
 	_check(not _hud.is_mission_complete_shown(), "the mission sign starts not done")
 	_check(not _door.is_open(), "door starts closed")
 	_check(_player.position.distance_to(SPAWN) <= POSITION_TOLERANCE and _player.is_on_floor(),
 			"player starts on the floor at spawn (%s)" % _player.position)
 
 
-## Parallel branches add their currents: only 6/2 + 6/3 = 5 A.
+## "Top" and "below" match the screen: the top meter and slot are above the bottom ones.
+func _check_board_layout() -> void:
+	print("-- board layout")
+	var board: CircuitBoard = _room.get_board()
+	var top_meter: BoardMeter = board.get_meter(TOP_METER_ID)
+	var bottom_meter: BoardMeter = board.get_meter(BOTTOM_METER_ID)
+	var s_top: CircuitSocket = _socket("s_top")
+	var s_bot: CircuitSocket = _socket("s_bot")
+	if top_meter == null or bottom_meter == null or s_top == null or s_bot == null:
+		_check(false, "meters am_top, am_bot and slots s_top, s_bot exist")
+		return
+	_check(top_meter.global_position.y < bottom_meter.global_position.y,
+			"am_top is drawn above am_bot (y %.0f < %.0f)" % [top_meter.global_position.y, bottom_meter.global_position.y])
+	_check(s_top.global_position.y < s_bot.global_position.y,
+			"s_top is drawn above s_bot (y %.0f < %.0f)" % [s_top.global_position.y, s_bot.global_position.y])
+
+
+## Each branch gets the full 6 V and draws 6/R: only 2 ohm on top with 3 ohm below.
 func _check_parallel() -> void:
-	print("-- parallel (circuit API)")
+	print("-- parallel branches (circuit API)")
 	var goal: LevelGoal = _room.get_goal()
 	var cases: Array[Array] = [
-		[{"s1": _resistor(2)}, "3 A", false, "2 Ω alone"],
-		[{"s2": _resistor(3)}, "2 A", false, "3 Ω alone"],
-		[{"s1": _resistor(6)}, "1 A", false, "6 Ω alone"],
-		[{"s1": _resistor(2), "s2": _resistor(6)}, "4 A", false, "2 Ω with the 6 Ω decoy"],
-		[{"s1": _resistor(6), "s2": _resistor(3)}, "3 A", false, "6 Ω with 3 Ω"],
-		[{"s1": _resistor(2), "s2": _resistor(3)}, "5 A", true, "2 Ω in s1 with 3 Ω in s2"],
-		[{"s1": _resistor(3), "s2": _resistor(2)}, "5 A", true, "3 Ω in s1 with 2 Ω in s2"],
+		[{}, "0 A", "0 A", false, "both slots empty"],
+		[{"s_top": _resistor(2)}, "3 A", "0 A", false, "2 Ω on top alone"],
+		[{"s_bot": _resistor(3)}, "0 A", "2 A", false, "3 Ω below alone"],
+		[{"s_top": _resistor(3), "s_bot": _resistor(2)}, "2 A", "3 A", false, "3 Ω on top, 2 Ω below (swapped)"],
+		[{"s_top": _resistor(6), "s_bot": _resistor(3)}, "1 A", "2 A", false, "6 Ω decoy on top, 3 Ω below"],
+		[{"s_top": _resistor(2), "s_bot": _resistor(6)}, "3 A", "1 A", false, "2 Ω on top, 6 Ω decoy below"],
+		[{"s_top": _resistor(6), "s_bot": _resistor(2)}, "1 A", "3 A", false, "6 Ω on top, 2 Ω below"],
+		[{"s_top": _resistor(2), "s_bot": _resistor(3)}, "3 A", "2 A", true, "2 Ω on top, 3 Ω below"],
 	]
 	for entry: Array in cases:
 		var solution: DcSolution = DcSolver.solve(_room.get_circuit().build_network(entry[0]))
-		var shown: String = MeterText.reading(solution, METER_ID)
-		_check(shown == entry[1] and goal.is_met(solution) == entry[2],
-				"%s reads %s (got '%s'), goal %s" % [entry[3], entry[1], shown, "met" if entry[2] else "not met"])
+		var top: String = MeterText.reading(solution, TOP_METER_ID)
+		var bottom: String = MeterText.reading(solution, BOTTOM_METER_ID)
+		_check(top == entry[1] and bottom == entry[2] and goal.is_met(solution) == entry[3],
+				"%s reads %s on top and %s below (got '%s' / '%s'), goal %s" % [entry[4], entry[1], entry[2],
+					top, bottom, "met" if entry[3] else "not met"])
 
 
 func _solve() -> void:
 	print("-- solve")
-	var six: PartPickup = _part("r6")
 	var three: PartPickup = _part("r3")
 	var two: PartPickup = _part("r2")
-	if six == null or three == null or two == null:
-		_check(false, "parts r6, r3 and r2 exist")
+	if three == null or two == null:
+		_check(false, "parts r3 and r2 exist")
 		return
-	var s1: CircuitSocket = _socket("s1")
-	var s2: CircuitSocket = _socket("s2")
+	var s_top: CircuitSocket = _socket("s_top")
+	var s_bot: CircuitSocket = _socket("s_bot")
 
-	# The tempting 6 ohm by the spawn, into s1 on the floor.
-	await _walk_to_x(SIX_X)
-	await _interact()
-	_check(_carry.get_carried() == six, "picks up the 6 Ω resistor by the spawn")
-	await _walk_to_x(S1_X)
-	await _interact()
-	_check(not _carry.is_carrying() and s1.get_pickup() == six, "plugs the 6 Ω into s1")
-	_check_reading("1 A", "6 Ω alone")
-	_check(not _door.is_open(), "at 1 A the door stays closed")
-
-	# The 3 ohm, then up over the side platform (the room's one 3-tile rise) into s2.
+	# The tempting 3 ohm by the spawn, up over the side platform into s_top.
 	await _walk_to_x(THREE_X)
 	await _interact()
-	_check(_carry.get_carried() == three, "picks up the 3 Ω resistor")
-	await _walk_to_x(TO_SIDE_PLATFORM_JUMP_X)
-	await _jump_and_land(0)
-	_check(_on_surface(SIDE_PLATFORM_Y), "jumps straight up onto the side platform (%s)" % _player.position)
-	await _walk_to_x(TO_S2_PLATFORM_JUMP_X)
-	await _jump_and_land(-1)
-	_check(_on_surface(S2_PLATFORM_Y), "jumps left onto the s2 platform (%s)" % _player.position)
-	await _walk_to_x(S2_X)
+	_check(_carry.get_carried() == three, "picks up the 3 Ω resistor by the spawn")
+	await _climb_to_s_top()
 	await _interact()
-	_check(not _carry.is_carrying() and s2.get_pickup() == three, "plugs the 3 Ω into s2")
-	_check_reading("3 A", "6 Ω with 3 Ω (1 A + 2 A)")
-	_check(not _door.is_open() and not _hud.is_mission_complete_shown(), "at 3 A the door stays closed")
+	_check(not _carry.is_carrying() and s_top.get_pickup() == three, "plugs the 3 Ω into s_top")
+	_check_readings("2 A", "0 A", "3 Ω on top, nothing below")
+	_check(not _door.is_open(), "at 2 A / 0 A the door stays closed")
 
-	# Down and left, a hop onto the low ledge for the 2 ohm.
+	# Down and left, a hop onto the low ledge for the 2 ohm, back into s_bot.
 	await _walk_to_x(TWO_X)
-	_check(_on_surface(FLOOR_Y), "walks off the s2 platform and along the floor (%s)" % _player.position)
+	_check(_on_surface(FLOOR_Y), "walks off the high platform and along the floor (%s)" % _player.position)
 	await _jump_and_land(0)
 	_check(_on_surface(LOW_LEDGE_Y), "jumps straight up onto the low ledge (%s)" % _player.position)
 	await _interact()
 	_check(_carry.get_carried() == two, "picks up the 2 Ω resistor")
-
-	# Back to s1 to swap out the 6 ohm.
-	await _walk_to_x(S1_X)
-	_check(_on_surface(FLOOR_Y), "walks off the low ledge back to s1 (%s)" % _player.position)
+	await _walk_to_x(S_BOT_X)
+	_check(_on_surface(FLOOR_Y), "walks off the low ledge back to s_bot (%s)" % _player.position)
 	await _interact()
-	_check(s1.get_pickup() == two and _carry.get_carried() == six, "swaps the 2 Ω into s1, carrying the 6 Ω")
-	_check_reading("5 A", "2 Ω with 3 Ω (3 A + 2 A)")
-	_check(_door.is_open() and _room.get_board().is_goal_met(), "at 5 A the door opens")
-	_check(_hud.is_mission_complete_shown() and _hud.is_condition_met_shown(0)
-			and _hud.get_row_value_color(1) == Hud.COLOR_MATCH,
-			"at 5 A the mission sign shows its done state and the reading row is green")
+	_check(not _carry.is_carrying() and s_bot.get_pickup() == two, "plugs the 2 Ω into s_bot")
+	_check_readings("2 A", "3 A", "swapped: 3 Ω on top, 2 Ω below")
+	_check(not _door.is_open() and not _hud.is_mission_complete_shown(),
+			"swapped (2 A on top, 3 A below): the door stays closed")
+
+	# Fix it: pull the 2 ohm out of s_bot and carry it up to swap with the 3 ohm.
+	await _interact()
+	_check(_carry.get_carried() == two and s_bot.get_pickup() == null, "pulls the 2 Ω out of s_bot")
+	_check_readings("2 A", "0 A", "3 Ω on top, s_bot empty again")
+	await _climb_to_s_top()
+	await _interact()
+	_check(s_top.get_pickup() == two and _carry.get_carried() == three, "swaps the 2 Ω into s_top, carrying the 3 Ω")
+	_check_readings("3 A", "0 A", "2 Ω on top, nothing below")
+	_check(not _door.is_open() and not _hud.is_mission_complete_shown(), "only the top condition met: door closed")
+
+	# Off the high platform's left end and back to s_bot with the 3 ohm.
+	await _walk_to_x(OFF_S_TOP_PLATFORM_X)
+	_check(_on_surface(FLOOR_Y), "walks off the high platform's left end to the floor (%s)" % _player.position)
+	await _walk_to_x(S_BOT_X)
+	await _interact()
+	_check(not _carry.is_carrying() and s_bot.get_pickup() == three, "plugs the 3 Ω into s_bot")
+	_check_readings("3 A", "2 A", "2 Ω on top, 3 Ω below")
+	_check(_door.is_open() and _room.get_board().is_goal_met(), "at 3 A on top and 2 A below the door opens")
+	_check(_hud.is_mission_complete_shown(), "the mission sign shows its done state")
 	_check(_room.get_board().get_wires().get_state() == CircuitWires.State.MATCH, "wires show the match colour")
 
-	# Left into the door, still carrying the 6 ohm.
+	# Left into the door, empty-handed.
 	Input.action_press("move_left")
 	for i: int in MAX_WALK_FRAMES:
 		await _wait_physics(1)
@@ -190,14 +222,42 @@ func _solve() -> void:
 	_check(_hud.is_level_complete_shown(), "the level-complete banner is shown")
 
 
+## From the floor: under the side platform, straight up onto it (the room's one
+## 3-tile rise), left onto the high platform, and along it to s_top.
+func _climb_to_s_top() -> void:
+	await _walk_to_x(TO_SIDE_PLATFORM_JUMP_X)
+	await _jump_and_land(0)
+	_check(_on_surface(SIDE_PLATFORM_Y), "jumps straight up onto the side platform (%s)" % _player.position)
+	await _walk_to_x(TO_S_TOP_PLATFORM_JUMP_X)
+	await _jump_and_land(-1)
+	_check(_on_surface(S_TOP_PLATFORM_Y), "jumps left onto the s_top platform (%s)" % _player.position)
+	await _walk_to_x(S_TOP_X)
+
+
 # --- helpers ------------------------------------------------------------------------
 
-## The plaque's reading and the ammeter on the board both read `expected`.
-func _check_reading(expected: String, what: String) -> void:
-	var shown: String = _hud.get_reading_text(0)
-	var meter: String = _room.get_board().get_meter(METER_ID).get_reading()
-	_check(shown == expected and meter == expected and _hud.get_row_value(1) == expected,
-			"%s: the plaque and the ammeter read %s (plaque '%s', meter '%s')" % [what, expected, shown, meter])
+## Both meters on the board, the plaque readings and the plaque rows show
+## `top` / `bottom`; each row is green exactly when its condition is met.
+func _check_readings(top: String, bottom: String, what: String) -> void:
+	var board: CircuitBoard = _room.get_board()
+	var top_meter: String = board.get_meter(TOP_METER_ID).get_reading()
+	var bottom_meter: String = board.get_meter(BOTTOM_METER_ID).get_reading()
+	_check(top_meter == top and bottom_meter == bottom
+			and _hud.get_reading_text(0) == top and _hud.get_reading_text(1) == bottom,
+			"%s: am_top reads %s and am_bot reads %s (meters '%s' / '%s', plaque '%s' / '%s')" % [what, top, bottom,
+				top_meter, bottom_meter, _hud.get_reading_text(0), _hud.get_reading_text(1)])
+	var row0: String = top + ARROW + TOP_TARGET
+	var row1: String = bottom + ARROW + BOTTOM_TARGET
+	_check(_hud.get_row_value(0) == row0 and _hud.get_row_value(1) == row1,
+			"%s: the plaque rows read '%s' and '%s' (got '%s' / '%s')" % [what, row0, row1,
+				_hud.get_row_value(0), _hud.get_row_value(1)])
+	var top_met: bool = top == TOP_TARGET
+	var bottom_met: bool = bottom == BOTTOM_TARGET
+	_check(_hud.is_condition_met_shown(0) == top_met and _hud.is_condition_met_shown(1) == bottom_met
+			and (_hud.get_row_value_color(0) == Hud.COLOR_MATCH) == top_met
+			and (_hud.get_row_value_color(1) == Hud.COLOR_MATCH) == bottom_met,
+			"%s: the top row is %s and the bottom row is %s" % [what, "green" if top_met else "not green",
+				"green" if bottom_met else "not green"])
 
 
 func _resistor(ohms: int) -> Part:

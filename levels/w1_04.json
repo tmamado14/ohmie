@@ -3,8 +3,8 @@
   "title": "Chain Gang",
   "teaches": "Series resistors add",
   "world": "old_workshop",
-  "mission": "Draw 1 A.",
-  "goal": [ { "of": "am1", "quantity": "current", "equals": "1" } ],
+  "mission": "Make 6 Ω.",
+  "goal": [ { "of": "om1", "quantity": "resistance", "equals": "6" } ],
   "tiles": [
     "........................................",
     "........................................",
@@ -47,7 +47,6 @@
       "d": [800, 507],
       "h": [800, 300],
       "g": [576, 300],
-      "f": [448, 300],
       "e": [224, 300]
     },
     "edges": [
@@ -56,9 +55,8 @@
       { "id": "w2", "type": "wire", "from": "b2", "to": "c" },
       { "id": "s2", "type": "slot", "from": "c", "to": "d" },
       { "id": "w3", "type": "wire", "from": "d", "to": "h" },
-      { "id": "am1", "type": "ammeter", "from": "h", "to": "g" },
-      { "id": "w4", "type": "wire", "from": "g", "to": "f" },
-      { "id": "bat1", "type": "battery", "from": "e", "to": "f", "value": "6" },
+      { "id": "om1", "type": "ohmmeter", "from": "g", "to": "h" },
+      { "id": "w4", "type": "wire", "from": "g", "to": "e" },
       { "id": "w5", "type": "wire", "from": "e", "to": "a" }
     ]
   }

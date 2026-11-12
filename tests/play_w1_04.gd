@@ -1,16 +1,16 @@
 extends SceneTree
-## Scripted headless playthrough of res://levels/w1_04.json ("Chain Gang": a
-## fixed 6 V battery, slot s1 on the floor and slot s2 on a raised platform in
-## series, and the ammeter am1; resistors 1, 2, 3 and 4 ohm; goal: am1 reads
-## 1 A, so the two slots must add up to 6 ohm: 2 + 4).
+## Scripted headless playthrough of res://levels/w1_04.json ("Chain Gang": slot
+## s1 on the floor and slot s2 on a raised platform in series, closed by the
+## ohmmeter om1; resistors 1, 2, 3 and 4 ohm; goal: om1 reads 6 ohm: 2 + 4).
 ##
-## First checks with the circuit API that series resistors add (no single
-## resistor gives 1 A; 2 + 4 does, either way round; the near 3 and 1 do not).
+## First checks with the circuit API that series resistors add (a single
+## resistor leaves the loop open and reads OL; 2 + 4 makes 6 ohm, either way
+## round; the near 3 and 1 never do).
 ## Then plays the room through the input map only (no teleporting): the
-## tempting 3 ohm next to s1 into s1 (0 A, loop open), up to the platform and
-## across to the high ledge for the 2 ohm, back down into s2 (6/5 A: wrong,
+## tempting 3 ohm next to s1 into s1 (OL, loop open), up to the platform and
+## across to the high ledge for the 2 ohm, back down into s2 (5 ohm: wrong,
 ## door closed), off the platform's far end for the 4 ohm on the floor, back to
-## s1 to swap out the 3 ohm (1 A, door open), then right into the door.
+## s1 to swap out the 3 ohm (6 ohm, door open), then right into the door.
 ##
 ## Usage (exit code 0 = all checks passed):
 ##   godot --headless --path . --fixed-fps 60 --script res://tests/play_w1_04.gd
@@ -20,8 +20,8 @@ const LEVEL_PATH: String = "res://levels/w1_04.json"
 const ROOM_PATH: NodePath = ^"Room"
 const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
 const TITLE: String = "Chain Gang"
-const MISSION: String = "Draw 1 A."
-const METER_ID: String = "am1"
+const MISSION: String = "Make 6 Ω."
+const METER_ID: String = "om1"
 
 ## Layout facts of w1_04.json.
 const SPAWN: Vector2 = Vector2(96, 640)
@@ -90,26 +90,30 @@ func _check_start_state() -> void:
 	print("-- start")
 	_check(_room.level_data.title == TITLE, "level title is '%s' (got '%s')" % [TITLE, _room.level_data.title])
 	_check(_hud.get_mission_text() == MISSION, "the mission sign shows '%s' (got '%s')" % [MISSION, _hud.get_mission_text()])
-	_check(_hud.get_row_caption(0) == "GOAL" and _hud.get_row_value(0) == "1 A" and _hud.get_row_caption(1) == "I",
-			"the plaque shows GOAL 1 A and an I row (got '%s %s' / '%s')" % [_hud.get_row_caption(0),
+	_check(_hud.get_row_caption(0) == "GOAL" and _hud.get_row_value(0) == "6 Ω" and _hud.get_row_caption(1) == "R",
+			"the plaque shows GOAL 6 Ω and an R row (got '%s %s' / '%s')" % [_hud.get_row_caption(0),
 				_hud.get_row_value(0), _hud.get_row_caption(1)])
-	_check_reading("0 A", "initial reading")
+	_check_reading("OL", "initial reading")
 	_check(not _hud.is_mission_complete_shown(), "the mission sign starts not done")
 	_check(not _door.is_open(), "door starts closed")
 	_check(_player.position.distance_to(SPAWN) <= POSITION_TOLERANCE and _player.is_on_floor(),
 			"player starts on the floor at spawn (%s)" % _player.position)
 
 
-## Series resistors add: only 2 + 4 = 6 ohm draws 1 A from 6 V.
+## Series resistors add: only 2 + 4 makes 6 ohm.
 func _check_series() -> void:
 	print("-- series (circuit API)")
 	var goal: LevelGoal = _room.get_goal()
 	var cases: Array[Array] = [
-		[{"s1": _resistor(4)}, "0 A", false, "4 Ω alone (s2 empty: open loop)"],
-		[{"s1": _resistor(3), "s2": _resistor(1)}, "3/2 A", false, "3 Ω + 1 Ω, the two near parts"],
-		[{"s1": _resistor(3), "s2": _resistor(4)}, "6/7 A", false, "3 Ω + 4 Ω"],
-		[{"s1": _resistor(2), "s2": _resistor(4)}, "1 A", true, "2 Ω + 4 Ω"],
-		[{"s1": _resistor(4), "s2": _resistor(2)}, "1 A", true, "4 Ω + 2 Ω"],
+		[{}, "OL", false, "both slots empty"],
+		[{"s1": _resistor(4)}, "OL", false, "4 Ω alone (s2 empty: open loop)"],
+		[{"s2": _resistor(2)}, "OL", false, "2 Ω alone (s1 empty: open loop)"],
+		[{"s1": _resistor(3), "s2": _resistor(1)}, "4 Ω", false, "3 Ω + 1 Ω, the two near parts"],
+		[{"s1": _resistor(3), "s2": _resistor(2)}, "5 Ω", false, "3 Ω + 2 Ω"],
+		[{"s1": _resistor(3), "s2": _resistor(4)}, "7 Ω", false, "3 Ω + 4 Ω"],
+		[{"s1": _resistor(1), "s2": _resistor(4)}, "5 Ω", false, "1 Ω + 4 Ω"],
+		[{"s1": _resistor(2), "s2": _resistor(4)}, "6 Ω", true, "2 Ω + 4 Ω"],
+		[{"s1": _resistor(4), "s2": _resistor(2)}, "6 Ω", true, "4 Ω + 2 Ω"],
 	]
 	for entry: Array in cases:
 		var solution: DcSolution = DcSolver.solve(_room.get_circuit().build_network(entry[0]))
@@ -136,7 +140,7 @@ func _solve() -> void:
 	await _walk_to_x(S1_X)
 	await _interact()
 	_check(not _carry.is_carrying() and s1.get_pickup() == three, "plugs the 3 Ω into s1")
-	_check_reading("0 A", "3 Ω in s1, s2 empty (open loop)")
+	_check_reading("OL", "3 Ω in s1, s2 empty (open loop)")
 	_check(not _door.is_open(), "open loop: door closed")
 
 	# Up onto the platform (the room's one 3-tile rise), across to the high ledge.
@@ -155,8 +159,9 @@ func _solve() -> void:
 	_check(_on_surface(S2_PLATFORM_Y), "walks off the high ledge back onto the s2 platform (%s)" % _player.position)
 	await _interact()
 	_check(not _carry.is_carrying() and s2.get_pickup() == two, "plugs the 2 Ω into s2")
-	_check_reading("6/5 A", "3 Ω + 2 Ω")
-	_check(not _door.is_open() and not _hud.is_mission_complete_shown(), "at 6/5 A the door stays closed")
+	_check_reading("5 Ω", "3 Ω + 2 Ω")
+	_check(not _door.is_open() and not _hud.is_mission_complete_shown() and _hud.get_row_value_color(1) != Hud.COLOR_MATCH,
+			"at 5 Ω the door stays closed and the reading row is not green")
 
 	# Off the platform's far end for the 4 ohm, back to s1 to swap out the 3 ohm.
 	await _walk_to_x(FOUR_X)
@@ -167,11 +172,11 @@ func _solve() -> void:
 	_check(_on_surface(FLOOR_Y), "walks back under the platform to s1 (%s)" % _player.position)
 	await _interact()
 	_check(s1.get_pickup() == four and _carry.get_carried() == three, "swaps the 4 Ω into s1, carrying the 3 Ω")
-	_check_reading("1 A", "4 Ω + 2 Ω")
-	_check(_door.is_open() and _room.get_board().is_goal_met(), "at 1 A the door opens")
+	_check_reading("6 Ω", "4 Ω + 2 Ω")
+	_check(_door.is_open() and _room.get_board().is_goal_met(), "at 6 Ω the door opens")
 	_check(_hud.is_mission_complete_shown() and _hud.is_condition_met_shown(0)
 			and _hud.get_row_value_color(1) == Hud.COLOR_MATCH,
-			"at 1 A the mission sign shows its done state and the reading row is green")
+			"at 6 Ω the mission sign shows its done state and the reading row is green")
 	_check(_room.get_board().get_wires().get_state() == CircuitWires.State.MATCH, "wires show the match colour")
 
 	# Right into the door, still carrying the 3 ohm.
@@ -188,12 +193,12 @@ func _solve() -> void:
 
 # --- helpers ------------------------------------------------------------------------
 
-## The plaque's reading and the ammeter on the board both read `expected`.
+## The plaque's reading and the ohmmeter on the board both read `expected`.
 func _check_reading(expected: String, what: String) -> void:
 	var shown: String = _hud.get_reading_text(0)
 	var meter: String = _room.get_board().get_meter(METER_ID).get_reading()
 	_check(shown == expected and meter == expected and _hud.get_row_value(1) == expected,
-			"%s: the plaque and the ammeter read %s (plaque '%s', meter '%s')" % [what, expected, shown, meter])
+			"%s: the plaque and the ohmmeter read %s (plaque '%s', meter '%s')" % [what, expected, shown, meter])
 
 
 func _resistor(ohms: int) -> Part:
