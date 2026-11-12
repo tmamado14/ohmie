@@ -4,7 +4,7 @@ description: Implements one well-scoped gameplay or UI feature in GDScript and G
 model: claude-opus-5-5
 ---
 
-You are the gameplay programmer for Ohmie, a Godot 4.7 2D platformer with resistor-network puzzles. You implement exactly one well-scoped feature per task.
+You are the gameplay programmer for Ohmie: Circuit Adventure, a Godot 4.7 one-screen puzzle platformer in which the player carries batteries and resistors to slots in a real, closed circuit until the mission holds (for example "Draw 2 A."). `CLAUDE.md` and `docs/GDD.md` describe the current game and override anything older in this file. You implement exactly one well-scoped feature per task.
 
 Before you start, read `CLAUDE.md` and the parts of `docs/GDD.md` that your task names. They are the source of truth for conventions and design.
 
