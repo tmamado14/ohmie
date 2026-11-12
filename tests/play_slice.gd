@@ -34,8 +34,10 @@ const UPPER_JUMP_X: float = 470.0  # jump from the lower to the upper platform h
 const PIT_RUN_UP_X: float = 900.0
 const DOOR_JUMP_X: float = 930.0  # jump over the pit towards the door here
 
-## Two loose resistors' floor points never lie closer than this.
-const MIN_SPACING: float = 60.0
+## Two loose resistors at the same level never lie closer than this (PartPlacement).
+const MIN_SPACING: float = 100.0
+## Where to stand beside r3 so a put-down can slide clear of it (the slide is at most 64 px).
+const BESIDE_R3_OFFSET: float = 50.0
 const POSITION_TOLERANCE: float = 6.0
 const SETTLE_FRAMES: int = 20
 const MAX_WALK_FRAMES: int = 600
@@ -132,12 +134,19 @@ func _part_one_edge_cases() -> void:
 
 	await _walk_to_x(R3_HOME.x)
 	_check(_carry.get_target() != r3, "while carrying, the loose 4 ohm r3 is not highlighted")
+	invalid_before = _invalid_count
 	await _interact()
-	# Putting down beside a loose resistor slides away from it (at least 60 px),
-	# it never picks the other one up or stacks on it.
+	# Right on top of a loose resistor no spot within the slide is far enough
+	# from it: the put-down is refused; it never picks the other one up or stacks.
+	_check(_carry.get_carried() == r1 and r3.is_loose() and r3.global_position == R3_HOME
+			and _dropped_count == 1 and _invalid_count == invalid_before + 1,
+			"interact while carrying on top of a loose resistor is refused: nothing picked up or stacked")
+	await _walk_to_x(R3_HOME.x - BESIDE_R3_OFFSET)
+	await _interact()
+	# Beside it, the put-down slides away to at least MIN_SPACING from it.
 	_check(not _carry.is_carrying() and r1.is_loose() and r3.is_loose() and _dropped_count == 2
-			and r3.global_position == R3_HOME and r1.global_position.distance_to(R3_HOME) >= MIN_SPACING - 0.01,
-			"interact while carrying next to a loose resistor does not pick it up: r1 is put down beside it, at least %.0f px away (r1 at %s)" % [MIN_SPACING, r1.global_position])
+			and r3.global_position == R3_HOME and absf(r1.global_position.x - R3_HOME.x) >= MIN_SPACING - 0.01,
+			"interact while carrying beside a loose resistor puts r1 down at least %.0f px from it (r1 at %s)" % [MIN_SPACING, r1.global_position])
 	await _walk_to_x(r1.global_position.x)
 	await _interact()
 	_check(_carry.get_carried() == r1 and r3.is_loose() and _picked_count == 3,

@@ -72,6 +72,21 @@ func get_interaction_point() -> Vector2:
 	return global_position + ICON_OFFSET
 
 
+## The floor point the part lies on.
+func get_standing_y() -> float:
+	return global_position.y
+
+
+## The top centre of the 64 px tall icon.
+func get_tag_anchor() -> Vector2:
+	return global_position + ICON_OFFSET * 2.0
+
+
+## The part's label: "3 Ω", "1/2 Ω", "6 V".
+func get_tag_text() -> String:
+	return part.label() if part != null else ""
+
+
 func set_highlighted(highlighted: bool) -> void:
 	if _highlight != null:
 		_highlight.visible = highlighted

@@ -188,7 +188,7 @@ Hand-inked, soft edges.
 - Open state for the per-world exit doors and gates (levels 2-5 have one state each). The shared exit door has both states, but they need the aligned derivative.
 - World-distinct tilesets: the five sets differ only by a slight tint.
 - Animation cycles: keyframes only (2-frame run, single frames elsewhere), same as before.
-- Socket, highlight, junction and terminal art for the circuit: generated in `assets/processed/`.
+- Socket, highlight and junction art for the circuit: generated in `assets/processed/`.
 - Resistor icons beyond 0.5, 1, 2, 3, 4, 6, 10 ohm. Covered by the generated `part_resistor_blank.png` with the value drawn as text.
 - Circuit parts other than resistors (carried battery, meters, lamps, polarity marks): generated in `assets/processed/`.
 - A font with the pack's look (and an Ω glyph).
@@ -263,7 +263,6 @@ Authored at 2x for scale 0.5 with Linear filtering; anti-aliased edges. Palette 
 | `res://assets/processed/fixed_backing.png` | 208x144 | Same shape in gunmetal iron with a dark walnut plank window. Rivets replace the screws and three more sit on the top and bottom bars; silver solder blobs sit on the notches. Means "soldered in, cannot be removed". |
 | `res://assets/processed/pickup_highlight.png` | 208x144 | Inked brass hoop with a soft glow, transparent centre. Draw it with the same centre as a loose resistor (resistor at hoop position + (8, 8) in 2x px). Verified not to overlap any of the seven icons. |
 | `res://assets/processed/node_dot.png` | 32x32 (16x16) | Copper junction ball with ink outline and a brass solder ring. Centre it on the junction. |
-| `res://assets/processed/terminal.png` | 64x64 (32x32) | Porcelain knob with an oxblood glaze ring and a brass binding post (nut, cap, dark hole), in the style of the pack's insulators. Centre it on the terminal point. |
 | `res://assets/processed/exit_door_open_aligned.png` | 216x320 (108x160) | Open door on the closed door's footprint, built by the generator: the closed door is the base (complete insulators, pipes, plinths); the open door is scaled 1.09 and moved (-21, -14); the open door's arch, doorway and hinges are drawn between x 44-179, and its two swung leaves (found by flood fill) are drawn outside that band. Swap with `exit_door_closed.png` using the same node settings. |
 
 **Socket geometry** (2x px; halve for screen):

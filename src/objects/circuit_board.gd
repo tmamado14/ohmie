@@ -11,8 +11,10 @@ extends Node2D
 ## once right after build(). `shorted` is emitted when a change puts the
 ## circuit into a SHORT (not for a board that starts shorted).
 ##
-## Fixed components and meters are drawn at z 0 (behind Ohmie, who is added to
-## the room after the board); slots are drawn in front (their scene's z_index).
+## Fixed components and meters are drawn at z 0 and slots at z 1 (their
+## scene's z_index); Ohmie draws in front of both (z 2). Every slot, fixed part,
+## lamp and meter carries a PartBlocker over its frame, so a loose part is never
+## put down on it.
 
 signal circuit_changed(solution: DcSolution, goal_met: bool)
 signal shorted
@@ -22,6 +24,12 @@ const NODE_DOT_TEXTURE: Texture2D = preload("res://assets/processed/node_dot.png
 const ART_SCALE: Vector2 = Vector2(0.5, 0.5)
 ## Nodes with at least this many edges get a junction dot.
 const JUNCTION_DEGREE: int = 3
+## Where a loose part may not be put down over a fixed part, lamp or meter: the
+## 104x72 frame, 8 px wider on each side so a part's leads stay clear of it
+## too (the same area as the PartBlocker in socket.tscn). Its bottom centre
+## sits BLOCKER_OFFSET below the component's centre.
+const BLOCKER_SIZE: Vector2 = Vector2(120, 72)
+const BLOCKER_OFFSET: Vector2 = Vector2(0, 36)
 
 @export var socket_scene: PackedScene
 
@@ -105,6 +113,7 @@ func _add_components() -> void:
 				add_child(fixed)
 				var kind: Part.Kind = Part.Kind.BATTERY if edge.type == LevelCircuit.TYPE_BATTERY else Part.Kind.RESISTOR
 				fixed.setup(Part.create(kind, edge.value), from_is_right)
+				_add_blocker(fixed)
 			LevelCircuit.TYPE_LAMP:
 				var lamp: BoardLamp = BoardLamp.new()
 				lamp.name = "Lamp_" + edge.id
@@ -112,6 +121,7 @@ func _add_components() -> void:
 				lamp.position = middle
 				add_child(lamp)
 				_lamps[edge.id] = lamp
+				_add_blocker(lamp)
 			LevelCircuit.TYPE_AMMETER, LevelCircuit.TYPE_VOLTMETER, LevelCircuit.TYPE_OHMMETER:
 				var meter: BoardMeter = BoardMeter.new()
 				meter.name = "Meter_" + edge.id
@@ -119,6 +129,15 @@ func _add_components() -> void:
 				add_child(meter)
 				meter.setup(edge.id, edge.type)
 				_meters[edge.id] = meter
+				_add_blocker(meter)
+
+
+func _add_blocker(component: Node2D) -> void:
+	var blocker: PartBlocker = PartBlocker.new()
+	blocker.name = "PartBlocker"
+	blocker.size = BLOCKER_SIZE
+	blocker.position = BLOCKER_OFFSET
+	component.add_child(blocker)
 
 
 func _add_socket(id: String, at: Vector2, from_is_right: bool) -> void:

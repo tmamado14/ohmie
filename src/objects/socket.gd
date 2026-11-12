@@ -12,6 +12,14 @@ extends Interactable
 
 signal contents_changed
 
+## A slot sits at standing height: its centre this far above the surface it is
+## used from (GDD 6).
+const STANDING_HEIGHT: float = 44.0
+## Half the height of the 104x72 frame.
+const FRAME_HALF_HEIGHT: float = 36.0
+## The name tag of an empty slot.
+const EMPTY_TAG: String = "empty"
+
 @export var empty_texture: Texture2D
 @export var highlight_texture: Texture2D
 
@@ -39,6 +47,21 @@ func is_filled() -> bool:
 ## Carrying: plug in or swap. Empty hands: only a filled slot (pull out).
 func can_interact(carrying: bool) -> bool:
 	return carrying or is_filled()
+
+
+func get_standing_y() -> float:
+	return global_position.y + STANDING_HEIGHT
+
+
+## The top centre of the frame.
+func get_tag_anchor() -> Vector2:
+	return global_position - Vector2(0, FRAME_HALF_HEIGHT)
+
+
+## The label of the part in the slot, or "empty".
+func get_tag_text() -> String:
+	var part: Part = get_part()
+	return part.label() if part != null else EMPTY_TAG
 
 
 ## Tells the slot where its `from` node is, so a battery faces the right way.

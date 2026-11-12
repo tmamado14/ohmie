@@ -97,7 +97,7 @@ Update this section whenever a milestone step completes. Last updated 2026-11-12
 
 **Design.** `docs/GDD.md` is the single, current design: closed DC circuits solved by a real engine, batteries and resistors both carried as parts, every slot takes any part, fixed meters and lamps on the board, a goal is a list of conditions, and the mission is one short line. The long-term aim is a full ECE game. World 1 (Old Workshop) is basic DC networks: ten rooms plus three overtime rooms, listed in GDD section 7. Missions are deliberately varied; do not add another plain "Draw X A" room.
 
-**Engine (`src/circuit/`).** `DcNetwork`, `DcSolver`, `DcSolution`, `GoalCondition`, `DcPuzzleSearch`. Sign conventions are in the header of `dc_solution.gd`. The older `CircuitGraph` / `CircuitSolver` / `PuzzleSolver` / `OhmsLaw` are not used by gameplay; `CircuitSolver`'s reduction steps are kept for the planned collapse replay. A full puzzle search on six slots and nine different parts takes about 39 s, so it is for the offline validator only.
+**Engine (`src/circuit/`).** `DcNetwork`, `DcSolver`, `DcSolution`, `GoalCondition`, `DcPuzzleSearch`. Sign conventions are in the header of `dc_solution.gd`. The older `CircuitGraph` / `CircuitSolver` (series-parallel reduction with recorded steps) are not used by gameplay and are kept for the planned collapse replay. A full puzzle search on six slots and nine different parts takes about 39 s, so it is for the offline validator only.
 
 **Game.** Level model in `src/level/` (`Part`, `LevelPart`, `LevelObject`, `LevelData`, `LevelCircuit`, `LevelGoal`, `Campaign`, `Progress`, `GameSession`, `PlayerRespawn`). Board and world objects in `src/objects/` (`CircuitBoard`, `CircuitSocket`, `PartPickup`, `BoardMeter`, `BoardLamp`, `BouncePad`, `Patroller`, `Floater`, `StaticHazard`, `Hurtbox`). Menus and HUD in `src/ui/`. One level format (GDD section 6). A battery's plus faces its slot's `from` node. Ohmie must be standing to interact. A zap and a pit fall share one respawn path; there are no lives.
 
@@ -113,14 +113,16 @@ Update this section whenever a milestone step completes. Last updated 2026-11-12
 
 | Command | Count |
 |---|---|
-| `--script res://tests/run_tests.gd` | 302 |
+| `--script res://tests/run_tests.gd` | 281 |
 | `--script res://tests/play_menus.gd` | 38 |
 | `--script res://tests/play_movement.gd` | 11 |
-| `--script res://tests/play_slice.gd` | 34 |
-| `--script res://tests/play_break.gd` | 95 |
-| `--script res://tests/play_hazards.gd` | 61 |
-| `--script res://tests/play_w1_01.gd` … `play_w1_13.gd` | 29, 54, 37, 37, 60, 34, 38, 37, 52, 68, 60, 45, 47 |
-| `--script res://tools/check_resources.gd` | 557 |
+| `--script res://tests/play_slice.gd` | 35 |
+| `--script res://tests/play_break.gd` | 104 |
+| `--script res://tests/play_menus_break.gd` | 144 |
+| `--script res://tests/play_world_states.gd` | 41 |
+| `--script res://tests/play_hazards.gd` | 65 |
+| `--script res://tests/play_w1_01.gd` … `play_w1_13.gd` | 29, 54, 37, 37, 60, 34, 38, 37, 52, 68, 76, 121, 100 |
+| `--script res://tools/check_resources.gd` | 558 |
 
 **Things that bite.**
 - After adding a script with `class_name`, run `--import` once before any `--script` command. While another agent is mid-change, unrelated tests can fail to compile; re-import and retry.
@@ -129,6 +131,6 @@ Update this section whenever a milestone step completes. Last updated 2026-11-12
 - The next-room key reacts to a real `interact` input event, not `Input.action_press`.
 - Shell heredocs containing apostrophes or backticks have mangled files; write files with the Write/Edit tools.
 
-**Next.** Place bounce pads, enemies and hazards in the overtime rooms (11–13); a QA pass over the whole world and the menus; then the collapse replay. Known rough edges: shelves painted in the background look like platforms; floor and platform tiles are pixel art beside inked sprites; the logotype is styled system type, not custom lettering; nobody has played by hand with a keyboard and the audio is unheard.
+**Next.** A QA pass over the overtime rooms (11–13, now with bounce pads, enemies and hazards); draw real platforms with the pack's illustrated shelves so painted furniture stops reading as platforms; explain `---`, `OL` and `SHORT` to new players; then the collapse replay. Fonts: Libre Baskerville is bundled in `assets/fonts/` (OFL) and is the project default; Ω and arrows fall back to a system serif. Music: `assets/audio/Ohmie BGM.mp3` for menus and World 1. Known rough edges: shelves painted in the background look like platforms; floor and platform tiles are pixel art beside inked sprites; the logotype is styled system type, not custom lettering; nobody has played by hand with a keyboard and the audio is unheard.
 
 **Git.** Remote `origin` is https://github.com/tmamado14/ohmie (branch `master`). Commit as the user only, with no Claude co-author or attribution lines. Push after each completed task. All subagents so far reported model `claude-opus-5-5`.

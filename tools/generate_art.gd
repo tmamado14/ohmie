@@ -87,7 +87,6 @@ func _init() -> void:
 	failures += _save(_fixed_backing(frame), "fixed_backing.png")
 	failures += _save(_pickup_highlight(), "pickup_highlight.png")
 	failures += _save(_node_dot(), "node_dot.png")
-	failures += _save(_terminal(), "terminal.png")
 	var door: Image = _door_open_aligned()
 	if door == null:
 		failures += 1
@@ -387,7 +386,7 @@ func _pickup_highlight() -> Image:
 	return img
 
 
-# --- Node dot and terminal -------------------------------------------------------------------
+# --- Node dot ----------------------------------------------------------------------------------
 
 func _node_dot() -> Image:
 	var img: Image = _blank(Vector2i(32, 32))
@@ -398,34 +397,6 @@ func _node_dot() -> Image:
 			var d: float = absf(_sd_circle(Vector2(x + 0.5, y + 0.5), Vector2(16, 16), 9.0))
 			_over(img, x, y, BRASS_DARK, _coverage(d - 0.6) * 0.6)
 	_over(img, 11, 10, PORCELAIN_LIGHT, 0.8)
-	return img
-
-
-## Porcelain knob with a brass binding post, seen from the front, centred on the canvas.
-func _terminal() -> Image:
-	var img: Image = _blank(Vector2i(64, 64))
-	var c: Vector2 = Vector2(32, 32)
-	for y: int in 64:
-		for x: int in 64:
-			var p: Vector2 = Vector2(x + 0.5, y + 0.5)
-			var d: Vector2 = (p - c) / 28.0
-			_over(img, x, y, INK, _coverage(_sd_circle(p, c, 30.5)))
-			var body: float = _coverage(_sd_circle(p, c, 28.0))
-			if body > 0.0:
-				var lit: float = clampf(-(d.x + d.y) * 0.8, 0.0, 1.0)
-				var shade: float = clampf((d.x + d.y) * 0.8, 0.0, 1.0)
-				_over(img, x, y, PORCELAIN.lerp(PORCELAIN_LIGHT, lit).lerp(PORCELAIN_SHADE, shade), body)
-			# Oxblood glaze stripe, as on the pack's porcelain insulators.
-			var ring_d: float = absf(_sd_circle(p, c, 23.5))
-			_over(img, x, y, INK, _coverage(ring_d - 2.6) * 0.9)
-			_over(img, x, y, OXBLOOD, _coverage(ring_d - 1.6))
-	# Brass nut, brass cap and the dark hole of the binding post.
-	_disc_shaded(img, c, 18.0, BRASS, BRASS_LIGHT, BRASS_DARK)
-	_disc_shaded(img, c, 10.5, BRASS, BRASS_LIGHT, BRASS_DARK)
-	for y: int in 64:
-		for x: int in 64:
-			var p: Vector2 = Vector2(x + 0.5, y + 0.5)
-			_over(img, x, y, INK, _coverage(_sd_circle(p, c, 3.6)))
 	return img
 
 

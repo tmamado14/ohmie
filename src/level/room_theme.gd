@@ -24,7 +24,6 @@ const DEFAULT_WORLD: String = "old_workshop"
 static func load_for_world(world: String) -> RoomTheme:
 	var path: String = THEME_PATH % world
 	if not ResourceLoader.exists(path):
-		print("RoomTheme: no theme for world '%s', using '%s'" % [world, DEFAULT_WORLD])
 		path = THEME_PATH % DEFAULT_WORLD
 	var theme: RoomTheme = load(path) as RoomTheme
 	if theme == null:

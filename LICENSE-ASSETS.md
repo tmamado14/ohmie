@@ -28,7 +28,7 @@ If you want to build your own game on this code, the MIT licence lets you take t
 ## Third-party components
 
 - **Godot Engine**, MIT licence. Copyright (c) 2014-present Godot Engine contributors, (c) 2007-2014 Juan Linietsky, Ariel Manzur. See https://godotengine.org/license. `icon.svg` is the Godot logo, used here as the project icon and on the engine splash card under the Godot logo licence (CC BY 4.0).
-- **Fonts.** The game does not bundle fonts. It asks the operating system for a serif face (Georgia, Times New Roman, or the system serif).
+- **Libre Baskerville** (`assets/fonts/libre_baskerville/`), SIL Open Font License 1.1; the licence text is in that folder. A few symbols it lacks (Ω, arrows) are drawn with a serif font from the operating system.
 
 ## Questions
 

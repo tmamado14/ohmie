@@ -126,11 +126,14 @@ func _splash() -> void:
 		_check(ok and _count_screens() == 1 and _cover_alpha() == 0.0,
 				"skip at frame %d (card %d): one title, fade finished (titles %d, cover alpha %.2f)" % [
 					skip_at, card, _count_screens(), _cover_alpha()])
-	# Key spam through the whole splash: one key every 3 frames.
+	# Key spam through the whole splash and the title's fade-in: one key every 3
+	# frames, until the title is fully shown (after that Space rightly chooses Play).
 	await _boot_fresh(false)
 	for i: int in 60:
 		await _key(KEY_SPACE if i % 2 == 0 else KEY_ESCAPE)
 		await _frames(1)
+		if current_scene is TitleScreen and not ScreenFade.is_busy(self):
+			break
 	var settled: bool = await _wait_settled_on(func() -> bool: return current_scene != null)
 	_check(settled and _count_screens() == 1, "key spam (Space/Esc) through the splash and the title fade ends on one screen (%s)" % _scene_name())
 	_check(current_scene is TitleScreen,
@@ -299,7 +302,8 @@ func _room_escapes() -> void:
 	_check(started, "room 1 starts")
 	await _action(&"menu_back")
 	var settled: bool = await _wait_settled_on(func() -> bool: return current_scene != null)
-	print("INFO  Esc during the room's fade-in: settled on %s" % _scene_name())
+	_check(settled and current_scene is LevelSelect,
+			"Esc during the room's fade-in is remembered and returns to the level select when the fade ends (on %s)" % _scene_name())
 	if current_scene is LevelSelect:
 		await _action(&"menu_accept")
 		await _wait_settled_on(func() -> bool: return _room() != null)

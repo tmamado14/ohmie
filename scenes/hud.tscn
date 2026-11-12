@@ -5,8 +5,7 @@
 [ext_resource type="Texture2D" path="res://assets/ui/decor/blank_victory_ribbon.png" id="3_ribbon"]
 [ext_resource type="Texture2D" path="res://assets/ui/decor/blank_goal_sign.png" id="4_sign"]
 
-[sub_resource type="SystemFont" id="SystemFont_serif"]
-font_names = PackedStringArray("Georgia", "Times New Roman", "serif")
+[ext_resource type="FontVariation" path="res://resources/fonts/serif_regular.tres" id="5_font"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_victory_line"]
 content_margin_left = 20.0
@@ -20,7 +19,7 @@ corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
 [sub_resource type="Theme" id="Theme_hud"]
-default_font = SubResource("SystemFont_serif")
+default_font = ExtResource("5_font")
 
 [node name="Hud" type="Control"]
 layout_mode = 3
@@ -62,9 +61,13 @@ grow_horizontal = 2
 grow_vertical = 0
 theme_override_colors/font_color = Color(0.9647059, 0.9058824, 0.78431374, 1)
 theme_override_colors/font_outline_color = Color(0.14117648, 0.09411765, 0.05882353, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.45)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 3
 theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 17
-text = "A/D move · Space jump · S drop through platform · E pick up / place · R restart"
+theme_override_constants/shadow_outline_size = 6
+theme_override_font_sizes/font_size = 18
+text = "A/D move · Space jump (hold for higher) · E use · R restart"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -204,9 +207,9 @@ expand_mode = 1
 
 [node name="Message" type="Label" parent="Victory/Banner"]
 layout_mode = 0
-offset_left = 105.0
+offset_left = 115.0
 offset_top = 33.0
-offset_right = 339.0
+offset_right = 335.0
 offset_bottom = 85.0
 theme_override_colors/font_color = Color(0.18039216, 0.12156863, 0.101960786, 1)
 theme_override_font_sizes/font_size = 28

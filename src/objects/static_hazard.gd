@@ -18,6 +18,11 @@ var _random: RandomNumberGenerator = RandomNumberGenerator.new()
 @onready var _body: Node2D = $Body
 
 
+## A static hazard sits on a surface: it does not hurt from below it.
+func _hurts_only_at_its_level() -> bool:
+	return true
+
+
 func _process(delta: float) -> void:
 	if not flicker:
 		return

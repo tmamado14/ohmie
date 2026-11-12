@@ -6,7 +6,7 @@ extends Control
 ## back to the title.
 
 const HEADING: String = "Choose a World"
-const HINT: String = "← →  choose     Enter  open     Esc  back"
+const HINT_ENTRIES: PackedStringArray = ["Arrows choose", "Enter open", "Esc back"]
 ## Background art per world id, used for the card thumbnails.
 const THUMBNAILS: Dictionary = {
 	"old_workshop": "res://assets/environment/old_workshop_background_1920x1080.png",
@@ -20,15 +20,17 @@ const FALLBACK_THUMBNAIL: String = "res://assets/environment/old_workshop_backgr
 const HEADING_RECT: Rect2 = Rect2(0, 64, 1280, 80)
 const HEADING_FONT_SIZE: int = 58
 const SUBHEADING_RECT: Rect2 = Rect2(0, 140, 1280, 34)
-const SUBHEADING: String = "Ohmie's journey through the circuit works"
+const SUBHEADING: String = "Five worlds of circuits. One small resistor."
 const CARD_TOP: float = 228.0
 const CARD_GAP: float = 22.0
-const HINT_RECT: Rect2 = Rect2(0, 652, 1280, 36)
+const HINT_RECT: Rect2 = Rect2(0, 664, 1280, 34)
 
 var _campaign: Campaign = null
 var _cards: Array[WorldCard] = []
 var _worlds: Array[CampaignWorld] = []
 var _selected: int = 0
+## Enter or Esc pressed while the screen is still fading in is acted on when it ends.
+var _fade_buffer: FadeInputBuffer = FadeInputBuffer.new(["menu_accept", "menu_back"])
 
 
 func _ready() -> void:
@@ -36,7 +38,7 @@ func _ready() -> void:
 	_build_heading()
 	if _campaign != null:
 		_build_cards()
-	var hint: Label = MenuStyle.art_label(HINT, 20, 6)
+	var hint: Label = MenuStyle.hint_label(MenuStyle.hint_text(HINT_ENTRIES))
 	hint.name = "Hint"
 	MenuStyle.place(hint, HINT_RECT)
 	add_child(hint)
@@ -46,10 +48,13 @@ func _ready() -> void:
 			start = i
 	_select(start, false)
 	MenuSound.play_music(self)
+	ScreenFade.connect_finished(get_tree(), _on_fade_finished)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if ScreenFade.is_busy(get_tree()):
+		if _fade_buffer.offer(get_tree(), event):
+			get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("menu_left"):
 		get_viewport().set_input_as_handled()
@@ -137,6 +142,12 @@ func _open_selected() -> void:
 	MenuSound.play(self, MenuSound.CONFIRM)
 	GameSession.world_id = _worlds[_selected].id
 	ScreenFade.go_to(get_tree(), ScreenFade.LEVEL_SELECT)
+
+
+func _on_fade_finished() -> void:
+	var event: InputEvent = _fade_buffer.take()
+	if event != null:
+		_unhandled_input(event)
 
 
 func _on_card_hovered(index: int) -> void:

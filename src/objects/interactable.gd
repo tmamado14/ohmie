@@ -22,6 +22,22 @@ func get_interaction_point() -> Vector2:
 	return global_position
 
 
+## Global y of the surface Ohmie stands on to use this object (his feet must be
+## near it: the same-level rule).
+func get_standing_y() -> float:
+	return global_position.y
+
+
+## Global top centre of the drawn object; the name tag floats above it.
+func get_tag_anchor() -> Vector2:
+	return global_position
+
+
+## The name tag's text while this object is the highlighted target.
+func get_tag_text() -> String:
+	return ""
+
+
 ## False while the object cannot be interacted with at all (for example a
 ## resistor that is being carried or sits in a socket).
 func is_available() -> bool:

@@ -5,6 +5,7 @@
 [ext_resource type="Texture2D" path="res://assets/processed/socket_empty.png" id="3_empty"]
 [ext_resource type="Texture2D" path="res://assets/processed/socket_highlight.png" id="4_highlight"]
 [ext_resource type="Script" path="res://src/objects/polarity_badges.gd" id="5_badges"]
+[ext_resource type="Script" path="res://src/objects/part_blocker.gd" id="6_blocker"]
 
 [node name="Socket" type="Node2D"]
 z_index = 1
@@ -22,3 +23,8 @@ script = ExtResource("2_icon")
 
 [node name="Polarity" type="Node2D" parent="."]
 script = ExtResource("5_badges")
+
+[node name="PartBlocker" type="Node2D" parent="."]
+position = Vector2(0, 36)
+script = ExtResource("6_blocker")
+size = Vector2(120, 72)

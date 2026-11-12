@@ -114,7 +114,7 @@ func _sample() -> void:
 	var playing_count: int = 0
 	for node: Node in root.find_children("*", "AudioStreamPlayer", true, false):
 		var player: AudioStreamPlayer = node as AudioStreamPlayer
-		if player.playing and player.stream != null and player.stream.resource_path.contains("music_"):
+		if player.playing and player.stream != null and not player.stream.resource_path.get_file().begins_with("sfx_"):
 			playing_count += 1
 			_streams_seen[player.stream.resource_path] = true
 	_max_playing = maxi(_max_playing, playing_count)

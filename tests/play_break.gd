@@ -1,6 +1,6 @@
 extends SceneTree
 ## Adversarial scripted QA test: tries to break the rooms w1_07 ("Half and Half")
-## and dev_room.
+## and dev_room; section L checks the same-level rule and the name tag in w1_05.
 ##
 ## Drives Ohmie through the input map (move_left, move_right, move_down, jump,
 ## interact, restart). To reach a test position quickly it sometimes moves
@@ -53,6 +53,7 @@ class ErrorCounter extends Logger:
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const HALF_AND_HALF: String = "res://levels/w1_07.json"
 const DEV: String = "res://levels/dev_room.json"
+const PARALLEL_PARKING: String = "res://levels/w1_05.json"
 const ROOM_PATH: NodePath = ^"Room"
 const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
 const OHM: String = " Ω"
@@ -81,12 +82,19 @@ const DEV_R3_HOME: Vector2 = Vector2(880, 640)
 const DEV_AT_LOWER_SOCKET: Vector2 = Vector2(640, 640)
 const DEV_PIT_LEFT_X: float = 960.0
 
+## w1_05 layout facts: the 2 Ω lies on the low ledge (row 18, x 224..384).
+const W5_R2_POS: Vector2 = Vector2(288, 583)
+const W5_FLOOR_UNDER_R2: Vector2 = Vector2(288, 640)
+
 const SCREEN_WIDTH: float = 1280.0
 const ICON_HALF_WIDTH: float = 48.0
 ## A loose resistor's footprint is floor point x +- this (lead's decision for BUG-002).
 const FOOTPRINT_HALF_WIDTH: float = 40.0
-## Two loose resistors' floor points never lie closer than this (BUG-004).
-const MIN_SPACING: float = 60.0
+## Two loose resistors at the same level never lie closer than this (BUG-004, QA-14).
+const MIN_SPACING: float = 100.0
+## A loose part's floor point keeps this far (x) from a slot at its level: the
+## slot's 120 px blocked area plus the 80 px footprint, halved (QA-06).
+const SLOT_CLEARANCE: float = 100.0
 const LEFT_LEDGE_LEFT_X: float = 192.0
 const REACH: float = 56.0
 const PLAYER_HEIGHT: float = 88.0
@@ -160,6 +168,7 @@ func _run_all() -> void:
 	await _section_i_movement_abuse()
 	await _section_j_readout_sweep()
 	await _section_k_coyote_and_buffer()
+	await _section_l_same_level()
 
 
 # --- A: interact spam ------------------------------------------------------------
@@ -190,12 +199,17 @@ func _section_a_interact_spam() -> void:
 	await _teleport(Vector2(670, FLOOR_Y))
 	_check(_carry.get_target() == null, "A3 at x=670 nothing is in reach (target %s)" % _describe(_carry.get_target()))
 	await _interact()
-	_check(one_floor.is_loose() and absf(one_floor.global_position.x - 670.0) <= POSITION_TOLERANCE,
-			"A3 the 1 Ω is put down at x=670 next to the empty socket s3")
-	await _teleport(Vector2(712, FLOOR_Y))
+	# A put-down keeps clear of a slot's frame: it slides left until the part's
+	# footprint is SLOT_CLEARANCE from the slot's centre.
+	var clear_x: float = s3.global_position.x - SLOT_CLEARANCE
+	_check(one_floor.is_loose() and absf(one_floor.global_position.x - clear_x) <= POSITION_TOLERANCE
+			and absf(one_floor.global_position.y - FLOOR_Y) <= POSITION_TOLERANCE,
+			"A3 the 1 Ω put down at x=670 slides clear of the empty socket s3's frame, to x=%.0f (at %s)" % [clear_x, one_floor.global_position])
+	var between_x: float = (one_floor.global_position.x + s3.global_position.x) * 0.5
+	await _teleport(Vector2(between_x, FLOOR_Y))
 	var pickup_distance: float = _body_centre().distance_to(one_floor.get_interaction_point())
 	var socket_distance: float = _body_centre().distance_to(s3.get_interaction_point())
-	_info("A3 empty hands at x=712: loose 1 Ω at %.1f px, empty socket s3 at %.1f px (reach 56)" % [pickup_distance, socket_distance])
+	_info("A3 empty hands at x=%.0f: loose 1 Ω at %.1f px, empty socket s3 at %.1f px (reach 56)" % [between_x, pickup_distance, socket_distance])
 	_check(_carry.get_target() == one_floor,
 			"A3 empty hands with a loose resistor in reach: the resistor is the highlighted target, not the empty socket (GDD 2: empty hands at a loose resistor picks it up) (target %s)" % _describe(_carry.get_target()))
 	_reset_counters()
@@ -390,14 +404,20 @@ func _section_c_drop_spots() -> void:
 	await _interact()
 	_check(_carry.get_carried() == half, "C1 it can be picked up again (standing at it)")
 
-	# C2: on top of another loose resistor's spot, and as close as allowed.
+	# C2: on top of another loose resistor's spot, beside it, and as close as allowed.
 	await _teleport(TWO_POS)
 	_reset_counters()
 	await _interact()
-	var slide_gap: float = half.global_position.distance_to(two.global_position)
+	_check(_dropped == 0 and _invalid == 1 and _carry.get_carried() == half and two.is_loose()
+			and two.global_position == TWO_POS,
+			"C2 putting down on top of the loose 2 Ω is refused: no spot within the 64 px slide is %.0f px clear of it, so nothing stacks" % MIN_SPACING)
+	await _teleport(Vector2(TWO_POS.x + 50.0, FLOOR_Y))
+	_reset_counters()
+	await _interact()
+	var slide_gap: float = absf(half.global_position.x - two.global_position.x)
 	_check(_dropped == 1 and half.is_loose() and two.is_loose() and two.global_position == TWO_POS
 			and slide_gap >= MIN_SPACING - 0.01,
-			"C2 putting down on top of the loose 2 Ω does not stack: it slides aside to at least %.0f px from it (at %s, %.1f px)" % [MIN_SPACING, half.global_position, slide_gap])
+			"C2 putting down 50 px from the loose 2 Ω slides aside to at least %.0f px from it (at %s, %.1f px)" % [MIN_SPACING, half.global_position, slide_gap])
 	await _teleport(Vector2(half.global_position.x, FLOOR_Y))
 	await _interact()
 	_check(_carry.get_carried() == half, "C2 it can be picked up again beside the 2 Ω")
@@ -415,19 +435,21 @@ func _section_c_drop_spots() -> void:
 			"C2 resistors are never put down covering more than half of another's icon")
 	_check(closest_x > 0.0 and absf(closest_x - TWO_POS.x) >= MIN_SPACING - 0.01,
 			"C2 a put-down beside another loose resistor does not land closer than %.0f px to it (%.1f px)" % [MIN_SPACING, absf(closest_x - TWO_POS.x)])
+	# It may have slid out of reach of where Ohmie stood, so stand at it.
+	await _teleport(Vector2(half.global_position.x, FLOOR_Y))
 	await _interact()
+	_check(_carry.get_carried() == half, "C2 it can be picked up again at its nearest allowed spot")
 
-	# C3: right next to (in) the closed door.
+	# C3: right next to (in) the closed door. A put-down keeps clear of the door
+	# (QA-06), and no spot within the 64 px slide is clear of it, so it is refused.
 	await _teleport(Vector2(DOOR_X, FLOOR_Y))
 	_reset_counters()
 	await _interact()
-	_check(_dropped == 1 and half.is_loose() and not _room.is_complete(),
-			"C3 putting a resistor down in the closed doorway works and does not complete the level")
+	_check(_dropped == 0 and _invalid == 1 and _carry.get_carried() == half and not _room.is_complete(),
+			"C3 putting a resistor down in the closed doorway is refused (the door stays uncovered) and does not complete the level")
 	var door_index: int = _door.get_parent().get_index()
 	var parts_index: int = half.get_parent().get_index()
 	_info("C3 draw order: door container index %d, parts container index %d (part drawn %s the door)" % [door_index, parts_index, "in front of" if parts_index > door_index else "behind"])
-	await _interact()
-	_check(_carry.get_carried() == half, "C3 it can be picked up again in the doorway")
 
 	# C4: screen edges.
 	Input.action_press("move_left")
@@ -448,12 +470,18 @@ func _section_c_drop_spots() -> void:
 	Input.action_press("move_right")
 	await _wait_physics(30)
 	Input.action_release("move_right")
+	# The right edge of w1_07 is beside the door, which a put-down keeps clear of.
+	var edge_feet: Vector2 = _player.position
+	_reset_counters()
 	await _interact()
-	_check(half.is_loose(), "C4 can put a resistor down at the right screen edge (x=%.1f)" % half.global_position.x)
-	_check(half.global_position.x + ICON_HALF_WIDTH <= SCREEN_WIDTH,
-			"C4 a resistor put down at the right edge is fully on screen (icon spans x %.0f..%.0f)" % [half.global_position.x - ICON_HALF_WIDTH, half.global_position.x + ICON_HALF_WIDTH])
-	await _interact()
-	_check(_carry.get_carried() == half, "C4 it can be picked up again at the right edge")
+	_check(_dropped == 0 and _invalid == 1 and _carry.get_carried() == half,
+			"C4 a put-down at the right screen edge beside the door is refused (at x=%.1f)" % edge_feet.x)
+	# Without the door, the spot is pulled fully on screen.
+	var no_parts: Array[Vector2] = []
+	var open_floor: PartPlacement = PartPlacement.new(_player.get_world_2d().direct_space_state, no_parts)
+	var edge_spot: Vector2 = open_floor.find_put_down(edge_feet, _carry.put_down_max_slide)
+	_check(edge_spot != PartPlacement.NO_SPOT and edge_spot.x + ICON_HALF_WIDTH <= SCREEN_WIDTH,
+			"C4 at the right edge with nothing blocking, the spot keeps the icon fully on screen (spot %s)" % edge_spot)
 
 	# C5: dev_room, lip of the pit.
 	if not await _open_level(DEV):
@@ -1150,6 +1178,46 @@ func _describe(target: Interactable) -> String:
 	if target is CircuitSocket:
 		return "socket " + (target as CircuitSocket).socket_id
 	return str(target)
+
+
+# --- L: same-level rule and the name tag (w1_05) ------------------------------------------
+
+func _section_l_same_level() -> void:
+	print("-- L: same-level rule and name tag (w1_05)")
+	if not await _open_level(PARALLEL_PARKING):
+		return
+	var r2: PartPickup = _part("r2")
+	var tag: TargetTag = _room.get_target_tag()
+	await _teleport(W5_FLOOR_UNDER_R2)
+	var distance: float = _body_centre().distance_to(r2.get_interaction_point())
+	_check(_player.is_on_floor() and distance <= REACH and _carry.get_target() == null,
+			"L1 on the floor beneath the low ledge the 2 Ω is in reach (%.1f px) but not a target: it is not at Ohmie's level (target %s)" % [distance, _describe(_carry.get_target())])
+	_check(tag != null and not tag.visible, "L1 no name tag is shown without a target")
+	_reset_counters()
+	await _interact()
+	_check(_picked == 0 and _invalid == 1 and r2.is_loose(),
+			"L1 interact on the floor beneath it does not pick up the 2 Ω (picked %d, invalid %d)" % [_picked, _invalid])
+	await _teleport(W5_R2_POS)
+	_check(_player.is_on_floor() and absf(_player.position.y - W5_R2_POS.y) <= POSITION_TOLERANCE
+			and _carry.get_target() == r2,
+			"L2 standing on the ledge, the 2 Ω is the target (at %s, target %s)" % [_player.position, _describe(_carry.get_target())])
+	_check(tag != null and tag.visible and tag.get_text() == "2 Ω",
+			"L2 the name tag reads '2 Ω' over the highlighted part (got '%s')" % (tag.get_text() if tag != null else "no tag"))
+	if tag != null:
+		var rect: Rect2 = tag.get_global_rect()
+		_check(rect.end.y <= r2.get_tag_anchor().y and rect.end.y <= W5_R2_POS.y - TargetTag.HEAD_CLEARANCE
+				and rect.position.x >= 0.0 and rect.end.x <= SCREEN_WIDTH and rect.position.y >= 0.0,
+				"L2 the tag floats above the part and clear of Ohmie's head, on screen (%s)" % rect)
+	var carried_icon: Node2D = _carry.get_node(^"CarriedIcon") as Node2D
+	var carried_z: int = _player.z_index + carried_icon.z_index if carried_icon.z_as_relative else carried_icon.z_index
+	_check(_player.z_index > r2.z_index and _player.z_index > _board.get_sockets()[0].z_index
+			and tag != null and carried_z > tag.z_index,
+			"L2 Ohmie draws in front of loose parts and slots, the carried part on top of the tag (z %d > %d, %d; carried %d > tag %d)" % [
+				_player.z_index, r2.z_index, _board.get_sockets()[0].z_index, carried_z, tag.z_index if tag != null else -1])
+	_reset_counters()
+	await _interact()
+	_check(_carry.get_carried() == r2 and _picked == 1, "L2 interact on the ledge picks up the 2 Ω")
+	_check(tag != null and not tag.visible, "L2 the tag goes away when the part is picked up and nothing else is in reach")
 
 
 # --- room binding ----------------------------------------------------------------------

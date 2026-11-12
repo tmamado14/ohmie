@@ -13,8 +13,10 @@ extends Node2D
 ## the game was started through the menus).
 ##
 ## When the game was started through the menus (GameSession.from_menus), Esc
-## (`menu_back`) returns to the level select, the next room is loaded with a
-## fade, and the victory line mentions the map. Otherwise Esc does nothing.
+## (`menu_back`) returns to the level select (an Esc pressed while the room is
+## still fading in is remembered and acted on when the fade ends), the next
+## room is loaded with a fade, and the victory line mentions the map.
+## Otherwise Esc does nothing.
 ##
 ## The level file is, in order of precedence: `level_override` (set by scripted
 ## tests; it survives `restart` reloads), a user argument
@@ -59,6 +61,8 @@ var _complete: bool = false
 var _sfx: SfxPlayer = null
 ## The campaign level after this one ("" if none), known once the level is complete.
 var _next_level: String = ""
+## Esc pressed while the room is still fading in is acted on when it ends.
+var _fade_buffer: FadeInputBuffer = FadeInputBuffer.new(["menu_back"])
 
 @onready var _background: Sprite2D = $Background
 @onready var _tiles: RoomTiles = $Tiles
@@ -68,6 +72,7 @@ var _next_level: String = ""
 @onready var _hud: Hud = $Hud/Hud
 @onready var _objects: RoomObjects = $Objects
 @onready var _respawn: PlayerRespawn = $Respawn
+@onready var _target_tag: TargetTag = $TargetTag
 
 
 func _ready() -> void:
@@ -79,7 +84,7 @@ func _ready() -> void:
 	_tiles.build(level_data.tile_rows)
 	_hud.set_title(level_data.title)
 	_hud.set_mission(_goal.mission)
-	_hud.set_map_hint_shown(GameSession.from_menus)
+	_hud.set_controls_hint(_has_one_way_platform(), GameSession.from_menus)
 	var symbols: PackedStringArray = PackedStringArray()
 	var targets: PackedStringArray = PackedStringArray()
 	for i: int in _goal.condition_count():
@@ -97,6 +102,7 @@ func _ready() -> void:
 	_board.circuit_changed.connect(_on_circuit_changed)
 	_board.shorted.connect(_play_sound.bind(&"invalid"))
 	_board.build(_circuit, _goal, _theme)
+	ScreenFade.connect_finished(get_tree(), _on_fade_finished)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -105,7 +111,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().reload_current_scene()
 	elif event.is_action_pressed("menu_back") and GameSession.from_menus:
 		get_viewport().set_input_as_handled()
-		ScreenFade.go_to(get_tree(), ScreenFade.LEVEL_SELECT)
+		if ScreenFade.is_busy(get_tree()):
+			_fade_buffer.offer(get_tree(), event)
+		else:
+			ScreenFade.go_to(get_tree(), ScreenFade.LEVEL_SELECT)
 	elif event.is_action_pressed("interact") and _complete and not _next_level.is_empty():
 		get_viewport().set_input_as_handled()
 		if GameSession.from_menus:
@@ -161,6 +170,11 @@ func get_goal() -> LevelGoal:
 ## The level's bounce pads, enemies and hazards.
 func get_objects() -> RoomObjects:
 	return _objects
+
+
+## The name tag over the highlighted target.
+func get_target_tag() -> TargetTag:
+	return _target_tag
 
 
 ## Ohmie's respawn path (pit falls and zaps).
@@ -255,6 +269,7 @@ func _spawn_player() -> void:
 	_carry.swapped.connect(_play_sound.bind(&"place_resistor").unbind(3))
 	_carry.dropped.connect(_play_sound.bind(&"place_resistor").unbind(1))
 	_carry.invalid_action.connect(_play_sound.bind(&"invalid"))
+	_carry.target_changed.connect(_target_tag.show_target)
 	_respawn.setup(_player, _carry, level_data.spawn)
 
 
@@ -269,6 +284,12 @@ func _on_circuit_changed(solution: DcSolution, goal_met: bool) -> void:
 		_play_sound(&"connect")
 	_was_met = goal_met
 	_door.set_open(goal_met)
+
+
+func _on_fade_finished() -> void:
+	var event: InputEvent = _fade_buffer.take()
+	if event != null:
+		_unhandled_input(event)
 
 
 func _on_door_entered() -> void:
@@ -306,6 +327,14 @@ func _row_caption(index: int) -> String:
 	if edge == null or edge.label.is_empty():
 		return symbol
 	return "%s %s" % [symbol, edge.label]
+
+
+## True when the level's tiles contain at least one one-way platform.
+func _has_one_way_platform() -> bool:
+	for row: String in level_data.tile_rows:
+		if row.contains(RoomTiles.CHAR_PLATFORM):
+			return true
+	return false
 
 
 func _on_player_fell_out() -> void:

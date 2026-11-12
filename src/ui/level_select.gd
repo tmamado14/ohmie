@@ -12,7 +12,7 @@ const PANEL: Texture2D = preload("res://assets/ui/decor/blank_puzzle_panel.png")
 const CHECK: Texture2D = preload("res://assets/processed/ui_check.png")
 const LOCK: Texture2D = preload("res://assets/processed/ui_lock.png")
 
-const HINT: String = "Arrows  choose     Enter  play     Esc  worlds"
+const HINT_ENTRIES: PackedStringArray = ["Arrows choose", "Enter play", "Esc worlds"]
 const OVERTIME_HEADING: String = "Overtime"
 const OVERTIME_NOTE: String = "bonus rooms"
 const LOCKED_TITLE: String = "???"
@@ -32,6 +32,9 @@ const COLUMNS: int = 5
 const TILE_GAP: Vector2 = Vector2(22, 22)
 const OVERTIME_LABEL_TOP: float = 438.0
 const OVERTIME_TOP: float = 482.0
+const OVERTIME_HEADING_FONT_SIZE: int = 30
+## Space between "Overtime" and the "bonus rooms" note after it.
+const OVERTIME_NOTE_GAP: float = 10.0
 const PANEL_RECT: Rect2 = Rect2(718, 166, 520, 325)
 ## Text area inside the panel (panel-local, inside the parchment).
 const INFO_RECT: Rect2 = Rect2(80, 46, 360, 232)
@@ -48,6 +51,8 @@ var _rows: Array[PackedInt32Array] = []
 var _titles: Dictionary = {}  # level file -> title
 var _missions: Dictionary = {}  # level file -> mission
 var _selected: int = 0
+## Enter or Esc pressed while the screen is still fading in is acted on when it ends.
+var _fade_buffer: FadeInputBuffer = FadeInputBuffer.new(["menu_accept", "menu_back"])
 
 var _info_caption: Label = null
 var _info_title: Label = null
@@ -73,16 +78,21 @@ func _ready() -> void:
 	ohmie.position = OHMIE_START
 	ohmie.run_distance = 190.0
 	add_child(ohmie)
-	var hint: Label = MenuStyle.art_label(HINT, 20, 6)
+	var hint: Label = MenuStyle.hint_label(MenuStyle.hint_text(HINT_ENTRIES))
 	hint.name = "Hint"
 	MenuStyle.place(hint, HINT_RECT)
 	add_child(hint)
 	_select(_initial_selection(), false)
 	MenuSound.play_music(self)
+	ScreenFade.connect_finished(get_tree(), _on_fade_finished)
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if ScreenFade.is_busy(get_tree()) or _tiles.is_empty():
+	if _tiles.is_empty():
+		return
+	if ScreenFade.is_busy(get_tree()):
+		if _fade_buffer.offer(get_tree(), event):
+			get_viewport().set_input_as_handled()
 		return
 	var handled: bool = true
 	if event.is_action_pressed("menu_left"):
@@ -216,14 +226,16 @@ func _build_tiles() -> void:
 		_add_tile(regular[i], at, row_index)
 	if overtime.is_empty():
 		return
-	var heading: Label = MenuStyle.art_label(OVERTIME_HEADING, 30, 7, MenuStyle.bold_font())
+	var heading: Label = MenuStyle.art_label(OVERTIME_HEADING, OVERTIME_HEADING_FONT_SIZE, 7, MenuStyle.bold_font())
 	heading.name = "OvertimeHeading"
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	MenuStyle.place(heading, Rect2(GRID_LEFT, OVERTIME_LABEL_TOP, 170, 36))
+	var heading_width: float = ceilf(MenuStyle.bold_font().get_string_size(OVERTIME_HEADING,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, OVERTIME_HEADING_FONT_SIZE).x)
+	MenuStyle.place(heading, Rect2(GRID_LEFT, OVERTIME_LABEL_TOP, heading_width, 36))
 	add_child(heading)
 	var note: Label = MenuStyle.art_label(OVERTIME_NOTE, 19, 5, MenuStyle.italic_font())
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	MenuStyle.place(note, Rect2(GRID_LEFT + 150, OVERTIME_LABEL_TOP + 6, 200, 30))
+	MenuStyle.place(note, Rect2(GRID_LEFT + heading_width + OVERTIME_NOTE_GAP, OVERTIME_LABEL_TOP + 6, 200, 30))
 	add_child(note)
 	var row: int = ceili(regular.size() / float(COLUMNS))
 	for i: int in overtime.size():
@@ -351,6 +363,12 @@ func _start_selected() -> void:
 	GameSession.world_id = _world.id
 	GameSession.room_file = _rooms[_selected].file
 	ScreenFade.go_to(get_tree(), ScreenFade.GAME)
+
+
+func _on_fade_finished() -> void:
+	var event: InputEvent = _fade_buffer.take()
+	if event != null:
+		_unhandled_input(event)
 
 
 func _on_tile_hovered(index: int) -> void:

@@ -1,0 +1,14 @@
+[gd_resource type="FontVariation" format=3]
+
+[ext_resource type="FontFile" path="res://assets/fonts/libre_baskerville/LibreBaskerville-Italic-VF.ttf" id="1_base"]
+
+[sub_resource type="SystemFont" id="SystemFont_symbols"]
+font_names = PackedStringArray("Times New Roman", "Cambria", "Georgia", "Segoe UI Symbol", "serif")
+font_italic = true
+
+[resource]
+fallbacks = Array[Font]([SubResource("SystemFont_symbols")])
+base_font = ExtResource("1_base")
+variation_opentype = {
+2003265652: 400
+}

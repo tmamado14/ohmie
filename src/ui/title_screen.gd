@@ -13,7 +13,7 @@ const BOLT_REGION: Rect2 = Rect2(4, 10, 70, 112)
 const GAME_NAME: String = "Ohmie"
 const SUBTITLE: String = "Circuit Adventure"
 const VERSION_LINE: String = "v0.2 · World 1 preview"
-const HINT: String = "Enter / Space to select"
+const HINT_ENTRIES: PackedStringArray = ["Arrows choose", "Enter select"]
 const PLAY: String = "Play"
 const QUIT: String = "Quit"
 
@@ -32,9 +32,12 @@ const BOLT_GLOW_MIN_ALPHA: float = 0.45
 const HALO_RECT: Rect2 = Rect2(180, -40, 920, 470)
 const HALO_ALPHA: float = 0.5
 const RIBBON_RECT: Rect2 = Rect2(400, 214, 480, 156)
-## Text band of the ribbon art (source pixels), scaled with the ribbon.
-const RIBBON_TEXT_SOURCE: Rect2 = Rect2(118, 40, 364, 78)
+## Text band of the ribbon art (source pixels), scaled with the ribbon: the
+## flat front panel (about x 120-480) less a margin on both sides, so the
+## words never run into the folds.
+const RIBBON_TEXT_SOURCE: Rect2 = Rect2(146, 44, 308, 74)
 const SUBTITLE_FONT_SIZE: int = 34
+const SUBTITLE_MIN_FONT_SIZE: int = 20
 const BUTTON_CENTER_X: float = 640.0
 const FIRST_BUTTON_Y: float = 392.0
 const BUTTON_SPACING: float = 112.0
@@ -48,13 +51,12 @@ const OHMIE_RUN_SPEED: float = 220.0
 const OHMIE_HOP_HEIGHT: float = 96.0
 const OHMIE_HOP_SECONDS: float = 0.34
 const OHMIE_IDLE_SECONDS: float = 2.4
-const HINT_RECT: Rect2 = Rect2(340, 664, 600, 36)
+const HINT_RECT: Rect2 = Rect2(0, 664, 1280, 34)
 const VERSION_RECT: Rect2 = Rect2(900, 680, 360, 30)
 
 ## Logo bob: amplitude in pixels and period in seconds.
 const BOB_PIXELS: float = 6.0
 const BOB_SECONDS: float = 3.2
-const HINT_BLINK_SECONDS: float = 0.9
 const BOLT_PULSE_SECONDS: float = 2.4
 ## Logo entrance: starts this small and transparent, then eases out (back) to full size.
 const LOGO_INTRO_SCALE: float = 0.7
@@ -104,6 +106,8 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# No key is remembered while the title fades in: it follows the splash, and
+	# a key that skipped the splash must not also choose Play.
 	if ScreenFade.is_busy(get_tree()):
 		return
 	if event.is_action_pressed("menu_up"):
@@ -216,7 +220,10 @@ func _build_ribbon() -> void:
 	var ratio: float = RIBBON_RECT.size.x / RIBBON.get_size().x
 	var subtitle: Label = MenuStyle.ink_label(SUBTITLE, SUBTITLE_FONT_SIZE, MenuStyle.italic_font())
 	subtitle.name = "Subtitle"
-	MenuStyle.place(subtitle, Rect2(RIBBON_TEXT_SOURCE.position * ratio, RIBBON_TEXT_SOURCE.size * ratio))
+	var band: Rect2 = Rect2(RIBBON_TEXT_SOURCE.position * ratio, RIBBON_TEXT_SOURCE.size * ratio)
+	subtitle.add_theme_font_size_override(&"font_size", TextFit.fit_font_size(MenuStyle.italic_font(),
+			SUBTITLE, SUBTITLE_FONT_SIZE, SUBTITLE_MIN_FONT_SIZE, band.size.x))
+	MenuStyle.place(subtitle, band)
 	ribbon.add_child(subtitle)
 
 
@@ -234,13 +241,10 @@ func _build_buttons() -> void:
 
 
 func _build_footer() -> void:
-	var hint: Label = MenuStyle.art_label(HINT, 20, 6)
+	var hint: Label = MenuStyle.hint_label(MenuStyle.hint_text(HINT_ENTRIES))
 	hint.name = "Hint"
 	MenuStyle.place(hint, HINT_RECT)
 	add_child(hint)
-	var blink: Tween = create_tween().set_loops()
-	blink.tween_property(hint, "modulate:a", 0.25, HINT_BLINK_SECONDS).set_trans(Tween.TRANS_SINE)
-	blink.tween_property(hint, "modulate:a", 1.0, HINT_BLINK_SECONDS).set_trans(Tween.TRANS_SINE)
 	var version: Label = MenuStyle.art_label(VERSION_LINE, 16, 5)
 	version.name = "Version"
 	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

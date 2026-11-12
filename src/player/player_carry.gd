@@ -8,15 +8,19 @@ extends Node2D
 ## highlighted and every `interact` press is invalid.
 ## On the ground, each physics frame it finds the nearest Interactable within
 ## `reach` of the body centre that can be used with the current hands (empty
-## hands: loose parts and filled slots; carrying: slots) and
-## highlights it. On `interact`:
+## hands: loose parts and filled slots; carrying: slots) and that stands at
+## Ohmie's level (his feet within `level_tolerance` of the object's standing
+## surface, so a part or slot on a ledge needs the climb), and highlights it.
+## `target_changed` announces the highlighted target and its name-tag text
+## whenever either changes. On `interact`:
 ##   empty hands + loose part     -> pick up
 ##   carrying + empty slot        -> plug in
 ##   empty hands + filled slot    -> pull out
 ##   carrying + filled slot       -> swap
 ##   carrying + nothing in range  -> put down at the feet (PartPlacement
 ##                                   picks the exact spot, or refuses; never
-##                                   on a PartBlocker's area)
+##                                   on a PartBlocker's area: pads, hazards,
+##                                   board components, the door)
 ##   anything else                -> invalid
 
 signal picked_up(part: PartPickup)
@@ -25,11 +29,17 @@ signal removed(part: PartPickup, socket: CircuitSocket)
 signal swapped(placed_part: PartPickup, taken_part: PartPickup, socket: CircuitSocket)
 signal dropped(part: PartPickup)
 signal invalid_action
+## The highlighted target (null for none) or its name-tag text changed.
+## `carrying`: whether Ohmie holds a part now.
+signal target_changed(target: Interactable, tag_text: String, carrying: bool)
 
 ## The body whose floor state decides whether Ohmie can interact at all.
 @export var body: CharacterBody2D
 ## Interaction range in pixels, measured from the body centre.
 @export var reach: float = 56.0
+## Same-level rule: Ohmie's feet must be within this many pixels (vertically)
+## of a target's standing surface.
+@export var level_tolerance: float = 24.0
 ## From the feet to the body centre (half the 88 px collider).
 @export var body_centre_offset: Vector2 = Vector2(0, -44)
 ## How far a put-down may slide along the surface to find a valid spot.
@@ -40,6 +50,10 @@ signal invalid_action
 var _carried: PartPickup = null
 var _target: Interactable = null
 var _enabled: bool = true
+## What target_changed last announced.
+var _announced_target: Interactable = null
+var _announced_text: String = ""
+var _announced_carrying: bool = false
 
 @onready var _carried_icon: PartIcon = $CarriedIcon
 
@@ -58,6 +72,7 @@ func _physics_process(_delta: float) -> void:
 			_interact()
 		else:
 			invalid_action.emit()
+	_announce_target()
 
 
 ## The part in Ohmie's hands, or null.
@@ -79,6 +94,7 @@ func set_enabled(enabled: bool) -> void:
 	_enabled = enabled
 	if not enabled:
 		_set_target(null)
+		_announce_target()
 
 
 ## Sends a carried part back to where the level first put it (after a
@@ -142,6 +158,8 @@ func _find_target() -> Interactable:
 		var candidate: Interactable = node as Interactable
 		if candidate == null or not candidate.can_interact(carrying):
 			continue
+		if absf(global_position.y - candidate.get_standing_y()) > level_tolerance:
+			continue
 		var distance: float = centre.distance_to(candidate.get_interaction_point())
 		if distance <= reach and distance < best_distance:
 			best = candidate
@@ -150,7 +168,8 @@ func _find_target() -> Interactable:
 
 
 ## A placement helper that knows every other loose part and every area where
-## a part may not lie (bounce pads, static hazards).
+## a part may not lie (PartBlockers: bounce pads, static hazards, slots,
+## fixed board parts, lamps, meters and the door).
 func _placement() -> PartPlacement:
 	var others: Array[Vector2] = []
 	for node: Node in get_tree().get_nodes_in_group(Interactable.GROUP):
@@ -173,6 +192,20 @@ func _set_target(target: Interactable) -> void:
 	_target = target
 	if _target != null:
 		_target.set_highlighted(true)
+
+
+## Emits target_changed when the target, its tag text or the hands changed
+## since the last announcement.
+func _announce_target() -> void:
+	var target: Interactable = _target if _target != null and is_instance_valid(_target) else null
+	var text: String = target.get_tag_text() if target != null else ""
+	var carrying: bool = _carried != null
+	if target == _announced_target and text == _announced_text and carrying == _announced_carrying:
+		return
+	_announced_target = target
+	_announced_text = text
+	_announced_carrying = carrying
+	target_changed.emit(target, text, carrying)
 
 
 func _set_carried(part: PartPickup) -> void:

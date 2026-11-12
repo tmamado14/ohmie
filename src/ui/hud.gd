@@ -8,9 +8,15 @@ extends Control
 ## The plaque has two text rows. With one goal condition they read
 ## "GOAL  2 A" and "I  3/2 A" (the reading turns green while the condition is
 ## met). With two conditions each row reads "I  3/2 A  →  2 A", green while that
-## condition is met. Values shrink to fit the parchment. A caption may carry
-## the meter's label ("I top"); such captions get a wider column and shrink to
-## fit it.
+## condition is met. A caption may carry the meter's label ("I top").
+## On every row the caption (left) and its value (right) share one font size,
+## so they share a baseline; all rows use the largest size at which every
+## row's caption, a gap of at least CAPTION_GAP and its value fit the
+## parchment, so a long caption shrinks together with its value.
+##
+## The control hint reads "A/D move · Space jump (hold for higher) · E use ·
+## R restart", with "S drop down" when the room has a one-way platform and
+## "Esc map" when Esc opens the map (MenuStyle hint style).
 ##
 ## The line under the victory banner sits on a dark rounded strip sized to its
 ## text, so it stays readable over anything behind it.
@@ -27,9 +33,13 @@ const MISSION_DONE_HEADING: String = "MISSION COMPLETE"
 const VICTORY_NEXT_ROOM: String = "Press E for the next room"
 const VICTORY_PLAY_AGAIN: String = "Press R to play again"
 ## The same lines when the game was started through the menus (Esc opens the map).
-const VICTORY_NEXT_ROOM_MAP: String = "Press E for the next room · Esc for the map"
-const VICTORY_MAP_PLAY_AGAIN: String = "Press Esc for the map · R to play again"
-## Appended to the control hint when Esc opens the map.
+const VICTORY_NEXT_ROOM_MAP: String = "E next room · R replay · Esc map"
+const VICTORY_MAP_PLAY_AGAIN: String = "R replay · Esc map"
+## The control hint's entries, in order. DROP_HINT is added when the room has a
+## one-way platform; the hint ends with MAP_HINT when Esc opens the map.
+const MOVE_HINTS: PackedStringArray = ["A/D move", "Space jump (hold for higher)"]
+const DROP_HINT: String = "S drop down"
+const USE_HINTS: PackedStringArray = ["E use", "R restart"]
 const MAP_HINT: String = " · Esc map"
 ## Caption of the target row when the goal has one condition.
 const GOAL_CAPTION: String = "GOAL"
@@ -44,16 +54,21 @@ const ROW_TOPS: Array[float] = [78.0, 103.0]
 const ROW_HEIGHT: float = 25.0
 const CAPTION_LEFT: float = 131.0
 const VALUE_RIGHT: float = 296.0
-const SINGLE_CAPTION_WIDTH: float = 59.0
-const MULTI_CAPTION_WIDTH: float = 22.0
-## Caption column on two-condition rows when a caption is longer than a symbol.
-const LABELLED_CAPTION_WIDTH: float = 64.0
-## Space kept between a shrunk caption and its value.
-const CAPTION_GAP: float = 4.0
-const CAPTION_MAX_FONT_SIZE: int = 19
-const CAPTION_MIN_FONT_SIZE: int = 10
-const VALUE_MAX_FONT_SIZE: int = 21
-const VALUE_MIN_FONT_SIZE: int = 10
+## Least space between a caption and its value.
+const CAPTION_GAP: float = 10.0
+## Font size of every plaque row (caption and value alike), shrunk to fit.
+const ROW_MAX_FONT_SIZE: int = 19
+const ROW_MIN_FONT_SIZE: int = 10
+## The mission line keeps MISSION_FONT_SIZE, shrinking to no less than
+## MISSION_ONE_LINE_MIN_FONT_SIZE when that keeps it on one line; a longer
+## mission wraps at MISSION_FONT_SIZE.
+const MISSION_FONT_SIZE: int = 16
+const MISSION_ONE_LINE_MIN_FONT_SIZE: int = 14
+## The banner's "Circuit complete!" shrinks to fit the ribbon's flat panel.
+const BANNER_MAX_FONT_SIZE: int = 28
+const BANNER_MIN_FONT_SIZE: int = 18
+## Width of the ribbon's flat panel available to the message (Victory/Banner/Message).
+const BANNER_TEXT_WIDTH: float = 220.0
 
 var _mission_done: bool = false
 var _symbols: PackedStringArray = PackedStringArray()
@@ -70,6 +85,7 @@ var _met: Array[bool] = []
 @onready var _victory: Control = $Victory
 @onready var _victory_dim: ColorRect = $VictoryDim
 @onready var _victory_line: Label = $Victory/PlayAgain
+@onready var _victory_message: Label = $Victory/Banner/Message
 
 
 func _ready() -> void:
@@ -77,6 +93,9 @@ func _ready() -> void:
 	_set_mission_done(false)
 	_victory.visible = false
 	_victory_dim.visible = false
+	_victory_message.add_theme_font_size_override(&"font_size", TextFit.fit_font_size(
+			_victory_message.get_theme_font(&"font"), _victory_message.text, BANNER_MAX_FONT_SIZE,
+			BANNER_MIN_FONT_SIZE, BANNER_TEXT_WIDTH))
 	_render_rows()
 
 
@@ -87,12 +106,23 @@ func set_title(text: String) -> void:
 ## The one-line mission on the sign.
 func set_mission(text: String) -> void:
 	_mission_text.text = text
+	var font: Font = _mission_text.get_theme_font(&"font")
+	var width: float = _mission_text.get_parent_control().size.x
+	var size: int = TextFit.fit_font_size(font, text, MISSION_FONT_SIZE, MISSION_ONE_LINE_MIN_FONT_SIZE, width)
+	if _text_width(font, text, size) > width:
+		size = MISSION_FONT_SIZE
+	_mission_text.add_theme_font_size_override(&"font_size", size)
 
 
-## Adds " · Esc map" to the control hint (once) when `shown`, removes it otherwise.
-func set_map_hint_shown(shown: bool) -> void:
-	var base: String = _hint.text.trim_suffix(MAP_HINT)
-	_hint.text = base + MAP_HINT if shown else base
+## Sets the control hint: "S drop down" only when `has_one_way_platform`, and
+## "Esc map" at the end only when `map_shown`.
+func set_controls_hint(has_one_way_platform: bool, map_shown: bool) -> void:
+	var entries: PackedStringArray = MOVE_HINTS.duplicate()
+	if has_one_way_platform:
+		entries.append(DROP_HINT)
+	entries.append_array(USE_HINTS)
+	var text: String = MenuStyle.hint_text(entries)
+	_hint.text = text + MAP_HINT if map_shown else text
 
 
 func get_hint_text() -> String:
@@ -190,38 +220,62 @@ func is_level_complete_shown() -> bool:
 func _render_rows() -> void:
 	if _captions.is_empty():
 		return
-	for row: int in MAX_ROWS:
-		_set_row(row, "", "", false, MULTI_CAPTION_WIDTH)
+	var captions: PackedStringArray = ["", ""]
+	var values: PackedStringArray = ["", ""]
+	var met: Array[bool] = [false, false]
 	if _symbols.size() == 1:
-		_set_row(0, GOAL_CAPTION, _targets[0], false, SINGLE_CAPTION_WIDTH)
-		_set_row(1, _symbols[0], _readings[0], _met[0], SINGLE_CAPTION_WIDTH)
-		return
-	var caption_width: float = MULTI_CAPTION_WIDTH
-	for symbol: String in _symbols:
-		if symbol.length() > 1:
-			caption_width = LABELLED_CAPTION_WIDTH
-	for i: int in mini(_symbols.size(), MAX_ROWS):
-		_set_row(i, _symbols[i], _readings[i] + ARROW + _targets[i], _met[i], caption_width)
+		captions = [GOAL_CAPTION, _symbols[0]]
+		values = [_targets[0], _readings[0]]
+		met = [false, _met[0]]
+	else:
+		for i: int in mini(_symbols.size(), MAX_ROWS):
+			captions[i] = _symbols[i]
+			values[i] = _readings[i] + ARROW + _targets[i]
+			met[i] = _met[i]
+	var font: Font = _values[0].get_theme_font(&"font")
+	var font_size: int = _row_font_size(font, captions, values)
+	for row: int in MAX_ROWS:
+		_set_row(row, captions[row], values[row], met[row], font, font_size)
 
 
-func _set_row(row: int, caption: String, value: String, met: bool, caption_width: float) -> void:
+## The largest row font size at which every row's caption, CAPTION_GAP and
+## value fit between CAPTION_LEFT and VALUE_RIGHT (ROW_MIN_FONT_SIZE at least).
+func _row_font_size(font: Font, captions: PackedStringArray, values: PackedStringArray) -> int:
+	var size: int = ROW_MAX_FONT_SIZE
+	while size > ROW_MIN_FONT_SIZE:
+		var fits: bool = true
+		for row: int in captions.size():
+			if _text_width(font, captions[row], size) + CAPTION_GAP + _text_width(font, values[row], size) \
+					> VALUE_RIGHT - CAPTION_LEFT:
+				fits = false
+		if fits:
+			break
+		size -= 1
+	return size
+
+
+## Caption left-aligned at CAPTION_LEFT, value right-aligned at VALUE_RIGHT, both
+## at `font_size` in labels of the same top and height (so one baseline).
+func _set_row(row: int, caption: String, value: String, met: bool, font: Font, font_size: int) -> void:
 	var caption_label: Label = _captions[row]
 	var value_label: Label = _values[row]
+	var caption_width: float = ceilf(_text_width(font, caption, font_size))
 	caption_label.text = caption
-	caption_label.add_theme_font_size_override(&"font_size", TextFit.fit_font_size(
-			caption_label.get_theme_font(&"font"), caption, CAPTION_MAX_FONT_SIZE, CAPTION_MIN_FONT_SIZE,
-			caption_width - CAPTION_GAP))
+	caption_label.add_theme_font_size_override(&"font_size", font_size)
 	caption_label.position = Vector2(CAPTION_LEFT, ROW_TOPS[row])
 	caption_label.size = Vector2(caption_width, ROW_HEIGHT)
-	# Fit the font to the slot first: a Label is never narrower than its text,
-	# so sizing it before shrinking would stretch it past the plaque's right edge.
-	var width: float = VALUE_RIGHT - CAPTION_LEFT - caption_width
+	var value_left: float = CAPTION_LEFT + caption_width + CAPTION_GAP
 	value_label.text = value
-	value_label.add_theme_font_size_override(&"font_size", TextFit.fit_font_size(
-			value_label.get_theme_font(&"font"), value, VALUE_MAX_FONT_SIZE, VALUE_MIN_FONT_SIZE, width))
-	value_label.position = Vector2(CAPTION_LEFT + caption_width, ROW_TOPS[row])
-	value_label.size = Vector2(width, ROW_HEIGHT)
+	value_label.add_theme_font_size_override(&"font_size", font_size)
+	value_label.position = Vector2(value_left, ROW_TOPS[row])
+	value_label.size = Vector2(VALUE_RIGHT - value_left, ROW_HEIGHT)
 	value_label.add_theme_color_override(&"font_color", COLOR_MATCH if met else COLOR_INK)
+
+
+static func _text_width(font: Font, text: String, font_size: int) -> float:
+	if font == null or text.is_empty():
+		return 0.0
+	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 
 
 ## Sizes the victory line (and so its backing strip) to its text, centred.

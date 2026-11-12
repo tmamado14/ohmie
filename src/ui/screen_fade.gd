@@ -6,7 +6,9 @@ extends CanvasLayer
 ## by go_to(). Works the same in the game and in scripts started with --script.
 ##
 ## While a change is under way is_busy() is true and the layer swallows mouse
-## input; screens also ignore their keys then.
+## input; screens also ignore their keys then, except that a screen may
+## remember one key pressed while it is being revealed (is_revealing(), see
+## FadeInputBuffer) and act on it on `finished`.
 
 ## Emitted when a change has finished fading back in.
 signal finished
@@ -27,6 +29,8 @@ const SETTLE_FRAMES: int = 2
 
 var _rect: ColorRect = null
 var _busy: bool = false
+## True from the scene swap until the new scene is fully revealed.
+var _revealing: bool = false
 
 
 func _init() -> void:
@@ -54,6 +58,20 @@ static func is_busy(tree: SceneTree) -> bool:
 	return fade != null and fade._busy
 
 
+## True while a change has swapped in the new scene and is fading it in.
+static func is_revealing(tree: SceneTree) -> bool:
+	var fade: ScreenFade = tree.root.get_node_or_null(NODE_NAME) as ScreenFade
+	return fade != null and fade._revealing
+
+
+## Connects `callable` to `finished` of the tree's transition layer. Does
+## nothing when there is no layer yet (then no change is running either).
+static func connect_finished(tree: SceneTree, callable: Callable) -> void:
+	var fade: ScreenFade = tree.root.get_node_or_null(NODE_NAME) as ScreenFade
+	if fade != null and not fade.finished.is_connected(callable):
+		fade.finished.connect(callable)
+
+
 ## The tree's transition layer, created if needed.
 static func instance(tree: SceneTree) -> ScreenFade:
 	var fade: ScreenFade = tree.root.get_node_or_null(NODE_NAME) as ScreenFade
@@ -72,10 +90,12 @@ func change_scene(path: String, reveal_seconds: float = FADE_SECONDS) -> void:
 	var err: Error = get_tree().change_scene_to_file(path)
 	if err != OK:
 		push_error("ScreenFade: could not change to '%s' (%s)" % [path, error_string(err)])
+	_revealing = true
 	for i: int in SETTLE_FRAMES:
 		await get_tree().process_frame
 	await _fade_to(0.0, reveal_seconds)
 	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_revealing = false
 	_busy = false
 	finished.emit()
 

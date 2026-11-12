@@ -1,3 +1,4 @@
+## Kept for the planned collapse replay; not used by gameplay yet.
 class_name CircuitSolver
 extends RefCounted
 ## Equivalent resistance between the terminals by series-parallel reduction

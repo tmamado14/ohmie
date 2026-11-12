@@ -2,10 +2,12 @@ class_name PartPlacement
 extends RefCounted
 ## Finds where a loose part may lie: a floor point whose 80 px footprint is
 ## fully on screen, fully supported by solid ground or a platform (physics
-## layers 1 and 2) at one surface height, not within MIN_SPACING of another
-## loose part, and not overlapping a blocked area (a bounce pad or a static
-## hazard: the footprint is HALF_FOOTPRINT * 2 wide and FOOTPRINT_HEIGHT
-## tall). Used for putting down and for sending a part home.
+## layers 1 and 2) at one surface height, not crowding another loose part
+## (closer than MIN_SPACING horizontally while their icons share height), and
+## not overlapping a blocked area (a PartBlocker: a bounce pad, a static
+## hazard, a slot's frame, a fixed board part, lamp or meter, or the door; the
+## footprint is HALF_FOOTPRINT * 2 wide and FOOTPRINT_HEIGHT tall). Used for
+## putting down and for sending a part home.
 ##
 ## Geometry only: it asks the physics space, it does not move anything.
 
@@ -18,8 +20,10 @@ const FOOTPRINT_HEIGHT: float = 64.0
 ## Floor-point x range that keeps the 96 px icon fully on the 1280 px screen.
 const SCREEN_MIN_X: float = 48.0
 const SCREEN_MAX_X: float = 1232.0
-## Two loose parts' floor points never lie closer than this.
-const MIN_SPACING: float = 60.0
+## Two loose parts at the same level lie at least this far apart (floor point
+## x), so their 96 px icons never overlap. Parts whose floor points differ by
+## FOOTPRINT_HEIGHT or more (one on a ledge above the other) do not crowd.
+const MIN_SPACING: float = 100.0
 ## Physics layers 1 (world) and 2 (one-way platforms).
 const SUPPORT_MASK: int = 0b11
 ## Each support probe is a vertical ray from this far above the surface to
@@ -67,11 +71,11 @@ func find_put_down(feet: Vector2, max_slide: float) -> Vector2:
 
 
 ## Spot for a part returning to `home`: `home` itself unless another loose
-## part lies within MIN_SPACING of it; then the nearest valid spot at
+## part crowds it or it overlaps a blocked area; then the nearest valid spot at
 ## offsets of ±step, ±2·step, ... along the same surface. Falls back to `home`
 ## if nothing on the screen is valid.
 func find_return_spot(home: Vector2, step: float) -> Vector2:
-	if not _crowded(home):
+	if not _crowded(home) and not _on_blocked_area(home):
 		return home
 	var away: float = _away_direction(home)
 	var offset: float = step
@@ -131,19 +135,24 @@ func _on_blocked_area(spot: Vector2) -> bool:
 
 func _crowded(spot: Vector2) -> bool:
 	for other: Vector2 in _others:
-		if other.distance_to(spot) < MIN_SPACING:
+		if _too_close(other, spot):
 			return true
 	return false
 
 
-## +1 or -1: away from the nearest loose part closer than MIN_SPACING to
-## `spot` (to the right when none is that close or it lies exactly above).
+## True when parts at floor points `a` and `b` would overlap or nearly touch.
+static func _too_close(a: Vector2, b: Vector2) -> bool:
+	return absf(a.x - b.x) < MIN_SPACING and absf(a.y - b.y) < FOOTPRINT_HEIGHT
+
+
+## +1 or -1: away from the nearest loose part crowding `spot` (to the right
+## when none does or it lies exactly above).
 func _away_direction(spot: Vector2) -> float:
 	var nearest: Vector2 = NO_SPOT
 	var nearest_distance: float = INF
 	for other: Vector2 in _others:
 		var distance: float = other.distance_to(spot)
-		if distance < MIN_SPACING and distance < nearest_distance:
+		if _too_close(other, spot) and distance < nearest_distance:
 			nearest = other
 			nearest_distance = distance
 	if nearest == NO_SPOT or nearest.x <= spot.x:

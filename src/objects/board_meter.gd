@@ -14,6 +14,7 @@ const ART_SCALE: Vector2 = Vector2(0.5, 0.5)
 ## 68, 20) on screen from the 104x72 meter's top-left (docs/ASSETS.md).
 const TEXT_RECT: Rect2 = Rect2(-34, 3, 68, 20)
 const TEXT_COLOR: Color = Color("24180f")
+const TEXT_FONT: Font = preload("res://resources/fonts/serif_bold.tres")
 const MAX_FONT_SIZE: int = 18
 const MIN_FONT_SIZE: int = 8
 
@@ -35,6 +36,7 @@ func _init() -> void:
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_label.add_theme_color_override(&"font_color", TEXT_COLOR)
+	_label.add_theme_font_override(&"font", TEXT_FONT)
 	_label.add_theme_font_size_override(&"font_size", MAX_FONT_SIZE)
 	add_child(_label)
 

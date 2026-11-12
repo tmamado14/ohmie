@@ -45,6 +45,11 @@ func setup(entry: LevelObject) -> void:
 	_apply_looks()
 
 
+## A patroller stands on its surface: it does not hurt from below it.
+func _hurts_only_at_its_level() -> bool:
+	return true
+
+
 ## +1 while walking right, -1 while walking left.
 func get_direction() -> float:
 	return _direction

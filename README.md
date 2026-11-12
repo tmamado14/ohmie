@@ -88,7 +88,7 @@ Ohmie carries one part at a time and has to be standing to use it.
 
 ## Status
 
-In development. World 1 is playable from the title screen through all thirteen rooms. Bounce pads, patrolling enemies and hazards are implemented and are being placed in the overtime rooms. Planned next: a step-by-step replay showing how each solved network simplifies, then World 2.
+In development. World 1 is playable from the title screen through all thirteen rooms. The overtime rooms add bounce pads, patrolling enemies and hazards. Planned next: a step-by-step replay showing how each solved network simplifies, then World 2.
 
 ## For developers
 

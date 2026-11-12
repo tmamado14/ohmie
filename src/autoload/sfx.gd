@@ -23,7 +23,7 @@ const POOL_SIZE: int = 6
 const AUTOLOAD_PATH: NodePath = ^"/root/Sfx"
 const HEADLESS_DISPLAY: String = "headless"
 
-@export var music_volume_db: float = -18.0
+@export var music_volume_db: float = -14.0
 @export var effects_volume_db: float = 0.0
 
 var _streams: Dictionary = {}  # StringName -> AudioStream

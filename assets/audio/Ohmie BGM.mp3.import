@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://c4pblpr061iyt"
+path="res://.godot/imported/Ohmie BGM.mp3-14f2e73c1e66573d62218aae86620136.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/Ohmie BGM.mp3"
+dest_files=["res://.godot/imported/Ohmie BGM.mp3-14f2e73c1e66573d62218aae86620136.mp3str"]
+
+[params]
+
+loop=true
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

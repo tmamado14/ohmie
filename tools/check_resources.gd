@@ -5,7 +5,7 @@ extends SceneTree
 ##   godot --headless --path . --script res://tools/check_resources.gd
 ##
 ## Covers: the five world TileSets, the 256x256 player SpriteFrames (including the shared
-## feet baseline), the six music loops and the generated PNGs in assets/processed/.
+## feet baseline), the theme track, the six music loops and the generated PNGs in assets/processed/.
 
 const TILE_PX: int = 64
 const HALF: float = 32.0
@@ -55,6 +55,10 @@ const MUSIC_PATHS: Array[String] = [
 	"res://assets/audio/music_copper_works_loop_16s.wav",
 ]
 
+## The game's theme (menus and the Old Workshop), the user's own track.
+const THEME_MUSIC_PATH: String = "res://assets/audio/Ohmie BGM.mp3"
+const THEME_MUSIC_MIN_SECONDS: float = 60.0
+
 ## path -> size
 const EXPECTED_TEXTURES: Dictionary = {
 	"res://assets/processed/socket_empty.png": Vector2i(208, 144),
@@ -62,7 +66,6 @@ const EXPECTED_TEXTURES: Dictionary = {
 	"res://assets/processed/fixed_backing.png": Vector2i(208, 144),
 	"res://assets/processed/pickup_highlight.png": Vector2i(208, 144),
 	"res://assets/processed/node_dot.png": Vector2i(32, 32),
-	"res://assets/processed/terminal.png": Vector2i(64, 64),
 	"res://assets/processed/exit_door_open_aligned.png": Vector2i(216, 320),
 	# From tools/generate_parts_art.gd.
 	"res://assets/processed/part_battery.png": Vector2i(192, 128),
@@ -250,6 +253,12 @@ func _feet_row(tex: Texture2D) -> int:
 
 
 func _check_music() -> void:
+	var theme: AudioStreamMP3 = load(THEME_MUSIC_PATH) as AudioStreamMP3
+	_expect(theme != null, "%s loads as AudioStreamMP3" % THEME_MUSIC_PATH)
+	if theme != null:
+		_expect(theme.loop, "%s loops" % THEME_MUSIC_PATH)
+		_expect(theme.get_length() > THEME_MUSIC_MIN_SECONDS, "%s is longer than %.0f s (got %.1f s)" % [
+				THEME_MUSIC_PATH, THEME_MUSIC_MIN_SECONDS, theme.get_length()])
 	for path: String in MUSIC_PATHS:
 		var stream: AudioStreamWAV = load(path) as AudioStreamWAV
 		_expect(stream != null, "%s loads as AudioStreamWAV" % path)

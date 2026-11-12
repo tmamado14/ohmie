@@ -67,7 +67,7 @@ func _run() -> void:
 	_player = _room.get_player()
 	_carry = _room.get_carry()
 
-	print("== 1. Apex above flat floor by jump hold time (GDD 5: about 121 px)")
+	print("== 1. Apex above flat floor by jump hold time (GDD 4: about 126 px)")
 	for hold: int in HOLDS:
 		var result: Dictionary = await _jump(Vector2(OPEN_FLOOR_X, FLOOR_Y), 0, hold)
 		print("  hold %-5s apex %6.1f px" % [_hold_name(hold), FLOOR_Y - (result["min_y"] as float)])

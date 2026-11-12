@@ -6,7 +6,8 @@ extends RefCounted
 const SELECT: StringName = &"switch"
 const CONFIRM: StringName = &"connect"
 const DENIED: StringName = &"invalid"
-const MUSIC: AudioStream = preload("res://assets/audio/music_old_workshop_swing_16s.wav")
+## The game's theme, also the Old Workshop music (one stream, so it never restarts between them).
+const MUSIC: AudioStream = preload("res://assets/audio/Ohmie BGM.mp3")
 
 
 static func play(from: Node, sound: StringName) -> void:

@@ -7,13 +7,16 @@ extends Node2D
 ## the blank resistor with its value written in the plaque; a battery uses the
 ## battery art with its voltage written in the plaque. The battery art's plus
 ## end is on its LEFT; set_flipped(true) mirrors the art (not the text).
+## The pack's 1/2 Ω art has "0.5 Ω" painted on it, so that value uses the
+## blank resistor with "1/2 Ω" printed: every value reads as a fraction.
 
 const ICON_DIR: String = "res://assets/interactive/resistors/"
 ## Rational.to_text() of a resistance -> icon file name part.
 const ICON_NAMES: Dictionary = {
-	"1/2": "0p5ohm", "1": "1ohm", "2": "2ohm", "3": "3ohm",
+	"1": "1ohm", "2": "2ohm", "3": "3ohm",
 	"4": "4ohm", "6": "6ohm", "10": "10ohm",
 }
+const LABEL_FONT: Font = preload("res://resources/fonts/serif_bold.tres")
 const BLANK_RESISTOR_TEXTURE: Texture2D = preload("res://assets/processed/part_resistor_blank.png")
 const BATTERY_TEXTURE: Texture2D = preload("res://assets/processed/part_battery.png")
 const SIZE: Vector2 = Vector2(96, 64)
@@ -41,6 +44,7 @@ func _init() -> void:
 	_label.size = LABEL_RECT.size
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_label.add_theme_font_override(&"font", LABEL_FONT)
 	_label.add_theme_font_size_override(&"font_size", LABEL_MAX_FONT_SIZE)
 	_label.add_theme_color_override(&"font_color", LABEL_COLOR)
 	_label.visible = false

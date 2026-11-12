@@ -20,7 +20,7 @@
     "......====..............................",
     "........................................",
     "........................................",
-    "===.............................====....",
+    "..........====..................====....",
     "........................................",
     "........................................",
     "......===....................====.......",
@@ -33,11 +33,16 @@
   "spawn": [64, 640],
   "door": [1216, 640],
   "parts": [
-    { "id": "r2", "kind": "resistor", "value": "2", "pos": [48, 455] },
-    { "id": "r_half", "kind": "resistor", "value": "1/2", "pos": [920, 640] },
-    { "id": "r4", "kind": "resistor", "value": "4", "pos": [1024, 640] },
+    { "id": "r2", "kind": "resistor", "value": "2", "pos": [1112, 640] },
+    { "id": "r_half", "kind": "resistor", "value": "1/2", "pos": [904, 640] },
+    { "id": "r4", "kind": "resistor", "value": "4", "pos": [1008, 640] },
     { "id": "r1", "kind": "resistor", "value": "1", "pos": [992, 551] },
     { "id": "r3", "kind": "resistor", "value": "3", "pos": [1088, 455] }
+  ],
+  "objects": [
+    { "type": "hazard", "kind": "spikes", "pos": [248, 640] },
+    { "type": "patroller", "kind": "bot", "pos": [512, 640], "left": 512, "right": 688, "speed": 70 },
+    { "type": "patroller", "kind": "jelly", "pos": [344, 455], "left": 344, "right": 424, "speed": 50 }
   ],
   "circuit": {
     "nodes": {
@@ -54,7 +59,7 @@
       "t4": [128, 596],
       "f0": [288, 596],
       "f1": [512, 596],
-      "f2": [672, 596],
+      "f2": [736, 596],
       "b4": [864, 596]
     },
     "edges": [
@@ -62,14 +67,14 @@
       { "id": "w1", "type": "wire", "from": "l1", "to": "a1" },
       { "id": "arm_a", "type": "resistor", "from": "a1", "to": "b1", "value": "2" },
       { "id": "w2", "type": "wire", "from": "l1", "to": "l2" },
-      { "id": "am_bridge", "type": "ammeter", "from": "l2", "to": "r2" },
+      { "id": "am_bridge", "type": "ammeter", "label": "bridge", "from": "l2", "to": "r2" },
       { "id": "w3", "type": "wire", "from": "r2", "to": "r1" },
       { "id": "s_bot", "type": "slot", "from": "t3", "to": "y2" },
       { "id": "w4", "type": "wire", "from": "y2", "to": "r1" },
       { "id": "arm_b", "type": "resistor", "from": "r1", "to": "b3", "value": "4" },
       { "id": "w5", "type": "wire", "from": "b1", "to": "b3" },
       { "id": "w6", "type": "wire", "from": "b3", "to": "b4" },
-      { "id": "am_supply", "type": "ammeter", "from": "b4", "to": "f2" },
+      { "id": "am_supply", "type": "ammeter", "label": "supply", "from": "b4", "to": "f2" },
       { "id": "w7", "type": "wire", "from": "f2", "to": "f1" },
       { "id": "bat1", "type": "battery", "from": "f0", "to": "f1", "value": "6" },
       { "id": "w8", "type": "wire", "from": "f0", "to": "t4" },

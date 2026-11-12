@@ -21,6 +21,9 @@ extends SceneTree
 ## - a put-down on the pad or beside the spikes never leaves the part on
 ##   them, a put-down on the spikes is refused, and the part can be picked up
 ##   again;
+## - a patroller on a one-way platform (the jelly, moved onto the high
+##   platform for this check) does not zap a jump from underneath that pokes
+##   Ohmie's head through the plank, but walking into it on the platform does;
 ## - `restart` puts every enemy back at its start.
 ## Prints measurements for level design (lines starting with "MEASURE").
 ##
@@ -61,6 +64,13 @@ const BEFORE_JELLY_X: float = 560.0
 ## Past the jelly's range (its hurtbox reaches x = 902 at the right end).
 const PAST_JELLY_X: float = 930.0
 const ORB_PLATFORM_START: Vector2 = Vector2(950, 551)
+## The jelly's patrol when moved onto the high platform (x 416..608), and
+## where Ohmie stands under it and on the platform beside it.
+const PLATFORM_JELLY_START: Vector2 = Vector2(470, 455)
+const PLATFORM_JELLY_LEFT: float = 440.0
+const PLATFORM_JELLY_RIGHT: float = 500.0
+const UNDER_PLATFORM_JELLY: Vector2 = Vector2(470, 640)
+const BESIDE_PLATFORM_JELLY: Vector2 = Vector2(590, 455)
 
 ## Height above the floor of the top of each hurtbox (from the scenes).
 const HURT_TOPS: Dictionary = {"spikes": 44.0, "jelly": 45.0, "bot": 43.0, "live_wire": 42.0}
@@ -150,6 +160,7 @@ func _run_checks() -> int:
 	await _check_jump_over_jelly()
 	await _check_floater_zap()
 	await _check_patrol()
+	await _check_patroller_on_platform()
 	await _check_restart()
 	Room.level_override = ""
 	return 0 if _failed == 0 else 1
@@ -474,6 +485,44 @@ func _check_patrol() -> void:
 		print("MEASURE a patroller at 60 px/s takes %d frames (%.2f s) per pass over %.0f px; so %.2f s over 240 px"
 				% [pass_frames, pass_frames / PHYSICS_FPS, JELLY_RIGHT - JELLY_LEFT,
 					pass_frames / PHYSICS_FPS * 240.0 / (JELLY_RIGHT - JELLY_LEFT)])
+
+
+func _check_patroller_on_platform() -> void:
+	print("-- a patroller on a one-way platform")
+	await _wait_until_vulnerable()
+	_jelly.position = PLATFORM_JELLY_START
+	_jelly.left = PLATFORM_JELLY_LEFT
+	_jelly.right = PLATFORM_JELLY_RIGHT
+	_player.respawn(UNDER_PLATFORM_JELLY)
+	await _wait_physics(3)
+	var zaps_before: int = _zap_count
+	var overlapped: bool = false
+	Input.action_press("jump")
+	for i: int in MAX_AIR_FRAMES:
+		await _wait_physics(1)
+		overlapped = overlapped or _jelly.get_hurtbox().overlaps_body(_player)
+		if i > 5 and _player.is_on_floor():
+			break
+	Input.action_release("jump")
+	await _wait_physics(5)
+	_check(overlapped, "a full jump from under the platform pokes Ohmie's head into the jelly's hurtbox")
+	_check(_zap_count == zaps_before and absf(_player.position.y - FLOOR_Y) <= POSITION_TOLERANCE,
+			"the jelly on the platform does not zap a jump from underneath (zapped %d, back on y=%.0f)" % [
+				_zap_count - zaps_before, _player.position.y])
+	_player.respawn(BESIDE_PLATFORM_JELLY)
+	await _wait_physics(3)
+	_check(_player.is_on_floor() and absf(_player.position.y - PLATFORM_JELLY_START.y) <= POSITION_TOLERANCE,
+			"Ohmie stands on the platform beside the jelly (%s)" % _player.position)
+	zaps_before = _zap_count
+	Input.action_press("move_left")
+	for i: int in MAX_WALK_FRAMES:
+		if _zap_count > zaps_before or _player.position.x <= PLATFORM_JELLY_LEFT:
+			break
+		await _wait_physics(1)
+	Input.action_release("move_left")
+	_check(_zap_count == zaps_before + 1, "walking into the jelly on the platform zaps Ohmie (zapped %d)" % (_zap_count - zaps_before))
+	await _wait_for_respawn()
+	await _wait_until_vulnerable()
 
 
 func _check_restart() -> void:
