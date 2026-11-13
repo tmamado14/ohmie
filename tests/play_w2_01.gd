@@ -1,18 +1,19 @@
 extends SceneTree
 ## Scripted headless playthrough of res://levels/w2_01.json ("One Way Street",
-## World 2 room 1, Copper Foundry, engineering numbers: a fixed 6 V battery, a
-## 1 kΩ lamp lit from 3 to 6 mA with ammeter am1 in series, and two slots on
-## parallel rungs between the same two buses: s_rev on the floor near the diode,
-## facing against the battery, and s_fwd on a low shelf (one jump) facing with
-## it. Parts: a 0.7 V diode and a 2 kΩ decoy resistor. Goal: lamp current 3–6 mA).
+## World 2 room 1, Copper Foundry, engineering numbers: one loop of a fixed 6 V
+## battery (plus on its right), ammeter am1, a 1 kΩ lamp lit from 3 to 6 mA and
+## one floor slot s1, whose battery-plus side is on the screen-right. Parts: a
+## 0.7 V diode lying as drawn (stripe right, the wrong way for this loop) and a
+## 2 kΩ decoy resistor by the door. Goal: lamp current 3–6 mA).
 ##
-## Drives input through the input map only (no teleporting): carries the diode
-## to the nearer slot s_rev (0 A, lamp dark, door shut, plain wires), moves it
-## to s_fwd on the shelf (5.3 mA, lamp lit, match wires, door open), pulls it
-## out (door shuts) and puts it down; tries the 2 kΩ resistor alone in s_fwd
-## and in s_rev (2 mA, lamp dark, door shut each time); plugs the diode back
-## into s_fwd beside the resistor (5.3 mA, door open) and walks through the
-## door. Checks that no ERROR or WARNING is logged.
+## Drives input through the input map only (no teleporting): plugs the diode in
+## as found (0 A, lamp dark, door shut, plain wires), presses F at the slot with
+## empty hands (5.3 mA, lamp lit, match wires, door open), F again (shut), F
+## once more (open); pulls it out, turns it while carrying and plugs it back
+## (dark), turns it again while carrying and plugs it back (lit); tries the
+## resistor alone (2 mA, dark, door shut); swaps the diode back in and walks
+## through the door. Checks the name tag's arrow, the hint line and that no
+## ERROR or WARNING is logged.
 ##
 ## Usage (exit code 0 = all checks passed):
 ##   godot --headless --path . --fixed-fps 60 --script res://tests/play_w2_01.gd
@@ -20,15 +21,17 @@ extends SceneTree
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const LEVEL_PATH: String = "res://levels/w2_01.json"
 const ROOM_PATH: NodePath = ^"Room"
-const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "restart"]
+const ACTIONS: PackedStringArray = ["move_left", "move_right", "move_down", "jump", "interact", "flip", "restart"]
 const TITLE: String = "One Way Street"
 const MISSION: String = "Light the lamp."
 const LAMP_ID: String = "lamp1"
 const AMMETER_ID: String = "am1"
 const GOAL_TEXT: String = "3–6 mA"
-const DIODE_TAG: String = "diode 0.7 V"
+const TAG_RIGHT: String = "diode 0.7 V →"
+const TAG_LEFT: String = "diode 0.7 V ←"
 const DIODE_PLAQUE: String = "0.7 V"
 const RESISTOR_TAG: String = "2 kΩ"
+const FLIP_HINT: String = "F flip"
 ## Exact engine texts (QuantityText ENGINEERING).
 const READING_OFF: String = "0 A"
 const READING_DIODE: String = "5.3 mA"
@@ -37,13 +40,10 @@ const READING_RESISTOR: String = "2 mA"
 ## Layout facts of w2_01.json.
 const SPAWN: Vector2 = Vector2(96, 640)
 const FLOOR_Y: float = 640.0
-const SHELF_Y: float = 551.0  # one-way platform in row 17, x 800-928
 const DIODE_X: float = 224.0
 const RESISTOR_X: float = 1056.0
-const S_REV_X: float = 416.0  # floor slot
-const S_FWD_X: float = 864.0  # shelf slot; jump straight up from the floor here
-const OFF_SHELF_X: float = 960.0  # walk off the shelf's right end here
-const PUT_DOWN_X: float = 680.0  # nothing within reach here
+const SLOT_X: float = 640.0
+const PUT_DOWN_X: float = 840.0  # nothing within reach here
 const DOOR_X: float = 1180.0
 
 const POSITION_TOLERANCE: float = 6.0
@@ -83,6 +83,8 @@ var _carry: PlayerCarry = null
 var _hud: Hud = null
 var _door: ExitDoor = null
 var _completed_count: int = 0
+var _flip_count: int = 0
+var _last_flip_socket: CircuitSocket = null
 
 
 func _initialize() -> void:
@@ -119,13 +121,14 @@ func _run_checks() -> int:
 	if not _bind_room(main):
 		return 1
 	await _wait_physics(SETTLE_FRAMES)
-	_check_start()
+	if not _check_start():
+		return 1
 	await _play()
 	Room.level_override = ""
 	return 0 if _failed == 0 else 1
 
 
-func _check_start() -> void:
+func _check_start() -> bool:
 	print("-- start")
 	_check(_room.level_data.title == TITLE, "level title is '%s' (got '%s')" % [TITLE, _room.level_data.title])
 	_check(_room.level_data.world == "copper_foundry"
@@ -134,97 +137,104 @@ func _check_start() -> void:
 	_check(_hud.get_mission_text() == MISSION, "the mission sign shows '%s' (got '%s')" % [MISSION, _hud.get_mission_text()])
 	_check(_hud.get_row_caption(0) == "GOAL" and _hud.get_row_value(0) == GOAL_TEXT,
 			"the plaque shows GOAL %s (got '%s %s')" % [GOAL_TEXT, _hud.get_row_caption(0), _hud.get_row_value(0)])
+	_check(_hud.get_hint_text().contains(FLIP_HINT), "the hint line contains '%s' (got '%s')" % [
+			FLIP_HINT, _hud.get_hint_text()])
 	_check_state(READING_OFF, BoardLamp.State.OFF, "initial state")
 	_check(not _door.is_open() and not _hud.is_mission_complete_shown(), "door starts closed, mission not done")
 	_check(_room.get_board().get_wires().get_state() == CircuitWires.State.PLAIN, "wires start plain")
-	_check(_room.get_parts().size() == 2 and _room.get_board().get_sockets().size() == 2,
-			"two parts and two slots in the room")
+	_check(_room.get_parts().size() == 2 and _room.get_board().get_sockets().size() == 1,
+			"two parts and one slot in the room")
 	_check(_player.position.distance_to(SPAWN) <= POSITION_TOLERANCE and _player.is_on_floor(),
 			"player starts on the floor at spawn (%s)" % _player.position)
 	var diode: PartPickup = _part("d1")
 	var resistor: PartPickup = _part("r1")
-	if diode == null or resistor == null:
-		_check(false, "parts d1 and r1 exist")
-		return
-	_check(diode.get_tag_text() == DIODE_TAG and diode.get_icon().get_label_text() == DIODE_PLAQUE,
-			"the diode reads '%s' / '%s' (got '%s' / '%s')" % [DIODE_TAG, DIODE_PLAQUE, diode.get_tag_text(),
-				diode.get_icon().get_label_text()])
+	if diode == null or resistor == null or _socket("s1") == null:
+		_check(false, "parts d1, r1 and slot s1 exist")
+		return false
+	_check_diode_look(diode, false, "the loose diode at the start")
+	_check(diode.get_icon().get_label_text() == DIODE_PLAQUE, "the diode's plaque reads '%s' (got '%s')" % [
+			DIODE_PLAQUE, diode.get_icon().get_label_text()])
 	_check(resistor.get_tag_text() == RESISTOR_TAG and resistor.get_icon().get_label_text() == RESISTOR_TAG,
 			"the resistor reads '%s' (tag '%s', plaque '%s')" % [RESISTOR_TAG, resistor.get_tag_text(),
 				resistor.get_icon().get_label_text()])
+	return true
 
 
 func _play() -> void:
 	var diode: PartPickup = _part("d1")
 	var resistor: PartPickup = _part("r1")
-	var s_fwd: CircuitSocket = _socket("s_fwd")
-	var s_rev: CircuitSocket = _socket("s_rev")
-	if diode == null or resistor == null or s_fwd == null or s_rev == null:
-		_check(false, "parts d1, r1 and slots s_fwd, s_rev exist")
-		return
+	var s1: CircuitSocket = _socket("s1")
 
-	print("-- natural first try: diode into the nearer slot s_rev")
+	print("-- natural first try: plug the diode in as found")
 	await _walk_to_x(DIODE_X)
 	_check(_on_surface(FLOOR_Y), "walks along the flat floor to the diode (%s)" % _player.position)
 	await _interact()
 	_check(_carry.get_carried() == diode, "picks up the diode")
-	await _walk_to_x(S_REV_X)
+	await _walk_to_x(SLOT_X)
 	await _interact()
-	_check(s_rev.get_pickup() == diode and not _carry.is_carrying(), "plugs the diode into s_rev")
-	_check_state(READING_OFF, BoardLamp.State.OFF, "reversed diode")
-	_check(not _door.is_open() and not _room.get_board().is_goal_met(), "reversed diode: door shut")
-	_check(_room.get_board().get_wires().get_state() == CircuitWires.State.PLAIN, "reversed diode: wires plain")
-	_check(s_rev.get_icon().is_flipped() and s_rev.get_tag_text() == DIODE_TAG,
-			"s_rev's from node is on the right: the diode picture is mirrored")
+	_check(s1.get_pickup() == diode and not _carry.is_carrying(), "plugs the diode into s1")
+	_check(not diode.part.flipped and not s1.get_icon().is_flipped() and s1.get_tag_text() == TAG_RIGHT,
+			"s1 keeps the diode as found: stripe right, tag '%s' (got '%s')" % [TAG_RIGHT, s1.get_tag_text()])
+	_check_wrong_way("diode stripe right in s1")
 
-	print("-- diode into s_fwd on the shelf")
-	await _interact()
-	_check(_carry.get_carried() == diode and not s_rev.is_filled(), "pulls the diode out of s_rev")
-	await _climb_to_shelf()
-	await _interact()
-	_check(s_fwd.get_pickup() == diode, "plugs the diode into s_fwd")
-	_check_state(READING_DIODE, BoardLamp.State.ON, "forward diode")
-	_check(_door.is_open() and _room.get_board().is_goal_met() and _hud.is_mission_complete_shown(),
-			"forward diode: the goal holds and the door opens")
-	_check(_room.get_board().get_wires().get_state() == CircuitWires.State.MATCH, "forward diode: wires match")
-	_check(not s_fwd.get_icon().is_flipped(), "s_fwd's from node is on the left: the picture is not mirrored")
+	print("-- F at the slot with empty hands")
+	var flips: int = _flip_count
+	await _flip()
+	_check(_flip_count == flips + 1 and _last_flip_socket == s1 and s1.get_pickup() == diode
+			and not _carry.is_carrying(), "F with empty hands turns the diode in s1")
+	_check(diode.part.flipped and s1.get_icon().is_flipped() and s1.get_tag_text() == TAG_LEFT,
+			"s1's diode is now stripe left, tag '%s' (got '%s')" % [TAG_LEFT, s1.get_tag_text()])
+	_check_right_way("diode stripe left in s1")
+	await _flip()
+	_check(not diode.part.flipped and s1.get_tag_text() == TAG_RIGHT, "F again turns it back to stripe right")
+	_check_wrong_way("turned back")
+	await _flip()
+	_check(diode.part.flipped and s1.get_tag_text() == TAG_LEFT, "F once more turns it stripe left")
+	_check_right_way("turned once more")
 
-	print("-- the decoy resistor alone in each slot")
+	print("-- turn it while carrying")
 	await _interact()
-	_check(_carry.get_carried() == diode and not s_fwd.is_filled(), "pulls the diode out of s_fwd")
-	_check_state(READING_OFF, BoardLamp.State.OFF, "both slots empty")
-	_check(not _door.is_open(), "pulled out: the door shuts")
-	await _walk_to_x(OFF_SHELF_X)
-	_check(_on_surface(FLOOR_Y), "walks off the shelf to the floor (%s)" % _player.position)
+	_check(_carry.get_carried() == diode and not s1.is_filled() and diode.part.flipped,
+			"pulls the diode out; it keeps its direction (stripe left)")
+	_check_state(READING_OFF, BoardLamp.State.OFF, "slot empty")
+	_check(not _door.is_open(), "slot empty: the door shuts")
+	await _flip()
+	_check(not diode.part.flipped and not _carry.get_carried_icon().is_flipped(), "F while carrying turns it stripe right")
+	await _interact()
+	_check(s1.get_pickup() == diode and s1.get_tag_text() == TAG_RIGHT, "plugs it back in stripe right")
+	_check_wrong_way("plugged back stripe right")
+	await _interact()
+	await _flip()
+	_check(_carry.get_carried() == diode and diode.part.flipped and _carry.get_carried_icon().is_flipped(),
+			"pulls it out and turns it stripe left while carrying")
+	await _interact()
+	_check(s1.get_pickup() == diode and s1.get_tag_text() == TAG_LEFT, "plugs it back in stripe left")
+	_check_right_way("plugged back stripe left")
+
+	print("-- the decoy resistor alone")
+	await _interact()
+	_check(_carry.get_carried() == diode, "pulls the diode out")
 	await _walk_to_x(PUT_DOWN_X)
 	await _interact()
-	_check(not _carry.is_carrying() and diode.is_loose(), "puts the diode down")
+	_check(not _carry.is_carrying() and diode.is_loose() and diode.part.flipped,
+			"puts the diode down; it stays stripe left")
 	await _walk_to_x(RESISTOR_X)
 	await _interact()
 	_check(_carry.get_carried() == resistor, "picks up the resistor")
-	await _climb_to_shelf()
+	await _walk_to_x(SLOT_X)
 	await _interact()
-	_check(s_fwd.get_pickup() == resistor, "plugs the resistor into s_fwd")
-	_check_state(READING_RESISTOR, BoardLamp.State.OFF, "2 kΩ in s_fwd")
-	_check(not _door.is_open() and not _room.get_board().is_goal_met(), "2 kΩ in s_fwd: door shut")
-	await _interact()
-	_check(_carry.get_carried() == resistor and not s_fwd.is_filled(), "pulls the resistor out of s_fwd")
-	await _walk_to_x(OFF_SHELF_X)
-	await _walk_to_x(S_REV_X)
-	await _interact()
-	_check(s_rev.get_pickup() == resistor, "plugs the resistor into s_rev")
-	_check_state(READING_RESISTOR, BoardLamp.State.OFF, "2 kΩ in s_rev")
-	_check(not _door.is_open() and not _room.get_board().is_goal_met(), "2 kΩ in s_rev: door shut")
+	_check(s1.get_pickup() == resistor, "plugs the resistor into s1")
+	_check_state(READING_RESISTOR, BoardLamp.State.OFF, "2 kΩ alone")
+	_check(not _door.is_open() and not _room.get_board().is_goal_met(), "2 kΩ alone: door shut")
 
-	print("-- diode forward beside the resistor, then leave")
+	print("-- swap the diode back in and leave")
 	await _walk_to_x(diode.global_position.x)
 	await _interact()
 	_check(_carry.get_carried() == diode, "picks the diode up again")
-	await _climb_to_shelf()
+	await _walk_to_x(SLOT_X)
 	await _interact()
-	_check(s_fwd.get_pickup() == diode and s_rev.get_pickup() == resistor, "plugs the diode into s_fwd")
-	_check_state(READING_DIODE, BoardLamp.State.ON, "forward diode beside 2 kΩ")
-	_check(_door.is_open(), "the door is open again")
+	_check(s1.get_pickup() == diode and _carry.get_carried() == resistor, "swaps the diode in for the resistor")
+	_check_right_way("diode swapped in")
 	Input.action_press("move_right")
 	for i: int in MAX_WALK_FRAMES:
 		await _wait_physics(1)
@@ -238,11 +248,27 @@ func _play() -> void:
 
 # --- helpers ------------------------------------------------------------------------
 
-## Walks under the shelf and jumps straight up onto it (an 89 px rise).
-func _climb_to_shelf() -> void:
-	await _walk_to_x(S_FWD_X)
-	await _jump_and_land(0)
-	_check(_on_surface(SHELF_Y), "one jump lands on the shelf (%s)" % _player.position)
+func _check_wrong_way(what: String) -> void:
+	_check_state(READING_OFF, BoardLamp.State.OFF, what)
+	_check(not _door.is_open() and not _room.get_board().is_goal_met()
+			and _room.get_board().get_wires().get_state() == CircuitWires.State.PLAIN,
+			"%s: door shut, wires plain" % what)
+
+
+func _check_right_way(what: String) -> void:
+	_check_state(READING_DIODE, BoardLamp.State.ON, what)
+	_check(_door.is_open() and _room.get_board().is_goal_met() and _hud.is_mission_complete_shown()
+			and _room.get_board().get_wires().get_state() == CircuitWires.State.MATCH,
+			"%s: the goal holds, the door opens, wires match" % what)
+
+
+## The diode's direction, picture mirroring and name tag agree with `flipped`.
+func _check_diode_look(diode: PartPickup, flipped: bool, what: String) -> void:
+	var tag: String = TAG_LEFT if flipped else TAG_RIGHT
+	_check(diode.part.flipped == flipped and diode.get_icon().is_flipped() == flipped and diode.get_tag_text() == tag,
+			"%s: %s, tag '%s' (got flipped %s, mirrored %s, '%s')" % [what,
+				"flipped" if flipped else "not flipped", tag,
+				diode.part.flipped, diode.get_icon().is_flipped(), diode.get_tag_text()])
 
 
 ## The ammeter and the plaque read `reading` and the lamp is in `lamp_state`.
@@ -269,7 +295,13 @@ func _bind_room(main: Node) -> bool:
 	_hud = _room.get_hud()
 	_door = _room.get_door()
 	_room.level_completed.connect(func() -> void: _completed_count += 1)
+	_carry.part_flipped.connect(_on_part_flipped)
 	return true
+
+
+func _on_part_flipped(_turned: PartPickup, socket: CircuitSocket) -> void:
+	_flip_count += 1
+	_last_flip_socket = socket
 
 
 func _part(id: String) -> PartPickup:
@@ -308,33 +340,18 @@ func _walk_to_x(x: float) -> void:
 		await _wait_physics(1)
 
 
-## Jumps (holding the key) moving `direction` (-1, 0, 1) and waits to land.
-func _jump_and_land(direction: int) -> void:
-	var move_action: String = ""
-	if direction < 0:
-		move_action = "move_left"
-	elif direction > 0:
-		move_action = "move_right"
-	if not move_action.is_empty():
-		Input.action_press(move_action)
-	Input.action_press("jump")
-	var left_floor: bool = false
-	for i: int in MAX_AIR_FRAMES:
-		await _wait_physics(1)
-		if not _player.is_on_floor():
-			left_floor = true
-		elif left_floor:
-			break
-	Input.action_release("jump")
-	if not move_action.is_empty():
-		Input.action_release(move_action)
-	await _wait_physics(2)
-
-
 func _interact() -> void:
-	Input.action_press("interact")
+	await _press("interact")
+
+
+func _flip() -> void:
+	await _press("flip")
+
+
+func _press(action: String) -> void:
+	Input.action_press(action)
 	await _wait_physics(1)
-	Input.action_release("interact")
+	Input.action_release(action)
 	await _wait_physics(2)
 
 

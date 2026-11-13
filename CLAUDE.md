@@ -113,7 +113,7 @@ Update this section whenever a milestone step completes. Last updated 2026-11-13
 
 | Command | Count |
 |---|---|
-| `--script res://tests/run_tests.gd` | 382 |
+| `--script res://tests/run_tests.gd` | 399 |
 | `--script res://tests/play_menus.gd` | 38 |
 | `--script res://tests/play_movement.gd` | 11 |
 | `--script res://tests/play_slice.gd` | 35 |
@@ -123,8 +123,8 @@ Update this section whenever a milestone step completes. Last updated 2026-11-13
 | `--script res://tests/play_overtime_states.gd` | 16 |
 | `--script res://tests/play_hazards.gd` | 69 |
 | `--script res://tests/play_w1_01.gd` … `play_w1_13.gd` | 29, 54, 37, 37, 60, 34, 38, 37, 52, 68, 76, 121, 100 |
-| `--script res://tests/play_diode.gd` | 39 |
-| `--script res://tests/play_w2_01.gd` | 47 |
+| `--script res://tests/play_diode.gd` | 82 |
+| `--script res://tests/play_w2_01.gd` | 53 |
 | `--script res://tests/play_overtime_break.gd` | 162 passed, 9 failed (see Next, item 4) |
 | `--script res://tools/check_resources.gd` | 793 |
 
@@ -135,10 +135,10 @@ Update this section whenever a milestone step completes. Last updated 2026-11-13
 - The next-room key reacts to a real `interact` input event, not `Input.action_press`.
 - Shell heredocs containing apostrophes or backticks have mangled files; write files with the Write/Edit tools.
 
-**World 2 (Copper Foundry, basic electronics; design in GDD section 11).** Built so far: the engine solves diodes, Schottkys, LEDs and Zeners by exact state search (`PwlSolver`, `PwlDevice`, `DiodeModel`); `QuantityText` prints mA / kΩ text and parses values like `4.7k`; diodes are carried parts (`"kind": "diode"`, anode at the slot's `from`, picture mirrored in the slot so the stripe points toward `to`); a room opts into mA / kΩ text with `"numbers": "engineering"`; the Copper Foundry theme; World 2 unlocks after World 1 room 10 (`"unlock_after"` in `campaign.json`). Rooms: `w2_01.json` "One Way Street" and the fixture `dev_diode.json`. The user's art set is in `assets/interactive/electronics/` (`parts/`, `symbols/`, `manifest.json` tracked; 4× folders, SVG sources and atlases are local only). Reports 06, 08, 09, 10 and 11 hold the details.
+**World 2 (Copper Foundry, basic electronics; design in GDD section 11).** Built so far: the engine solves diodes, Schottkys, LEDs and Zeners by exact state search (`PwlSolver`, `PwlDevice`, `DiodeModel`); `QuantityText` prints mA / kΩ text and parses values like `4.7k`; diodes are carried parts (`"kind": "diode"`, optional `"flipped": true`); the player turns one with the `flip` action (F) while carrying it, at its slot, or where it lies; it conducts toward its stripe (screen-right unless flipped), a slot's `from`/`to` order does not matter for diodes, and nothing turns one automatically; the validator tries both directions and prints "stripe left/right"; a room opts into mA / kΩ text with `"numbers": "engineering"`; the Copper Foundry theme; World 2 unlocks after World 1 room 10 (`"unlock_after"` in `campaign.json`). Rooms: `w2_01.json` "One Way Street" and the fixture `dev_diode.json`. The user's art set is in `assets/interactive/electronics/` (`parts/`, `symbols/`, `manifest.json` tracked; 4× folders, SVG sources and atlases are local only). Reports 06 and 08 to 14 hold the details.
 
 **Next.**
-1. World 2 game side: LED and Zener part kinds, LED lit / dark / blown states, the `lit` goal word, the diode direction badge (`assets/processed/diode_arrow_*.png` exist); then rooms 2–4.
+1. World 2 game side: LED and Zener part kinds, LED lit / dark / blown states, the `lit` goal word, a clearer direction cue for diodes (the stripe is thin and a flip has no animation; `assets/processed/diode_arrow_*.png` exist as badges); `tools/screenshot.gd --solve` and the menu screenshot tools cannot place a flipped diode yet; then rooms 2–4.
 2. Engine step 2 (transistor, op-amp, device table, general MNA path): written but not compiled or tested, parked in `reports/parked_engine_step2/`; pickup notes in report 08. Decide first what a transistor reads when the base is driven on and the collector is pulled the wrong way (as specified it has no valid state).
 3. World 2 art still to generate: blown LEDs, device plate, three-terminal bay, Foundry door open state; the symbols' lines are thin and stop 6 px short of the image edge, so wires need a join (report 09).
 4. World 1 leftovers from the overtime QA (report 05): room 13's shelf exit lands on the live wire (OT-04), the orb reaches the jump ledge (OT-06), the live wire is hard to see (OT-08). `play_overtime_break.gd` is at 162 passed, 9 failed: all nine are the check "came back on its home surface", which is wrong when the home surface has room for only one part; QA should change it to "home surface when it has room, otherwise the nearest other surface".

@@ -1,7 +1,7 @@
 {
   "id": "w2_01",
   "title": "One Way Street",
-  "teaches": "A diode conducts one way only: the same diode lights the lamp in one slot and blocks in the slot facing the other way",
+  "teaches": "A diode conducts one way only: plug it in, see nothing, flip it",
   "world": "copper_foundry",
   "numbers": "engineering",
   "mission": "Light the lamp.",
@@ -24,7 +24,7 @@
     "........................................",
     "........................................",
     "........................................",
-    ".........................====...........",
+    "........................................",
     "........................................",
     "........................................",
     "########################################",
@@ -43,25 +43,20 @@
       "c2": [528, 360],
       "c3": [752, 360],
       "c4": [976, 360],
-      "u0": [304, 507],
-      "u1": [752, 507],
-      "u2": [976, 507],
       "l0": [304, 596],
       "l1": [528, 596],
-      "l2": [976, 596]
+      "l2": [752, 596],
+      "l3": [976, 596]
     },
     "edges": [
-      { "id": "bat1", "type": "battery", "from": "c1", "to": "c2", "value": "6" },
-      { "id": "am1", "type": "ammeter", "from": "c3", "to": "c2" },
-      { "id": "lamp1", "type": "lamp", "from": "c4", "to": "c3", "value": "1k", "rated_min": "0.003", "rated_max": "0.006" },
-      { "id": "w1", "type": "wire", "from": "c1", "to": "u0" },
-      { "id": "w2", "type": "wire", "from": "u0", "to": "l0" },
-      { "id": "w3", "type": "wire", "from": "c4", "to": "u2" },
-      { "id": "w4", "type": "wire", "from": "u2", "to": "l2" },
-      { "id": "w5", "type": "wire", "from": "u0", "to": "u1" },
-      { "id": "s_fwd", "type": "slot", "from": "u1", "to": "u2" },
-      { "id": "s_rev", "type": "slot", "from": "l1", "to": "l0" },
-      { "id": "w6", "type": "wire", "from": "l1", "to": "l2" }
+      { "id": "bat1", "type": "battery", "from": "c2", "to": "c1", "value": "6" },
+      { "id": "am1", "type": "ammeter", "from": "c2", "to": "c3" },
+      { "id": "lamp1", "type": "lamp", "from": "c3", "to": "c4", "value": "1k", "rated_min": "0.003", "rated_max": "0.006" },
+      { "id": "w1", "type": "wire", "from": "c4", "to": "l3" },
+      { "id": "w2", "type": "wire", "from": "l3", "to": "l2" },
+      { "id": "s1", "type": "slot", "from": "l2", "to": "l1" },
+      { "id": "w3", "type": "wire", "from": "l1", "to": "l0" },
+      { "id": "w4", "type": "wire", "from": "l0", "to": "c1" }
     ]
   }
 }
