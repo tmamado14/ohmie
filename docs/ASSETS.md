@@ -52,6 +52,8 @@ All 256x256 RGBA, transparent background, side poses face right. These are key p
 
 Tile notes (all five sets): ground 0-3, panels 12-13 and reinforced block 14 are fully opaque 64x64. Platforms 4-7 occupy **rows 18-40** full width (alpha > 0, identical in all sets). Wires 8-11 occupy rows/columns 26-38; support beam 15 columns 21-43. The tiles are chunky "pixel art" with hard pixels and speckle, drawn at 64 px: a different look from the inked sprites. At 0.5 scale with Linear filtering they soften and sit acceptably with the sprites, but they are the least on-style part of the pack.
 
+The pack's thin pixel-art planks (4-7) are **not drawn in game any more**: the TileSets use composite atlases in `assets/processed/` where those four cells are illustrated shelf pieces (see "Platform shelves" under Processed). The other twelve cells are pixel copies of the pack atlas.
+
 ## Worlds (`assets/worlds/`)
 
 Order and data from `world_progression.json` and each `level_config.json`:
@@ -137,7 +139,7 @@ Placement: with `centered = false`, `scale = 0.5`, use `offset = Vector2(-108, -
 ## Hazards (`hazards/`), effects (`effects/`), platforms (`platforms/`), boss (`boss/`)
 
 - Hazards: 8 sprites, 152-224 px, single frame. Effects: 4 sprites, 128x128. **Usable as is** as static sprites; none needed yet.
-- Platforms: 12 decorative pieces (wood platforms, shelves, ladder, bridge, pennant), 128-320 px. **Usable with changes**: the README warns they do not tile; collision stays on the 64 px tiles.
+- Platforms: 12 decorative pieces (wood platforms, shelves, ladder, bridge, pennant), 128-320 px. **Usable with changes**: the README warns they do not tile; collision stays on the 64 px tiles. `narrow_shelf.png` (320x140: plank rows 21-52 with rounded inked ends at x 7 and 313, brackets x 32-108 and 210-293 down to row 119) is the source of the one-way platform tiles; see "Platform shelves".
 - Boss: six 320x320 poses of "Shorty the Short-Circuit Baron" (idle, attack, stomp, taunt, hurt, defeated), bottom row 313, plus a 960x640 atlas and the source sheet. **Usable as is** for a later boss; not in scope now.
 
 ## UI (`assets/ui/`)
@@ -200,11 +202,14 @@ Rebuilt by scripts in `tools/`. Do not hand-edit the outputs; change the script 
 
 | Command | Produces |
 |---|---|
-| `--headless --path . --script res://tools/build_tilesets.gd` | `resources/themes/<theme>/tileset.tres` (5) |
+| `--headless --path . --script res://tools/generate_platform_art.gd` | `assets/processed/tileset_<theme>.png` (5 composite atlases with the shelf platforms; see "Platform shelves"). Run before `build_tilesets.gd`, then `--import`. |
+| `--headless --path . --script res://tools/build_tilesets.gd` | `resources/themes/<theme>/tileset.tres` (5), textured with the composite atlases (they must exist and be imported first) |
 | `--headless --path . --script res://tools/build_player_frames.gd` | `resources/themes/player_frames.tres` |
 | `--headless --path . --script res://tools/generate_art.gd` | the seven socket/door PNGs in `assets/processed/` |
 | `--headless --path . --script res://tools/generate_parts_art.gd` | the ten part, meter, lamp and polarity PNGs in `assets/processed/` (see "Parts, meters and lamps") |
-| `--headless --path . --script res://tools/check_resources.gd` | nothing; verifies all of the above plus the six music loops (557 checks, exit 0 = pass) |
+| `--headless --path . --script res://tools/check_resources.gd` | nothing; verifies all of the above plus the music (727 checks, exit 0 = pass) |
+
+Full platform rebuild: `generate_platform_art.gd`, `--import`, `build_tilesets.gd`, `--import`, `check_resources.gd`.
 
 None of these touch the old-pack resources; `tools/build_tileset.gd`, `build_player_frames.gd`, `generate_placeholders.gd` and `check_resources.gd` are unchanged.
 
@@ -213,13 +218,34 @@ None of these touch the old-pack resources; `tools/build_tileset.gd`, `build_pla
 Themes: `old_workshop`, `copper_foundry`, `substation_switchyard`, `signal_clocktower`, `high_voltage_transmitter`.
 
 - One `TileSetAtlasSource`, **source id 0**, `tile_size` and `texture_region_size` 64x64, 16 tiles, alternative 0 only, `use_texture_padding = true` (stops Linear filtering bleeding neighbouring tiles in).
-- **Same IDs as the old set: tile ID n is at atlas coords `Vector2i(n % 4, n / 4)`.** Level files and `set_cell` calls do not change.
-- Physics layer 0: `collision_layer = 1`, `collision_mask = 0`. Full 64x64 square on IDs 0, 1, 2, 3, 12, 13, 14.
-- Physics layer 1: `collision_layer = 2`, `collision_mask = 0`. One `one_way = true` rectangle on IDs 4, 5, 6, 7 covering rows 18-40 full width (local points y -14 to +9).
+- **Texture: the composite atlas `res://assets/processed/tileset_<theme>.png`** (from `tools/generate_platform_art.gd`), not the pack's `tileset_64px.png`. Identical to the pack atlas except cells 4-7, which hold the shelf pieces.
+- **Same IDs as the old set: tile ID n is at atlas coords `Vector2i(n % 4, n / 4)`.** Level files and `set_cell` calls do not change. Platform IDs: **4 left, 5 middle, 6 right, 7 single** (picked by `src/level/room_tiles.gd` from the `=` runs).
+- Physics layer 0: `collision_layer = 1`, `collision_mask = 0`. Full 64x64 square on IDs 0, 1, 2, 3, 12, 13, 14 (points (-32, -32), (32, -32), (32, 32), (-32, 32)).
+- Physics layer 1: `collision_layer = 2`, `collision_mask = 0`. One `one_way = true` rectangle on IDs 4, 5, 6, 7 covering **rows 14-36** full width (points (-32, -18), (32, -18), (32, 5), (-32, 5)).
+- Platform tiles 4-7: `texture_origin = Vector2i(0, 0)` (the shelf art is authored with its top on row 14; the old pixel planks needed (0, 4)).
 - No collision: IDs 8-11, 15.
 - Use on a `TileMapLayer` with `scale = Vector2(0.5, 0.5)` and `texture_filter = TEXTURE_FILTER_LINEAR`. A 64 px tile then covers one 32 px cell, and cell (cx, cy) is still at pixel (32 cx, 32 cy). The tile map's own coordinates are in 64 px units, so convert cells with `map_to_local` / `local_to_map` on the layer (or multiply by 32 in parent space) rather than assuming 32 px tiles.
 
-**Platform surface finding:** the platform art's top row is 18 of 64, so at scale 0.5 the standing surface is **9.0 px** below the top of the 32 px cell. Game logic assumes 7 px (old art, rows 7-20). **The new surface is 2 px lower.** The underside is at 20.5 px (old 21). The collision follows the art, so anything that hard-codes the 7 px offset (spawn heights, pickup rest positions, reach measurements) is 2 px off.
+**Platform surface:** the one-way strip's top is source row 14, so at scale 0.5 the standing surface is **7.0 px** below the top of the 32 px cell, and the strip's underside is at 18.5 px. This is the offset game logic assumes (spawn heights, part rest positions, reach measurements). The shelf plank's top ink edge is drawn on that same row, so what players see as the top of the plank is exactly where Ohmie, enemies and loose parts stand.
+
+### Platform shelves (`assets/processed/tileset_<theme>.png`, from `tools/generate_platform_art.gd`)
+
+Five composite atlases, 256x256 RGBA, one per theme: `tileset_old_workshop.png`, `tileset_copper_foundry.png`, `tileset_substation_switchyard.png`, `tileset_signal_clocktower.png`, `tileset_high_voltage_transmitter.png`. Each is a pixel copy of that theme's pack atlas with cells 4-7 cleared and replaced by a hand-inked wooden shelf built from `assets/platforms/narrow_shelf.png`. Import settings are Godot's defaults (lossless, no mipmaps), the same as the pack atlas.
+
+How the pieces are built (cell geometry in 64 px source px; halve for screen):
+
+- **Plank:** the source shelf scaled by 0.8125 (premultiplied Lanczos), cut to an exact rectangle on **rows 14-39** (26 rows, 13 px on screen), top edge straight and level on **row 14** in all four pieces. Nothing is drawn above row 14. Ink outline `#24180F`, 3.5 px wide inside the edge (rows 14-16 on top, 37-39 at the bottom, 1.75 px on screen). A light band (`#FFE6B2`, fading) on rows 17-19 under the top ink, the source's grain and top-face bevel, wood deepened by (0.90, 0.85, 0.80) and darkened towards the bottom over the last 8 rows. Knots and dark marks are softened towards each row's mean so nothing repeats obviously.
+- **Middle (ID 5):** full width, no ends. Its wood is a 64 px span of the scaled plank (from column 110), cross-faded over 20 columns across the wrap, then its first and last 4 columns pulled to a shared colour, so column 63 equals column 0: it tiles seamlessly with itself and with the left and right pieces (whose open sides use the same wood).
+- **Left (ID 4):** rounded inked end (corner radius 5) with its outer edge at x 2; the source plank's own end (with its bevel line) for 18 columns, cross-faded into the middle wood over 12. One scroll bracket (the source's left bracket scaled 0.38, 28x26, with a 1 px ink rim) at x 8-35, rows 36-61, tucked behind the plank's bottom edge.
+- **Right (ID 6):** mirror arrangement: end at x 61, the source's right bracket at x 26-54.
+- **Single (ID 7):** both rounded ends (x 2-61) and two brackets at x 3 and x 31.
+- **Shadow:** ink at alpha 0.30 / 0.17 / 0.07 on rows 40-42 under the plank, and each bracket's rim shape at alpha 0.22 offset (2, 1).
+- **Measured extents** (alpha > 0): middle rows 14-42, columns 0-63; left rows 14-63, columns 2-63; right rows 14-63, columns 0-61; single rows 14-63, columns 2-62. Inked brackets (alpha >= 0.5) reach row 62 (31 px below the cell top on screen); their shadow touches row 63. Below row 42 the left tile is opaque only in columns 10-31, the right in 29-53, the single in 5-58.
+- **Per-theme tint:** the shelf RGB is multiplied by that theme's mean platform colour in its pack atlas over the Old Workshop's: workshop (1, 1, 1), foundry (1.055, 1.040, 1.051), switchyard (0.932, 1.066, 1.199), clocktower (0.978, 1.021, 1.199), transmitter (1.005, 0.968, 1.037). The switchyard shelf reads as weathered olive-grey wood.
+
+`check_resources.gd` verifies for every theme: the composite exists and is 256x256; the twelve other cells are pixel-identical to the pack; the shelf's first opaque row (alpha >= 0.5) minus `texture_origin.y` is row 14 (within 1) and nothing is drawn above row 13; the top is level on row 14 across the flat part of each piece; the middle|middle, left|middle and middle|right seams differ by at most 8 levels per channel (premultiplied); the TileSet's texture is the composite; the polygon points above are unchanged.
+
+Room for parts: a loose part's icon has 1.5 px of transparent margin under its plaque (rows 125-127 of 128), so parts on a shelf show a 1.5 px gap of wall between plaque and plank top. That comes from the icon geometry and `PartPickup.ICON_OFFSET`, not from the tiles.
 
 ### Player animations: `res://resources/themes/player_frames.tres`
 

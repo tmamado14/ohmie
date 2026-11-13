@@ -123,7 +123,7 @@ Update this section whenever a milestone step completes. Last updated 2026-11-12
 | `--script res://tests/play_overtime_states.gd` | 16 |
 | `--script res://tests/play_hazards.gd` | 65 |
 | `--script res://tests/play_w1_01.gd` … `play_w1_13.gd` | 29, 54, 37, 37, 60, 34, 38, 37, 52, 68, 76, 121, 100 |
-| `--script res://tools/check_resources.gd` | 558 |
+| `--script res://tools/check_resources.gd` | 727 |
 
 **Things that bite.**
 - After adding a script with `class_name`, run `--import` once before any `--script` command. While another agent is mid-change, unrelated tests can fail to compile; re-import and retry.
@@ -132,6 +132,6 @@ Update this section whenever a milestone step completes. Last updated 2026-11-12
 - The next-room key reacts to a real `interact` input event, not `Input.action_press`.
 - Shell heredocs containing apostrophes or backticks have mangled files; write files with the Write/Edit tools.
 
-**Next.** A QA pass over the overtime rooms (11–13, now with bounce pads, enemies and hazards); draw real platforms with the pack's illustrated shelves so painted furniture stops reading as platforms; explain `---`, `OL` and `SHORT` to new players; then the collapse replay. Fonts: Libre Baskerville is bundled in `assets/fonts/` (OFL) and is the project default; Ω and arrows fall back to a system serif. Music: `assets/audio/Ohmie BGM.mp3` for menus and World 1. Known rough edges: shelves painted in the background look like platforms; floor and platform tiles are pixel art beside inked sprites; the logotype is styled system type, not custom lettering; nobody has played by hand with a keyboard and the audio is unheard.
+**Next.** A QA pass over the overtime rooms (11–13, now with bounce pads, enemies and hazards); refresh the README room images (platforms are now inked shelves from `tools/generate_platform_art.gd`; the tile atlases are the composites in `assets/processed/tileset_<theme>.png`); explain `---`, `OL` and `SHORT` to new players; then the collapse replay. Fonts: Libre Baskerville is bundled in `assets/fonts/` (OFL) and is the project default; Ω and arrows fall back to a system serif. Music: `assets/audio/Ohmie BGM.mp3` for menus and World 1. Known rough edges: shelves painted in the background look like platforms; floor and platform tiles are pixel art beside inked sprites; the logotype is styled system type, not custom lettering. The user has playtested by hand (2026-11-13) and found no issues.
 
 **Git.** Remote `origin` is https://github.com/tmamado14/ohmie (branch `master`). Commit as the user only, with no Claude co-author or attribution lines. Push after each completed task. All subagents so far reported model `claude-opus-5-5`.

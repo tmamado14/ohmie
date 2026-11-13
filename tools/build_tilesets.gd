@@ -10,12 +10,15 @@ extends SceneTree
 ## atlas source 0. Tiles are 64x64 and are meant to be drawn by a TileMapLayer with
 ## scale (0.5, 0.5) and texture_filter = LINEAR, so one 64 px tile covers one 32 px cell.
 ##
+## The atlas texture is the composite res://assets/processed/tileset_<theme>.png written by
+## tools/generate_platform_art.gd (run that first): the theme's pack atlas with the four platform
+## cells (IDs 4-7) replaced by illustrated shelf pieces.
+##
 ## Physics layer 0 (collision_layer 1, "world"): full 64x64 square on solid tiles.
 ## Physics layer 1 (collision_layer 2, "one-way platform"): one-way strip on platform tiles.
-## The platform art occupies rows 18-40 in all five sets, but levels assume the standing
-## surface is 7 px below the 32 px cell top (row 14 at 2x). So the strip covers rows 14-36
-## (same 23-row thickness) and the platform art is drawn 4 source px higher with
-## TileData.texture_origin, so its top edge meets the strip's top.
+## Levels assume the standing surface is 7 px below the 32 px cell top (row 14 at 2x), so the
+## strip covers rows 14-36. The shelf plank's top edge is authored on row 14, so the platform
+## tiles' TileData.texture_origin is (0, 0).
 ## Both layers have collision_mask 0 (see docs/ASSETS.md for why).
 
 const OUTPUT_DIR: String = "res://resources/themes/"
@@ -36,11 +39,14 @@ const ONE_WAY_TILE_IDS: Array[int] = [4, 5, 6, 7]
 ## of the 64 px tile. At scale 0.5 that is y 7.0 to 18.5 inside the 32 px cell.
 const ONE_WAY_TOP_ROW: int = 14
 const ONE_WAY_BOTTOM_ROW: int = 36
-## Platform art (rows 18-40) is drawn this many source px higher to sit on the strip.
-## Positive texture_origin.y moves the drawn texture up.
-const ONE_WAY_ART_SHIFT_UP: int = 4
+## The shelf art's top is already on ONE_WAY_TOP_ROW, so it is drawn unshifted.
+## (Positive texture_origin.y would move the drawn texture up.)
+const PLATFORM_TEXTURE_ORIGIN: Vector2i = Vector2i(0, 0)
 
-## theme name -> atlas texture
+## Composite atlas per theme (written by tools/generate_platform_art.gd); used as the texture.
+const COMPOSITE_PATH_FORMAT: String = "res://assets/processed/tileset_%s.png"
+
+## theme name -> the pack's own atlas (the base of the composite)
 const THEMES: Dictionary = {
 	"old_workshop": "res://assets/environment/tileset_64px.png",
 	"copper_foundry": "res://assets/worlds/level_02_copper_foundry/tileset_64px.png",
@@ -53,7 +59,7 @@ const THEMES: Dictionary = {
 func _init() -> void:
 	var failures: int = 0
 	for theme: String in THEMES:
-		failures += _build(theme, THEMES[theme])
+		failures += _build(theme, COMPOSITE_PATH_FORMAT % theme)
 	quit(1 if failures > 0 else 0)
 
 
@@ -91,7 +97,7 @@ func _build(theme: String, texture_path: String) -> int:
 			_add_polygon(data, PHYSICS_LAYER_WORLD, _full_square(), false)
 		elif tile_id in ONE_WAY_TILE_IDS:
 			_add_polygon(data, PHYSICS_LAYER_ONE_WAY, _one_way_strip(), true)
-			data.texture_origin = Vector2i(0, ONE_WAY_ART_SHIFT_UP)
+			data.texture_origin = PLATFORM_TEXTURE_ORIGIN
 
 	var dir: String = OUTPUT_DIR + theme + "/"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))

@@ -4,23 +4,42 @@ extends SceneTree
 ## Run from the project root (exit code 0 = all checks pass, 1 = at least one failed):
 ##   godot --headless --path . --script res://tools/check_resources.gd
 ##
-## Covers: the five world TileSets, the 256x256 player SpriteFrames (including the shared
+## Covers: the five world TileSets and their composite atlases with the shelf platforms
+## (tools/generate_platform_art.gd), the 256x256 player SpriteFrames (including the shared
 ## feet baseline), the theme track, the six music loops and the generated PNGs in assets/processed/.
+
+const BuildTilesets := preload("res://tools/build_tilesets.gd")
 
 const TILE_PX: int = 64
 const HALF: float = 32.0
+const ATLAS_PX: int = 256
 const SOLID_TILE_IDS: Array[int] = [0, 1, 2, 3, 12, 13, 14]
 const ONE_WAY_TILE_IDS: Array[int] = [4, 5, 6, 7]
+const TILE_PLATFORM_LEFT: int = 4
+const TILE_PLATFORM_MIDDLE: int = 5
+const TILE_PLATFORM_RIGHT: int = 6
 ## One-way collision strip rows (surface 7 px below the cell top on screen).
 const ONE_WAY_TOP_ROW: int = 14
 const ONE_WAY_BOTTOM_ROW: int = 36
-## Rows the platform art occupies in the atlas.
-const PLATFORM_ART_TOP_ROW: int = 18
-const PLATFORM_ART_BOTTOM_ROW: int = 40
-## Platform art is drawn this far up (TileData.texture_origin.y) so its top meets the strip.
-const PLATFORM_ART_SHIFT_UP: int = 4
+## Exact collision polygons (tile-centred points), as they have been since the strip moved to row 14.
+const SOLID_POLYGON: Array[Vector2] = [Vector2(-32, -32), Vector2(32, -32), Vector2(32, 32), Vector2(-32, 32)]
+const ONE_WAY_POLYGON: Array[Vector2] = [Vector2(-32, -18), Vector2(32, -18), Vector2(32, 5), Vector2(-32, 5)]
+## The shelf art's top is authored on the strip's top row, so it is drawn unshifted.
+const PLATFORM_TEXTURE_ORIGIN: Vector2i = Vector2i(0, 0)
+## The drawn art top may differ from the strip top by at most this many source rows.
+const PLATFORM_TOP_TOLERANCE: int = 1
+## Per tile: the column range over which the plank's top must be exactly on the strip's top row
+## (outside the rounded ends), so the walkable edge is straight and level across all four pieces.
+const PLATFORM_FLAT_COLUMNS: Dictionary = {
+	4: Vector2i(8, 63),
+	5: Vector2i(0, 63),
+	6: Vector2i(0, 55),
+	7: Vector2i(8, 55),
+}
+## Largest per-channel difference (0-255, premultiplied RGB and alpha) allowed across a seam.
+const SEAM_TOLERANCE: int = 8
 
-## theme -> atlas texture path
+## theme -> the pack's own atlas (the base the composite is copied from)
 const TILESETS: Dictionary = {
 	"old_workshop": "res://assets/environment/tileset_64px.png",
 	"copper_foundry": "res://assets/worlds/level_02_copper_foundry/tileset_64px.png",
@@ -100,9 +119,11 @@ var _checks: int = 0
 
 
 func _init() -> void:
+	_check_builder_constants()
 	for theme: String in TILESETS:
-		_check_tileset(theme, TILESETS[theme])
-		_check_platform_art_rows(theme, TILESETS[theme])
+		var composite_path: String = BuildTilesets.COMPOSITE_PATH_FORMAT % theme
+		_check_tileset(theme, composite_path)
+		_check_composite_atlas(theme, TILESETS[theme], composite_path)
 	_check_frames()
 	_check_music()
 	_check_textures()
@@ -159,6 +180,7 @@ func _check_tileset(theme: String, texture_path: String) -> void:
 			if world_count == 1:
 				var pts: PackedVector2Array = data.get_collision_polygon_points(0, 0)
 				_expect(_bounds(pts) == Rect2(-HALF, -HALF, TILE_PX, TILE_PX), "%s tile %d: full 64x64 square (got %s)" % [theme, tile_id, _bounds(pts)])
+				_expect(pts == PackedVector2Array(SOLID_POLYGON), "%s tile %d: solid polygon points unchanged (got %s)" % [theme, tile_id, pts])
 				_expect(not data.is_collision_polygon_one_way(0, 0), "%s tile %d: world polygon is not one-way" % [theme, tile_id])
 		elif tile_id in ONE_WAY_TILE_IDS:
 			_expect(world_count == 0 and one_way_count == 1, "%s tile %d: 0 polygons on layer 0, 1 on layer 1 (got %d, %d)" % [theme, tile_id, world_count, one_way_count])
@@ -166,29 +188,96 @@ func _check_tileset(theme: String, texture_path: String) -> void:
 				_expect(data.is_collision_polygon_one_way(1, 0), "%s tile %d: layer 1 polygon is one-way" % [theme, tile_id])
 				var pts: PackedVector2Array = data.get_collision_polygon_points(1, 0)
 				_expect(_bounds(pts) == one_way_rect, "%s tile %d: strip covers rows 14-36 (got %s)" % [theme, tile_id, _bounds(pts)])
-			_expect(data.texture_origin == Vector2i(0, PLATFORM_ART_SHIFT_UP), "%s tile %d: texture_origin is (0, %d) (got %s)" % [theme, tile_id, PLATFORM_ART_SHIFT_UP, data.texture_origin])
-			_expect(PLATFORM_ART_TOP_ROW - PLATFORM_ART_SHIFT_UP == ONE_WAY_TOP_ROW, "%s tile %d: drawn art top meets strip top" % [theme, tile_id])
+				_expect(pts == PackedVector2Array(ONE_WAY_POLYGON), "%s tile %d: one-way polygon points unchanged (got %s)" % [theme, tile_id, pts])
+			_expect(data.texture_origin == PLATFORM_TEXTURE_ORIGIN, "%s tile %d: texture_origin is %s (got %s)" % [theme, tile_id, PLATFORM_TEXTURE_ORIGIN, data.texture_origin])
 		else:
 			_expect(world_count == 0 and one_way_count == 0, "%s tile %d: no collision (got %d, %d)" % [theme, tile_id, world_count, one_way_count])
 
 
-## Confirms the platform tiles' opaque pixels span exactly rows 18-40 (drawn 4 px higher).
-func _check_platform_art_rows(theme: String, texture_path: String) -> void:
-	var img: Image = Image.load_from_file(ProjectSettings.globalize_path(texture_path))
-	_expect(img != null and not img.is_empty(), "%s: atlas image loads" % theme)
-	if img == null or img.is_empty():
+## The builder's own constants must still describe the same strip and art placement.
+func _check_builder_constants() -> void:
+	_expect(BuildTilesets.ONE_WAY_TOP_ROW == ONE_WAY_TOP_ROW and BuildTilesets.ONE_WAY_BOTTOM_ROW == ONE_WAY_BOTTOM_ROW,
+			"build_tilesets.gd: strip rows are %d-%d" % [ONE_WAY_TOP_ROW, ONE_WAY_BOTTOM_ROW])
+	_expect(BuildTilesets.PLATFORM_TEXTURE_ORIGIN == PLATFORM_TEXTURE_ORIGIN, "build_tilesets.gd: platform texture_origin is %s" % PLATFORM_TEXTURE_ORIGIN)
+	_expect(BuildTilesets.SOLID_TILE_IDS == SOLID_TILE_IDS and BuildTilesets.ONE_WAY_TILE_IDS == ONE_WAY_TILE_IDS, "build_tilesets.gd: solid and one-way tile IDs unchanged")
+	_expect(BuildTilesets.THEMES == TILESETS, "build_tilesets.gd: same five themes and pack atlases")
+
+
+## The composite atlas (tools/generate_platform_art.gd): 256x256, a pixel copy of the pack atlas
+## outside the platform cells, shelf art whose top sits on the strip's top row, and no seams.
+func _check_composite_atlas(theme: String, pack_path: String, composite_path: String) -> void:
+	var texture: Texture2D = load(composite_path) as Texture2D
+	_expect(texture != null and Vector2i(texture.get_size()) == Vector2i(ATLAS_PX, ATLAS_PX), "%s: composite texture %s loads at 256x256" % [theme, composite_path])
+	var composite: Image = _load_image(composite_path)
+	var pack: Image = _load_image(pack_path)
+	if composite == null or pack == null:
 		return
-	for tile_id: int in ONE_WAY_TILE_IDS:
-		var ox: int = (tile_id % 4) * TILE_PX
-		var oy: int = (tile_id / 4) * TILE_PX
-		var top: int = TILE_PX
-		var bottom: int = -1
+	composite.convert(Image.FORMAT_RGBA8)
+	pack.convert(Image.FORMAT_RGBA8)
+	_expect(composite.get_size() == Vector2i(ATLAS_PX, ATLAS_PX), "%s: composite image is 256x256 (got %s)" % [theme, composite.get_size()])
+	if composite.get_size() != pack.get_size():
+		return
+
+	for tile_id: int in 16:
+		if tile_id in ONE_WAY_TILE_IDS:
+			continue
+		var origin: Vector2i = _cell_origin(tile_id)
+		var differing: int = 0
 		for y: int in TILE_PX:
 			for x: int in TILE_PX:
-				if img.get_pixel(ox + x, oy + y).a > 0.0:
-					top = mini(top, y)
-					bottom = maxi(bottom, y)
-		_expect(top == PLATFORM_ART_TOP_ROW and bottom == PLATFORM_ART_BOTTOM_ROW, "%s tile %d art spans rows %d-%d (expected 18-40)" % [theme, tile_id, top, bottom])
+				if composite.get_pixel(origin.x + x, origin.y + y) != pack.get_pixel(origin.x + x, origin.y + y):
+					differing += 1
+		_expect(differing == 0, "%s tile %d: composite cell is pixel-identical to the pack (%d pixels differ)" % [theme, tile_id, differing])
+
+	for tile_id: int in ONE_WAY_TILE_IDS:
+		var origin: Vector2i = _cell_origin(tile_id)
+		var opaque_top: int = TILE_PX
+		var any_top: int = TILE_PX
+		for y: int in TILE_PX:
+			for x: int in TILE_PX:
+				var a: float = composite.get_pixel(origin.x + x, origin.y + y).a
+				if a > 0.0:
+					any_top = mini(any_top, y)
+				if a >= 0.5:
+					opaque_top = mini(opaque_top, y)
+		# A positive texture_origin.y draws the art higher.
+		var drawn_top: int = opaque_top - PLATFORM_TEXTURE_ORIGIN.y
+		_expect(absi(drawn_top - ONE_WAY_TOP_ROW) <= PLATFORM_TOP_TOLERANCE, "%s tile %d: drawn art top row %d is on the strip top %d" % [theme, tile_id, drawn_top, ONE_WAY_TOP_ROW])
+		_expect(any_top - PLATFORM_TEXTURE_ORIGIN.y >= ONE_WAY_TOP_ROW - PLATFORM_TOP_TOLERANCE, "%s tile %d: nothing drawn above row %d (first pixel on row %d)" % [theme, tile_id, ONE_WAY_TOP_ROW - PLATFORM_TOP_TOLERANCE, any_top])
+		var flat: Vector2i = PLATFORM_FLAT_COLUMNS[tile_id]
+		var not_level: int = 0
+		for x: int in range(flat.x, flat.y + 1):
+			var above: float = composite.get_pixel(origin.x + x, origin.y + opaque_top - 1).a if opaque_top > 0 else 0.0
+			if composite.get_pixel(origin.x + x, origin.y + opaque_top).a < 0.5 or above >= 0.5:
+				not_level += 1
+		_expect(not_level == 0, "%s tile %d: plank top is level on row %d across columns %d-%d (%d columns off)" % [theme, tile_id, opaque_top, flat.x, flat.y, not_level])
+
+	_expect_seam(theme, composite, TILE_PLATFORM_MIDDLE, TILE_PLATFORM_MIDDLE, "middle|middle")
+	_expect_seam(theme, composite, TILE_PLATFORM_LEFT, TILE_PLATFORM_MIDDLE, "left|middle")
+	_expect_seam(theme, composite, TILE_PLATFORM_MIDDLE, TILE_PLATFORM_RIGHT, "middle|right")
+
+
+## Right-most column of `left_tile` against the left-most column of `right_tile`.
+func _expect_seam(theme: String, atlas: Image, left_tile: int, right_tile: int, label: String) -> void:
+	var a_origin: Vector2i = _cell_origin(left_tile) + Vector2i(TILE_PX - 1, 0)
+	var b_origin: Vector2i = _cell_origin(right_tile)
+	var worst: int = 0
+	for y: int in TILE_PX:
+		var a: Color = atlas.get_pixel(a_origin.x, a_origin.y + y)
+		var b: Color = atlas.get_pixel(b_origin.x, b_origin.y + y)
+		worst = maxi(worst, _channel_difference(a, b))
+	_expect(worst <= SEAM_TOLERANCE, "%s: %s seam differs by at most %d per channel (got %d)" % [theme, label, SEAM_TOLERANCE, worst])
+
+
+## Largest difference over premultiplied R, G, B and alpha, in 0-255 levels.
+func _channel_difference(a: Color, b: Color) -> int:
+	var d: float = maxf(absf(a.r * a.a - b.r * b.a), absf(a.g * a.a - b.g * b.a))
+	d = maxf(d, maxf(absf(a.b * a.a - b.b * b.a), absf(a.a - b.a)))
+	return roundi(d * 255.0)
+
+
+func _cell_origin(tile_id: int) -> Vector2i:
+	return Vector2i(tile_id % 4, tile_id / 4) * TILE_PX
 
 
 func _bounds(points: PackedVector2Array) -> Rect2:

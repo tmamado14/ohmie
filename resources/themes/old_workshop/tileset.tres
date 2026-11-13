@@ -1,6 +1,6 @@
 [gd_resource type="TileSet" format=3]
 
-[ext_resource type="Texture2D" path="res://assets/environment/tileset_64px.png" id="1_w17gb"]
+[ext_resource type="Texture2D" path="res://assets/processed/tileset_old_workshop.png" id="1_w17gb"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_mlv5b"]
 texture = ExtResource("1_w17gb")
@@ -14,19 +14,15 @@ texture_region_size = Vector2i(64, 64)
 3:0/0 = 0
 3:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-32, -32, 32, -32, 32, 32, -32, 32)
 0:1/0 = 0
-0:1/0/texture_origin = Vector2i(0, 4)
 0:1/0/physics_layer_1/polygon_0/points = PackedVector2Array(-32, -18, 32, -18, 32, 5, -32, 5)
 0:1/0/physics_layer_1/polygon_0/one_way = true
 1:1/0 = 0
-1:1/0/texture_origin = Vector2i(0, 4)
 1:1/0/physics_layer_1/polygon_0/points = PackedVector2Array(-32, -18, 32, -18, 32, 5, -32, 5)
 1:1/0/physics_layer_1/polygon_0/one_way = true
 2:1/0 = 0
-2:1/0/texture_origin = Vector2i(0, 4)
 2:1/0/physics_layer_1/polygon_0/points = PackedVector2Array(-32, -18, 32, -18, 32, 5, -32, 5)
 2:1/0/physics_layer_1/polygon_0/one_way = true
 3:1/0 = 0
-3:1/0/texture_origin = Vector2i(0, 4)
 3:1/0/physics_layer_1/polygon_0/points = PackedVector2Array(-32, -18, 32, -18, 32, 5, -32, 5)
 3:1/0/physics_layer_1/polygon_0/one_way = true
 0:2/0 = 0
