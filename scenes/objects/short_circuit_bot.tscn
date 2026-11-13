@@ -8,7 +8,9 @@
 size = Vector2(46, 38)
 
 [node name="ShortCircuitBot" type="Node2D"]
+z_index = 2
 script = ExtResource("1_patroller")
+body_size = Vector2(82, 70)
 wobble_speed = 14.0
 bob_height = 1.5
 tilt_degrees = 3.0

@@ -51,7 +51,7 @@ live_wire_scene = ExtResource("17_wire")
 [node name="Parts" type="Node2D" parent="."]
 
 [node name="TargetTag" type="Node2D" parent="."]
-z_index = 3
+z_index = 5
 script = ExtResource("20_tag")
 
 [node name="Respawn" type="Node2D" parent="."]

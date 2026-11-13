@@ -8,7 +8,9 @@
 size = Vector2(40, 36)
 
 [node name="Jelly" type="Node2D"]
+z_index = 2
 script = ExtResource("1_patroller")
+body_size = Vector2(74, 64)
 wobble_amount = 0.06
 wobble_speed = 7.0
 

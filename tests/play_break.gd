@@ -2,6 +2,12 @@ extends SceneTree
 ## Adversarial scripted QA test: tries to break the rooms w1_07 ("Half and Half")
 ## and dev_room; section L checks the same-level rule and the name tag in w1_05.
 ##
+## Section M checks the reading caption above the control hint (w1_03, w1_04,
+## w1_06, w1_07, w1_10: every assignment through the socket API); section N
+## that a slot's name tag stays attached to its own slot (w1_05, w1_10, w1_12,
+## w1_13, standing at every slot carrying and empty-handed); section O that a
+## loose part's plaque touches the surface it lies on (w1_11, w1_12).
+##
 ## Drives Ohmie through the input map (move_left, move_right, move_down, jump,
 ## interact, restart). To reach a test position quickly it sometimes moves
 ## Ohmie with Player.respawn(at) ("teleport"); every interaction itself still
@@ -98,10 +104,30 @@ const SLOT_CLEARANCE: float = 100.0
 const LEFT_LEDGE_LEFT_X: float = 192.0
 const REACH: float = 56.0
 const PLAYER_HEIGHT: float = 88.0
+const PLAYER_HALF_WIDTH: float = 18.0
 const POSITION_TOLERANCE: float = 3.0
 const SETTLE_FRAMES: int = 20
 const MAX_WALK_FRAMES: int = 600
 const MAX_AIR_FRAMES: int = 180
+
+## Section M: rooms whose assignments are swept, and the caption's exact lines.
+const CAPTION_ROOMS: PackedStringArray = ["res://levels/w1_03.json", "res://levels/w1_04.json",
+		"res://levels/w1_06.json", "res://levels/w1_07.json", "res://levels/w1_10.json"]
+const CAPTION_SHORT: String = "SHORT · a battery has nothing to limit its current"
+const CAPTION_INDETERMINATE: String = "??? · the meters cannot tell: two readings are possible"
+const CAPTION_OPEN_LOOP: String = "OL · open loop: no path between the ohmmeter's ends"
+const CAPTION_NO_READING: String = "--- · nothing to read: the meter's ends are not connected"
+## Ohmie's feet stand on the floor at this height; the caption stays below it.
+const SCREEN_HEIGHT: float = 720.0
+## Section N: rooms whose slots are checked, and the standing positions tried.
+const TAG_ROOMS: PackedStringArray = ["res://levels/w1_05.json", "res://levels/w1_10.json",
+		"res://levels/w1_12.json", "res://levels/w1_13.json"]
+const TAG_STEP: float = 8.0
+## The carried part's icon on screen (96x64 drawn at 0.75).
+const CARRIED_ICON_SIZE: Vector2 = Vector2(72, 48)
+## Section O: rooms whose parts are checked (batteries, art resistors and the blank one).
+const RESTING_ROOMS: PackedStringArray = ["res://levels/w1_11.json", "res://levels/w1_12.json"]
+const INK_TOLERANCE: float = 0.5
 
 var _passed: int = 0
 var _failed: int = 0
@@ -169,6 +195,9 @@ func _run_all() -> void:
 	await _section_j_readout_sweep()
 	await _section_k_coyote_and_buffer()
 	await _section_l_same_level()
+	await _section_m_reading_caption()
+	await _section_n_tag_attached()
+	await _section_o_parts_rest_on_surface()
 
 
 # --- A: interact spam ------------------------------------------------------------
@@ -1218,6 +1247,208 @@ func _section_l_same_level() -> void:
 	await _interact()
 	_check(_carry.get_carried() == r2 and _picked == 1, "L2 interact on the ledge picks up the 2 Ω")
 	_check(tag != null and not tag.visible, "L2 the tag goes away when the part is picked up and nothing else is in reach")
+
+
+# --- M: the reading caption -----------------------------------------------------------
+
+func _section_m_reading_caption() -> void:
+	print("-- M: reading caption")
+	_check(ReadingLegend.SHORT_CAPTION == CAPTION_SHORT and ReadingLegend.INDETERMINATE_CAPTION == CAPTION_INDETERMINATE
+			and ReadingLegend.OPEN_LOOP_CAPTION == CAPTION_OPEN_LOOP and ReadingLegend.NO_READING_CAPTION == CAPTION_NO_READING,
+			"M1 the four caption lines read exactly as designed")
+	var priority_cases: Array[Array] = [
+		[["---", "OL"], CAPTION_OPEN_LOOP], [["OL", "???"], CAPTION_INDETERMINATE],
+		[["---", "SHORT", "OL"], CAPTION_SHORT], [["2 A", "---"], CAPTION_NO_READING], [["2 A", "1 Ω"], ""],
+	]
+	var wrong: PackedStringArray = []
+	for case: Array in priority_cases:
+		var got: String = ReadingLegend.caption_for(PackedStringArray(case[0]))
+		if got != String(case[1]):
+			wrong.append("%s -> '%s'" % [case[0], got])
+	_check(wrong.is_empty(), "M2 several special readings: SHORT, then ???, then OL, then --- is explained %s" % wrong)
+	var seen: Dictionary = {}
+	var misfits: PackedStringArray = []
+	for path: String in CAPTION_ROOMS:
+		if not await _open_level(path):
+			continue
+		var room_parts: Array[PartPickup] = _room.get_parts()
+		var sockets: Array[CircuitSocket] = _board.get_sockets()
+		var assignments: Array[Dictionary] = []
+		_enumerate(sockets.size(), 0, [], assignments, room_parts.size())
+		var mismatches: PackedStringArray = []
+		for assignment: Dictionary in assignments:
+			_api_clear()
+			for socket_index: int in assignment:
+				var pickup: PartPickup = room_parts[assignment[socket_index] as int]
+				pickup.take()
+				sockets[socket_index].insert(pickup)
+			var on_screen: PackedStringArray = _special_readings_on_screen()
+			var expected: String = _expected_caption(on_screen)
+			var shown: String = _hud.get_legend_text()
+			seen[expected] = true
+			if shown != expected:
+				mismatches.append("%s: shown '%s' expected '%s'" % [on_screen, shown, expected])
+			if not shown.is_empty():
+				var problem: String = _caption_fit_problem()
+				if not problem.is_empty():
+					misfits.append("%s: %s" % [path.get_file(), problem])
+		_check(mismatches.is_empty(), "M3 %s: the caption matches the special readings on screen for all %d assignments %s"
+				% [path.get_file(), assignments.size(), mismatches.slice(0, 3)])
+		_api_clear()
+	_check(seen.has(CAPTION_SHORT) and seen.has(CAPTION_OPEN_LOOP) and seen.has(CAPTION_NO_READING) and seen.has(""),
+			"M4 the sweep met a SHORT, an OL, a --- and a no-special state (%s)" % [seen.keys()])
+	_check(misfits.is_empty(), "M5 a shown caption fits the screen width, sits below the floor (y %.0f) and does not overlap the control hint %s"
+			% [FLOOR_Y, misfits.slice(0, 3)])
+	# w1_04 starts with empty slots: the ohmmeter reads OL and the caption explains it.
+	if await _open_level("res://levels/w1_04.json"):
+		_check(_hud.get_legend_text() == CAPTION_OPEN_LOOP, "M6 w1_04 at the start (empty slots) explains OL ('%s')"
+				% _hud.get_legend_text())
+
+
+## Every special reading on a board meter or a plaque row, as shown.
+func _special_readings_on_screen() -> PackedStringArray:
+	var shown: PackedStringArray = []
+	for edge: LevelCircuit.Edge in _room.get_circuit().get_edges():
+		var meter: BoardMeter = _board.get_meter(edge.id)
+		if meter != null:
+			shown.append(meter.get_reading())
+	for i: int in _hud.get_condition_count():
+		shown.append(_hud.get_reading_text(i))
+	var specials: PackedStringArray = []
+	for token: String in ["SHORT", "???", "OL", "---"]:
+		if shown.has(token):
+			specials.append(token)
+	return specials
+
+
+## The caption the design asks for: the first of SHORT, ???, OL, --- on screen.
+func _expected_caption(specials: PackedStringArray) -> String:
+	if specials.is_empty():
+		return ""
+	match specials[0]:
+		"SHORT":
+			return CAPTION_SHORT
+		"???":
+			return CAPTION_INDETERMINATE
+		"OL":
+			return CAPTION_OPEN_LOOP
+	return CAPTION_NO_READING
+
+
+func _caption_fit_problem() -> String:
+	var text_rect: Rect2 = _hud.get_legend_rect()
+	var hint_rect: Rect2 = _hud.get_hint_rect()
+	if text_rect.position.x < 0.0 or text_rect.end.x > SCREEN_WIDTH:
+		return "off screen horizontally %s" % text_rect
+	if text_rect.position.y < FLOOR_Y or text_rect.end.y > SCREEN_HEIGHT:
+		return "not between the floor and the bottom %s" % text_rect
+	if text_rect.intersects(hint_rect):
+		return "overlaps the hint %s / %s" % [text_rect, hint_rect]
+	return ""
+
+
+# --- N: a slot's name tag stays attached to it -------------------------------------------
+
+func _section_n_tag_attached() -> void:
+	print("-- N: name tags stay attached to their slots")
+	for path: String in TAG_ROOMS:
+		if not await _open_level(path):
+			continue
+		for hazard: Hazard in _room.get_objects().get_hazards():
+			hazard.process_mode = Node.PROCESS_MODE_DISABLED
+		var tag: TargetTag = _room.get_target_tag()
+		var carrier: PartPickup = _room.get_parts()[0]
+		await _teleport(carrier.global_position)
+		await _interact()
+		if _carry.get_carried() != carrier:
+			_check(false, "N %s: picked up %s to carry to the slots" % [path.get_file(), carrier.part_id])
+			continue
+		var problems: Dictionary = {true: PackedStringArray(), false: PackedStringArray()}
+		var unchecked: PackedStringArray = []
+		for socket: CircuitSocket in _board.get_sockets():
+			var used: Dictionary = {true: 0, false: 0}
+			for carrying: bool in [true, false]:
+				var x: float = socket.global_position.x - REACH
+				while x <= socket.global_position.x + REACH:
+					var feet: Vector2 = Vector2(x, socket.get_standing_y())
+					x += TAG_STEP
+					await _teleport(feet)
+					if not _player.is_on_floor() or _carry.get_target() != socket:
+						continue
+					used[carrying] = int(used[carrying]) + 1
+					var problem: String = _tag_problem(tag, socket, carrying)
+					if not problem.is_empty():
+						(problems[carrying] as PackedStringArray).append("%s at x=%.0f: %s" % [socket.socket_id,
+								_player.position.x, problem])
+				# Plug in (to stand at it empty-handed), and at the end pull out again.
+				await _teleport(Vector2(socket.global_position.x, socket.get_standing_y()))
+				await _interact()
+			if int(used[true]) == 0 or int(used[false]) == 0:
+				unchecked.append(socket.socket_id)
+		for carrying: bool in [true, false]:
+			var list: PackedStringArray = problems[carrying]
+			_check(list.is_empty(), "N %s %s: at every slot the tag is on screen, clear of Ohmie, the carried part and the HUD panels, and nearer its own slot than any other board component (%d problems) %s"
+					% [path.get_file(), "carrying" if carrying else "empty-handed", list.size(), list.slice(0, 3)])
+		_check(unchecked.is_empty(), "N %s: every slot was checked carrying and empty-handed %s" % [path.get_file(), unchecked])
+
+
+func _tag_problem(tag: TargetTag, socket: CircuitSocket, carrying: bool) -> String:
+	if not tag.visible or tag.get_text() != socket.get_tag_text():
+		return "tag '%s' shown %s" % [tag.get_text(), tag.visible]
+	var rect: Rect2 = tag.get_global_rect()
+	if rect.position.x < 0.0 or rect.position.y < 0.0 or rect.end.x > SCREEN_WIDTH or rect.end.y > SCREEN_HEIGHT:
+		return "off screen %s" % rect
+	var feet: Vector2 = _player.global_position
+	var body: Rect2 = Rect2(feet.x - PLAYER_HALF_WIDTH, feet.y - PLAYER_HEIGHT, PLAYER_HALF_WIDTH * 2.0, PLAYER_HEIGHT)
+	if rect.intersects(body):
+		return "covers Ohmie's body %s" % rect
+	if carrying:
+		var icon_node: Node2D = _carry.get_node(^"CarriedIcon") as Node2D
+		var icon: Rect2 = Rect2(icon_node.global_position - CARRIED_ICON_SIZE * 0.5, CARRIED_ICON_SIZE)
+		if rect.intersects(icon):
+			return "covers the carried part %s" % rect
+	for panel: Rect2 in _hud.get_panel_rects():
+		if rect.intersects(panel):
+			return "covers a HUD panel %s" % rect
+	var own_frame: Rect2 = socket.get_frame_rect()
+	var own: float = _rect_gap(rect, own_frame)
+	for frame: Rect2 in _board.get_component_frames():
+		if frame.position.is_equal_approx(own_frame.position):
+			continue
+		var gap: float = _rect_gap(rect, frame)
+		if gap <= own:
+			return "tag %s is %.0f px from its slot but %.0f px from %s" % [rect, own, gap, frame]
+	return ""
+
+
+## Distance between two rectangles (0 when they touch or overlap).
+func _rect_gap(a: Rect2, b: Rect2) -> float:
+	var dx: float = maxf(0.0, maxf(a.position.x - b.end.x, b.position.x - a.end.x))
+	var dy: float = maxf(0.0, maxf(a.position.y - b.end.y, b.position.y - a.end.y))
+	return sqrt(dx * dx + dy * dy)
+
+
+# --- O: a loose part's plaque touches the surface it lies on ----------------------------
+
+func _section_o_parts_rest_on_surface() -> void:
+	print("-- O: loose parts rest on their surface")
+	for path: String in RESTING_ROOMS:
+		if not await _open_level(path):
+			continue
+		var bad: PackedStringArray = []
+		for pickup: PartPickup in _room.get_parts():
+			var sprite: Sprite2D = pickup.get_icon().get_node(^"Sprite") as Sprite2D
+			var image: Image = sprite.texture.get_image()
+			if image.is_compressed():
+				image.decompress()
+			var ink_bottom: float = float(image.get_used_rect().end.y) - image.get_height() * 0.5
+			var drawn: float = (sprite.get_global_transform() * Vector2(0.0, ink_bottom)).y
+			var logical_ok: bool = pickup.get_interaction_point() == pickup.global_position + PartPickup.ICON_OFFSET
+			if absf(drawn - pickup.global_position.y) > INK_TOLERANCE or not logical_ok:
+				bad.append("%s ink ends at y %.2f, rests on %.2f%s" % [pickup.part_id, drawn, pickup.global_position.y,
+						"" if logical_ok else " (interaction point moved)"])
+		_check(bad.is_empty(), "O %s: every loose part's plaque ink touches its surface within %.1f px, its reach point unchanged %s"
+				% [path.get_file(), INK_TOLERANCE, bad])
 
 
 # --- room binding ----------------------------------------------------------------------

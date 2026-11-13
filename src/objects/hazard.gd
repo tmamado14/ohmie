@@ -18,6 +18,9 @@ const BELOW_TOLERANCE: float = 12.0
 
 ## The Sfx sound the room plays when this hazard zaps Ohmie.
 @export var zap_sound: StringName = &"enemy_zap"
+## The drawn body's size on screen: it stands on the origin (surface hazards)
+## or is centred on it (floaters). Used for get_sweep_rect().
+@export var body_size: Vector2 = Vector2(64, 64)
 
 @onready var _hurtbox: Hurtbox = $Hurtbox
 
@@ -33,6 +36,12 @@ func setup(entry: LevelObject) -> void:
 
 func get_hurtbox() -> Hurtbox:
 	return _hurtbox
+
+
+## Every area (global) the drawn body can ever cover: for a hazard that does
+## not move, its body standing on its origin. Moving hazards override this.
+func get_sweep_rect() -> Rect2:
+	return Rect2(global_position - Vector2(body_size.x * 0.5, body_size.y), body_size)
 
 
 ## True for a hazard whose origin is the floor point it stands on and that

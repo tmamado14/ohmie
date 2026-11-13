@@ -30,8 +30,13 @@ const CHAR_BLOCK: String = "B"
 const CHAR_WALL: String = "W"
 const CHAR_WARNING: String = "!"
 const CHAR_BEAM: String = "|"
-## Characters that count as solid when choosing ground corner tiles.
+## Characters that count as solid when choosing ground corner tiles (they are
+## also the characters whose tiles collide as solid ground, physics layer 1).
 const SOLID_CHARACTERS: String = "#BW!"
+## On-screen size of one cell.
+const CELL_SIZE: float = 32.0
+## A one-way platform's standing surface lies this far below its cell's top (GDD 6).
+const PLATFORM_SURFACE_OFFSET: float = 7.0
 
 
 ## Clears the layer and sets one cell per non-empty tile character.
@@ -42,6 +47,34 @@ func build(rows: PackedStringArray) -> void:
 			var tile_id: int = _tile_id_at(rows, x, y)
 			if tile_id != NO_TILE:
 				set_cell(Vector2i(x, y), SOURCE_ID, atlas_coords_for(tile_id))
+
+
+## Every surface something can stand on, from the level's tile characters: each
+## continuous run of cells in one row that are solid with no solid cell above
+## (surface at the cell's top) or one-way platforms (PLATFORM_SURFACE_OFFSET
+## lower), as a zero-height Rect2 from the run's left end to its right end at
+## the surface height, in screen pixels.
+static func standing_surfaces(rows: PackedStringArray) -> Array[Rect2]:
+	var surfaces: Array[Rect2] = []
+	for y: int in rows.size():
+		var run_start: int = -1
+		var run_height: float = 0.0
+		for x: int in rows[y].length() + 1:
+			var height: float = -1.0
+			if x < rows[y].length():
+				var cell: String = rows[y][x]
+				var above: String = rows[y - 1][x] if y > 0 and x < rows[y - 1].length() else CHAR_EMPTY
+				if SOLID_CHARACTERS.contains(cell) and not SOLID_CHARACTERS.contains(above):
+					height = y * CELL_SIZE
+				elif cell == CHAR_PLATFORM:
+					height = y * CELL_SIZE + PLATFORM_SURFACE_OFFSET
+			if run_start >= 0 and height != run_height:
+				surfaces.append(Rect2(run_start * CELL_SIZE, run_height, (x - run_start) * CELL_SIZE, 0.0))
+				run_start = -1
+			if height >= 0.0 and run_start < 0:
+				run_start = x
+				run_height = height
+	return surfaces
 
 
 static func atlas_coords_for(tile_id: int) -> Vector2i:

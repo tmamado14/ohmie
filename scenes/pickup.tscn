@@ -9,11 +9,11 @@ z_index = 1
 script = ExtResource("1_pickup")
 
 [node name="Icon" type="Node2D" parent="."]
-position = Vector2(0, -32)
+position = Vector2(0, -30.5)
 script = ExtResource("2_icon")
 
 [node name="Highlight" type="Sprite2D" parent="."]
 visible = false
-position = Vector2(0, -32)
+position = Vector2(0, -30.5)
 scale = Vector2(0.5, 0.5)
 texture = ExtResource("3_highlight")

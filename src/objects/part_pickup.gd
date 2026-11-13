@@ -7,8 +7,13 @@ extends Interactable
 ## lies loose, and hidden while Ohmie carries it or it sits in a slot (those
 ## draw their own icon). It remembers where the level first put it.
 
-## From the origin (feet) to the icon centre.
+## From the origin (feet) to the icon centre: the logical 96x64 icon box whose
+## bottom is the floor point (reach, name tag and footprint use it).
 const ICON_OFFSET: Vector2 = Vector2(0, -32)
+## Where the icon is drawn: lowered by the transparent band under the art's ink
+## (PartIcon.INK_BOTTOM_INSET), so the plaque's bottom edge touches the surface.
+const ICON_DRAW_OFFSET: Vector2 = ICON_OFFSET + Vector2(0, PartIcon.INK_BOTTOM_INSET)
+const ICON_SIZE: Vector2 = Vector2(96, 64)
 
 ## The level file's id for this part.
 var part_id: String = ""
@@ -24,8 +29,8 @@ var _loose: bool = true
 
 
 func _ready() -> void:
-	_icon.position = ICON_OFFSET
-	_highlight.position = ICON_OFFSET
+	_icon.position = ICON_DRAW_OFFSET
+	_highlight.position = ICON_DRAW_OFFSET
 	_highlight.visible = false
 	_icon.set_part(part)
 
@@ -80,6 +85,16 @@ func get_standing_y() -> float:
 ## The top centre of the 64 px tall icon.
 func get_tag_anchor() -> Vector2:
 	return global_position + ICON_OFFSET * 2.0
+
+
+## The 96x64 icon box standing on the floor point.
+func get_frame_rect() -> Rect2:
+	return Rect2(global_position + ICON_OFFSET - ICON_SIZE * 0.5, ICON_SIZE)
+
+
+## The drawn icon (for checks of how the part looks).
+func get_icon() -> PartIcon:
+	return _icon
 
 
 ## The part's label: "3 Ω", "1/2 Ω", "6 V".

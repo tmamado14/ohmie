@@ -44,10 +44,12 @@ signal target_changed(target: Interactable, tag_text: String, carrying: bool)
 @export var body_centre_offset: Vector2 = Vector2(0, -44)
 ## How far a put-down may slide along the surface to find a valid spot.
 @export var put_down_max_slide: float = 64.0
-## Step between the spots tried when a returning part's home is taken.
-@export var return_home_step: float = 64.0
 
 var _carried: PartPickup = null
+## The room's standing surfaces and its enemies' and hazards' sweeps, for
+## sending a part home (set by the room).
+var _surfaces: Array[Rect2] = []
+var _hazard_sweeps: Array[Rect2] = []
 var _target: Interactable = null
 var _enabled: bool = true
 ## What target_changed last announced.
@@ -97,14 +99,33 @@ func set_enabled(enabled: bool) -> void:
 		_announce_target()
 
 
-## Sends a carried part back to where the level first put it (after a
-## fall), or beside it if another loose part lies there.
+## The room's standing surfaces (RoomTiles.standing_surfaces), used to keep a
+## returning part on its home surface.
+func set_surfaces(surfaces: Array[Rect2]) -> void:
+	_surfaces = surfaces.duplicate()
+
+
+## The areas the room's enemies and hazards sweep (RoomObjects.get_hazard_sweeps);
+## a returning part keeps out of them when it can.
+func set_hazard_sweeps(sweeps: Array[Rect2]) -> void:
+	_hazard_sweeps = sweeps.duplicate()
+
+
+## Sends a carried part back to where the level first put it (after a fall or
+## a zap), or to the nearest free spot (PartPlacement.find_return_spot) if
+## another loose part lies there. Should no spot on the screen qualify, the
+## part stays in Ohmie's hands rather than being stacked on another one.
 func return_carried_home() -> void:
 	if _carried == null:
 		return
 	var part: PartPickup = _carried
+	var spot: Vector2 = _placement().find_return_spot(part.home_position)
+	if spot == PartPlacement.NO_SPOT:
+		push_warning("PlayerCarry: no free spot for %s returning to %s; it stays carried"
+				% [part.part_id, part.home_position])
+		return
 	_set_carried(null)
-	part.place_loose(_placement().find_return_spot(part.home_position, return_home_step))
+	part.place_loose(spot)
 
 
 func _interact() -> void:
@@ -181,7 +202,7 @@ func _placement() -> PartPlacement:
 		var blocker: PartBlocker = node as PartBlocker
 		if blocker != null:
 			blocked.append(blocker.get_global_rect())
-	return PartPlacement.new(get_world_2d().direct_space_state, others, blocked)
+	return PartPlacement.new(get_world_2d().direct_space_state, others, blocked, _surfaces, _hazard_sweeps)
 
 
 func _set_target(target: Interactable) -> void:

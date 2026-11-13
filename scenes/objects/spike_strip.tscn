@@ -9,7 +9,9 @@
 size = Vector2(72, 24)
 
 [node name="SpikeStrip" type="Node2D"]
+z_index = 2
 script = ExtResource("1_hazard")
+body_size = Vector2(110, 52)
 zap_sound = &"hurt"
 
 [node name="Body" type="Node2D" parent="."]

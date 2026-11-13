@@ -50,6 +50,14 @@ func _hurts_only_at_its_level() -> bool:
 	return true
 
 
+## The whole walk: from `left` to `right` (in the parent's coordinates)
+## widened by half the body width, standing on the patroller's surface.
+func get_sweep_rect() -> Rect2:
+	var parent_offset: float = global_position.x - position.x
+	return Rect2(parent_offset + left - body_size.x * 0.5, global_position.y - body_size.y,
+			right - left + body_size.x, body_size.y)
+
+
 ## +1 while walking right, -1 while walking left.
 func get_direction() -> float:
 	return _direction

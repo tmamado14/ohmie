@@ -61,6 +61,14 @@ func get_to() -> Vector2:
 	return _to
 
 
+## The whole flight: the line from `from` to `to` (in the parent's
+## coordinates) widened by half the body size on every side.
+func get_sweep_rect() -> Rect2:
+	var parent_offset: Vector2 = global_position - position
+	return Rect2(_from + parent_offset, Vector2.ZERO).expand(_to + parent_offset).grow_individual(
+			body_size.x * 0.5, body_size.y * 0.5, body_size.x * 0.5, body_size.y * 0.5)
+
+
 func _physics_process(delta: float) -> void:
 	if _leg_time <= 0.0:
 		return

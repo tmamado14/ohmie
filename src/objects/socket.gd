@@ -15,8 +15,10 @@ signal contents_changed
 ## A slot sits at standing height: its centre this far above the surface it is
 ## used from (GDD 6).
 const STANDING_HEIGHT: float = 44.0
+## The frame's size on screen.
+const FRAME_SIZE: Vector2 = Vector2(104, 72)
 ## Half the height of the 104x72 frame.
-const FRAME_HALF_HEIGHT: float = 36.0
+const FRAME_HALF_HEIGHT: float = FRAME_SIZE.y * 0.5
 ## The name tag of an empty slot.
 const EMPTY_TAG: String = "empty"
 
@@ -56,6 +58,11 @@ func get_standing_y() -> float:
 ## The top centre of the frame.
 func get_tag_anchor() -> Vector2:
 	return global_position - Vector2(0, FRAME_HALF_HEIGHT)
+
+
+## The 104x72 frame, centred on the slot's origin.
+func get_frame_rect() -> Rect2:
+	return Rect2(global_position - FRAME_SIZE * 0.5, FRAME_SIZE)
 
 
 ## The label of the part in the slot, or "empty".

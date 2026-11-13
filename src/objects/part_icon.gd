@@ -21,6 +21,10 @@ const BLANK_RESISTOR_TEXTURE: Texture2D = preload("res://assets/processed/part_r
 const BATTERY_TEXTURE: Texture2D = preload("res://assets/processed/part_battery.png")
 const SIZE: Vector2 = Vector2(96, 64)
 const ART_SCALE: Vector2 = Vector2(0.5, 0.5)
+## Every part's art (192x128) ends its ink at row 124: rows 125-127 are
+## transparent, 1.5 px on screen. A part lying on a surface is drawn this much
+## lower so its plaque touches the surface.
+const INK_BOTTOM_INSET: float = 1.5
 ## The plaque's text rectangle relative to the icon centre: (30.5, 49, 36, 11.5)
 ## on screen from the icon's top-left (docs/ASSETS.md).
 const LABEL_RECT: Rect2 = Rect2(-17.5, 17, 36, 11.5)

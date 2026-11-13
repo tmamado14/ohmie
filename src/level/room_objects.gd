@@ -5,9 +5,11 @@ extends Node2D
 ## touches a body, `bounced` when a pad launches one. It performs nothing
 ## itself; the room decides what a touch or a bounce does.
 ##
-## Drawn at z 0 between the board (wires and fixed parts, earlier in the
-## room) and Ohmie (added to the room later); slots and loose parts draw in
-## front at z 1.
+## This node sits at z 0 between the board and the parts in the room, so the
+## bounce pads (z 0) draw over the board and behind slots and loose parts
+## (z 1). Enemies and hazards set z 2 in their own scenes: in front of the
+## board, slots and loose parts, behind Ohmie (z 3), the hit flash (z 4), the
+## name tag (z 5) and the carried part (z 6).
 
 ## A hazard touched `body`; `sound` is the hazard's zap sound.
 signal touched(body: Node2D, sound: StringName)
@@ -60,6 +62,15 @@ func get_pads() -> Array[BouncePad]:
 ## Every enemy and hazard, in file order.
 func get_hazards() -> Array[Hazard]:
 	return _hazards.duplicate()
+
+
+## The area each enemy or hazard can ever cover (Hazard.get_sweep_rect), in
+## file order. Loose parts sent home avoid these when they can.
+func get_hazard_sweeps() -> Array[Rect2]:
+	var sweeps: Array[Rect2] = []
+	for hazard: Hazard in _hazards:
+		sweeps.append(hazard.get_sweep_rect())
+	return sweeps
 
 
 func _scene_for(entry: LevelObject) -> PackedScene:

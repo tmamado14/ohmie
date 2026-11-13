@@ -24,7 +24,11 @@ extends SceneTree
 ## - a patroller on a one-way platform (the jelly, moved onto the high
 ##   platform for this check) does not zap a jump from underneath that pokes
 ##   Ohmie's head through the plank, but walking into it on the platform does;
-## - `restart` puts every enemy back at its start.
+## - `restart` puts every enemy back at its start;
+## - draw order: enemies and hazards in front of loose parts, slots and the
+##   board; Ohmie, the name tag and the carried part in front of enemies; the
+##   carried part in front of the tag (effective z, and a part put down in the
+##   jelly's walk).
 ## Prints measurements for level design (lines starting with "MEASURE").
 ##
 ## Usage (exit code 0 = all checks passed):
@@ -147,6 +151,7 @@ func _run_checks() -> int:
 	await _wait_physics(SETTLE_FRAMES)
 
 	_check_start_state()
+	await _check_draw_order()
 	await _check_normal_jump()
 	await _check_spikes_zap()
 	await _check_jump_over_spikes()
@@ -188,9 +193,66 @@ func _check_start_state() -> void:
 	var parts: Node2D = _room.get_node(^"Parts") as Node2D
 	_check(objects.get_index() > _room.get_board().get_index() and objects.get_index() < parts.get_index()
 			and objects.get_index() < _player.get_index() and objects.z_index == 0,
-			"objects draw after the board and before the parts and Ohmie")
+			"the objects node sits after the board and before the parts and Ohmie in the room, at z 0 (pads draw there; enemies set their own z, see the draw-order checks)")
 	_check(_player.position.distance_to(SPAWN) <= POSITION_TOLERANCE and _player.is_on_floor(),
 			"Ohmie starts on the floor at spawn (%s)" % _player.position)
+
+
+## Effective z order (OT-03): enemies and hazards in front of loose parts,
+## slots and the board; Ohmie, the name tag and the carried part in front of
+## enemies; the carried part in front of the tag.
+func _check_draw_order() -> void:
+	print("-- draw order")
+	var part: PartPickup = _room.get_parts()[0]
+	var socket: CircuitSocket = _room.get_board().get_sockets()[0]
+	var board_z: int = _effective_z(_room.get_board())
+	var part_z: int = _effective_z(part)
+	var socket_z: int = _effective_z(socket)
+	var lowest_enemy: int = 1000
+	var highest_enemy: int = -1000
+	var names: PackedStringArray = []
+	for hazard: Hazard in _room.get_objects().get_hazards():
+		var z: int = _effective_z(hazard)
+		lowest_enemy = mini(lowest_enemy, z)
+		highest_enemy = maxi(highest_enemy, z)
+		names.append("%s %d" % [hazard.name, z])
+	_check(lowest_enemy > part_z and lowest_enemy > socket_z and lowest_enemy > board_z,
+			"every enemy and hazard draws in front of loose parts, slots and the board (%s; part %d, slot %d, board %d)"
+			% [names, part_z, socket_z, board_z])
+	var tag_z: int = _effective_z(_room.get_target_tag())
+	var carried_icon: CanvasItem = _carry.get_node(^"CarriedIcon") as CanvasItem
+	var carried_z: int = _effective_z(carried_icon)
+	var player_z: int = _effective_z(_player)
+	_check(tag_z > highest_enemy and carried_z > highest_enemy and player_z > highest_enemy,
+			"the name tag (%d), the carried part (%d) and Ohmie (%d) draw in front of every enemy (%d)"
+			% [tag_z, carried_z, player_z, highest_enemy])
+	_check(carried_z > tag_z, "the carried part (%d) draws in front of the name tag (%d)" % [carried_z, tag_z])
+	# Live: a part put down in the jelly's walk is drawn under the jelly.
+	await _teleport(BATTERY_HOME)
+	await _interact()
+	var carried: PartPickup = _carry.get_carried()
+	await _teleport(Vector2(JELLY_LEFT - 40.0, FLOOR_Y))
+	await _interact()
+	var under_jelly: bool = carried != null and carried.is_loose() and _effective_z(carried) < _effective_z(_jelly)
+	_check(under_jelly, "a part put down by the jelly's walk draws behind the jelly (part z %d, jelly z %d)"
+			% [_effective_z(carried) if carried != null else -1, _effective_z(_jelly)])
+	if carried != null and carried.is_loose():
+		await _teleport(carried.global_position)
+		await _interact()
+		await _teleport(carried.home_position)
+		await _interact()
+	await _teleport(SPAWN)
+
+
+## The z a canvas item is drawn at (its z_index plus its parents' while relative).
+func _effective_z(item: CanvasItem) -> int:
+	var z: int = item.z_index
+	var node: Node = item
+	while node is CanvasItem and (node as CanvasItem).z_as_relative:
+		node = node.get_parent()
+		if node is CanvasItem:
+			z += (node as CanvasItem).z_index
+	return z
 
 
 func _check_normal_jump() -> void:
@@ -720,6 +782,12 @@ func _walk_to_x(x: float) -> void:
 	Input.action_release(action)
 	await _wait_physics(2)
 	await _wait_until_on_floor()
+
+
+## Puts Ohmie's feet at `at` and lets him settle.
+func _teleport(at: Vector2) -> void:
+	_player.respawn(at)
+	await _wait_physics(3)
 
 
 func _interact() -> void:

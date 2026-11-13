@@ -33,6 +33,11 @@ func get_tag_anchor() -> Vector2:
 	return global_position
 
 
+## Global rectangle of the drawn object (the name tag stays attached to it).
+func get_frame_rect() -> Rect2:
+	return Rect2(global_position, Vector2.ZERO)
+
+
 ## The name tag's text while this object is the highlighted target.
 func get_tag_text() -> String:
 	return ""

@@ -21,6 +21,12 @@ extends Control
 ## The line under the victory banner sits on a dark rounded strip sized to its
 ## text, so it stays readable over anything behind it.
 ##
+## While a special reading (SHORT, ???, OL, ---) is on a board meter
+## (set_board_special_readings) or a plaque row, one quiet caption directly
+## above the control hint explains the most important one (ReadingLegend), in
+## the hint style, shrinking to fit the screen width. It shows and hides with
+## the reading.
+##
 ## Only shows what it is given through its methods (plain strings and flags);
 ## it never looks at the board, the circuit or the level.
 
@@ -69,8 +75,17 @@ const BANNER_MAX_FONT_SIZE: int = 28
 const BANNER_MIN_FONT_SIZE: int = 18
 ## Width of the ribbon's flat panel available to the message (Victory/Banner/Message).
 const BANNER_TEXT_WIDTH: float = 220.0
+## The reading caption's line: offsets from the bottom of the screen (the hint
+## line sits at -34..-8, so the caption ends where the hint begins, well below
+## the floor at y 640), its side margin and the smallest font it may shrink to.
+const LEGEND_OFFSET_TOP: float = -60.0
+const LEGEND_OFFSET_BOTTOM: float = -34.0
+const LEGEND_SIDE_MARGIN: float = 16.0
+const LEGEND_MIN_FONT_SIZE: int = 12
 
 var _mission_done: bool = false
+var _board_specials: PackedStringArray = PackedStringArray()
+var _legend: Label = null
 var _symbols: PackedStringArray = PackedStringArray()
 var _targets: PackedStringArray = PackedStringArray()
 var _readings: PackedStringArray = PackedStringArray()
@@ -96,6 +111,7 @@ func _ready() -> void:
 	_victory_message.add_theme_font_size_override(&"font_size", TextFit.fit_font_size(
 			_victory_message.get_theme_font(&"font"), _victory_message.text, BANNER_MAX_FONT_SIZE,
 			BANNER_MIN_FONT_SIZE, BANNER_TEXT_WIDTH))
+	_add_legend()
 	_render_rows()
 
 
@@ -129,6 +145,37 @@ func get_hint_text() -> String:
 	return _hint.text
 
 
+## The hint line's rectangle on screen.
+func get_hint_rect() -> Rect2:
+	return _hint.get_global_rect()
+
+
+## The special readings the board's meters show now (CircuitBoard.special_readings_changed).
+func set_board_special_readings(readings: PackedStringArray) -> void:
+	_board_specials = readings.duplicate()
+	_update_legend()
+
+
+## The reading caption as shown ("" while hidden).
+func get_legend_text() -> String:
+	return _legend.text if _legend != null and _legend.visible else ""
+
+
+## The caption's text on screen: its line, narrowed to the text's width.
+func get_legend_rect() -> Rect2:
+	if _legend == null:
+		return Rect2()
+	var rect: Rect2 = _legend.get_global_rect()
+	var font: Font = _legend.get_theme_font(&"font")
+	var width: float = _text_width(font, _legend.text, _legend.get_theme_font_size(&"font_size"))
+	return Rect2(rect.get_center().x - width * 0.5, rect.position.y, width, rect.size.y)
+
+
+## The plaque and the mission sign on screen (things a tag must not cover).
+func get_panel_rects() -> Array[Rect2]:
+	return [$Readout.get_global_rect(), $MissionSign.get_global_rect()]
+
+
 ## One entry per goal condition (at most MAX_ROWS are shown): its caption (the
 ## quantity symbol "I", "V", "R", "P", optionally followed by the element's
 ## label: "I top") and its target ("2 A", "1–3/2 V").
@@ -151,6 +198,7 @@ func show_readings(readings: PackedStringArray, met: Array[bool], goal_met: bool
 		_met[i] = i < met.size() and met[i]
 	_render_rows()
 	_set_mission_done(goal_met)
+	_update_legend()
 
 
 ## Shows the victory banner; the line under it invites to the next room when
@@ -276,6 +324,41 @@ static func _text_width(font: Font, text: String, font_size: int) -> float:
 	if font == null or text.is_empty():
 		return 0.0
 	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+
+
+## The caption line in the hint style, directly above the hint and drawn
+## just after it (so the victory dim covers both).
+func _add_legend() -> void:
+	_legend = MenuStyle.hint_label("")
+	_legend.name = "ReadingLegend"
+	_legend.anchor_left = 0.0
+	_legend.anchor_right = 1.0
+	_legend.anchor_top = 1.0
+	_legend.anchor_bottom = 1.0
+	_legend.offset_left = LEGEND_SIDE_MARGIN
+	_legend.offset_right = -LEGEND_SIDE_MARGIN
+	_legend.offset_top = LEGEND_OFFSET_TOP
+	_legend.offset_bottom = LEGEND_OFFSET_BOTTOM
+	_legend.visible = false
+	add_child(_legend)
+	move_child(_legend, _hint.get_index() + 1)
+
+
+## Shows the caption for the most important special reading on the board or
+## the plaque, or hides it when there is none.
+func _update_legend() -> void:
+	if _legend == null:
+		return
+	var on_screen: PackedStringArray = _board_specials.duplicate()
+	on_screen.append_array(_readings)
+	var caption: String = ReadingLegend.caption_for(on_screen)
+	_legend.text = caption
+	_legend.visible = not caption.is_empty()
+	if caption.is_empty():
+		return
+	var width: float = get_viewport_rect().size.x - LEGEND_SIDE_MARGIN * 2.0
+	_legend.add_theme_font_size_override(&"font_size", TextFit.fit_font_size(
+			_legend.get_theme_font(&"font"), caption, MenuStyle.HINT_FONT_SIZE, LEGEND_MIN_FONT_SIZE, width))
 
 
 ## Sizes the victory line (and so its backing strip) to its text, centred.

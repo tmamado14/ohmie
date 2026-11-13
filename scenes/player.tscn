@@ -9,7 +9,7 @@
 size = Vector2(36, 88)
 
 [node name="Player" type="CharacterBody2D"]
-z_index = 2
+z_index = 3
 collision_layer = 4
 collision_mask = 3
 script = ExtResource("1_player")
@@ -30,7 +30,7 @@ body = NodePath("..")
 
 [node name="CarriedIcon" type="Node2D" parent="Carry"]
 visible = false
-z_index = 2
+z_index = 3
 position = Vector2(0, -128)
 scale = Vector2(0.75, 0.75)
 script = ExtResource("4_icon")

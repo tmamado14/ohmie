@@ -11,13 +11,20 @@ extends Node2D
 ## once right after build(). `shorted` is emitted when a change puts the
 ## circuit into a SHORT (not for a board that starts shorted).
 ##
+## `special_readings_changed` announces the special readings (MeterText:
+## SHORT, ???, OL, ---) its meters show, whenever that set changes (and once
+## after build()).
+##
 ## Fixed components and meters are drawn at z 0 and slots at z 1 (their
-## scene's z_index); Ohmie draws in front of both (z 2). Every slot, fixed part,
-## lamp and meter carries a PartBlocker over its frame, so a loose part is never
-## put down on it.
+## scene's z_index); enemies (z 2) and Ohmie (z 3) draw in front. Every slot,
+## fixed part, lamp and meter carries a PartBlocker over its frame, so a loose
+## part is never put down on it.
 
 signal circuit_changed(solution: DcSolution, goal_met: bool)
 signal shorted
+## The special readings now on the board's meters, each once, in
+## MeterText.SPECIAL_READINGS order (empty when none).
+signal special_readings_changed(readings: PackedStringArray)
 
 const NODE_DOT_TEXTURE: Texture2D = preload("res://assets/processed/node_dot.png")
 ## The processed art is drawn at 2x; this brings it to its on-screen size.
@@ -30,6 +37,8 @@ const JUNCTION_DEGREE: int = 3
 ## sits BLOCKER_OFFSET below the component's centre.
 const BLOCKER_SIZE: Vector2 = Vector2(120, 72)
 const BLOCKER_OFFSET: Vector2 = Vector2(0, 36)
+## Every slot, fixed part, lamp and meter is drawn 104x72, centred on its edge's midpoint.
+const COMPONENT_SIZE: Vector2 = Vector2(104, 72)
 
 @export var socket_scene: PackedScene
 
@@ -42,6 +51,9 @@ var _wires: CircuitWires = null
 var _last_solution: DcSolution = null
 var _goal_met: bool = false
 var _was_short: bool = false
+var _component_frames: Array[Rect2] = []
+var _special_readings: PackedStringArray = PackedStringArray()
+var _specials_announced: bool = false
 
 
 ## Builds every visual from `circuit` and announces the first solution.
@@ -76,6 +88,16 @@ func get_wires() -> CircuitWires:
 	return _wires
 
 
+## The global frame of every slot, fixed part, lamp and meter, in edge order.
+func get_component_frames() -> Array[Rect2]:
+	return _component_frames.duplicate()
+
+
+## The special readings the meters show now (see special_readings_changed).
+func get_special_readings() -> PackedStringArray:
+	return _special_readings.duplicate()
+
+
 ## The most recent solution (null before build()).
 func get_last_solution() -> DcSolution:
 	return _last_solution
@@ -103,6 +125,8 @@ func _add_components() -> void:
 		var b: Vector2 = _circuit.get_node_position(edge.to_node)
 		var middle: Vector2 = (a + b) * 0.5
 		var from_is_right: bool = a.x > b.x
+		if edge.type != LevelCircuit.TYPE_WIRE:
+			_component_frames.append(Rect2(to_global(middle) - COMPONENT_SIZE * 0.5, COMPONENT_SIZE))
 		match edge.type:
 			LevelCircuit.TYPE_SLOT:
 				_add_socket(edge.id, middle, from_is_right)
@@ -167,8 +191,11 @@ func _refresh() -> void:
 	var first: bool = _last_solution == null
 	_last_solution = solution
 	_goal_met = goal_met
+	var shown: PackedStringArray = PackedStringArray()
 	for id: String in _meters:
-		(_meters[id] as BoardMeter).set_reading(MeterText.reading(solution, id))
+		var reading: String = MeterText.reading(solution, id)
+		(_meters[id] as BoardMeter).set_reading(reading)
+		shown.append(reading)
 	for id: String in _lamps:
 		var edge: LevelCircuit.Edge = _circuit.get_edge(id)
 		(_lamps[id] as BoardLamp).set_state(BoardLamp.state_for(
@@ -179,6 +206,15 @@ func _refresh() -> void:
 	if is_short and not _was_short and not first:
 		shorted.emit()
 	_was_short = is_short
+	_announce_special_readings(MeterText.special_readings_in(shown))
+
+
+func _announce_special_readings(specials: PackedStringArray) -> void:
+	if _specials_announced and specials == _special_readings:
+		return
+	_specials_announced = true
+	_special_readings = specials
+	special_readings_changed.emit(specials.duplicate())
 
 
 static func _wire_state(solution: DcSolution, goal_met: bool) -> CircuitWires.State:

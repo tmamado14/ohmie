@@ -23,7 +23,13 @@ extends Node2D
 ## --level=res://levels/<file>.json on the command line (after `--`), the room
 ## chosen in the menus (GameSession.room_file), the campaign's first built room
 ## when `start_from_campaign` is set, or `level_path`.
-## Also connects gameplay signals to the Sfx autoload.
+## Also connects gameplay signals to the Sfx autoload, the board's special
+## readings to the HUD's reading caption, and hands data to the parts: the
+## standing surfaces and hazard sweeps to PlayerCarry (for parts sent home),
+## the board frames, HUD panels and Ohmie's feet to the name tag.
+##
+## Draw order (z): board 0, bounce pads 0, slots and loose parts 1, enemies and
+## hazards 2, Ohmie 3, hit flash 4, name tag 5, carried part 6.
 
 ## Emitted once when Ohmie walks into the open door.
 signal level_completed
@@ -101,8 +107,18 @@ func _ready() -> void:
 	_spawn_player()
 	_board.circuit_changed.connect(_on_circuit_changed)
 	_board.shorted.connect(_play_sound.bind(&"invalid"))
+	_board.special_readings_changed.connect(_hud.set_board_special_readings)
 	_board.build(_circuit, _goal, _theme)
+	_target_tag.set_layout(_board.get_component_frames(), _hud.get_panel_rects())
+	if _carry != null:
+		_carry.set_surfaces(RoomTiles.standing_surfaces(level_data.tile_rows))
+		_carry.set_hazard_sweeps(_objects.get_hazard_sweeps())
 	ScreenFade.connect_finished(get_tree(), _on_fade_finished)
+
+
+func _physics_process(_delta: float) -> void:
+	if _player != null:
+		_target_tag.set_viewer(_player.global_position)
 
 
 func _unhandled_input(event: InputEvent) -> void:

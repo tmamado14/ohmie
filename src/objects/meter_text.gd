@@ -16,6 +16,18 @@ const OVER_LIMIT_TEXT: String = "OL"
 const UNIT_AMPERE: String = "A"
 const UNIT_VOLT: String = "V"
 const UNIT_OHM: String = "Ω"
+## The readings that are not a value, most important first (the HUD explains
+## the first one on screen: ReadingLegend).
+const SPECIAL_READINGS: PackedStringArray = [SHORT_TEXT, INDETERMINATE_TEXT, OVER_LIMIT_TEXT, NO_READING_TEXT]
+
+
+## The special readings found in `readings`, each once, in SPECIAL_READINGS order.
+static func special_readings_in(readings: PackedStringArray) -> PackedStringArray:
+	var out: PackedStringArray = PackedStringArray()
+	for special: String in SPECIAL_READINGS:
+		if readings.has(special):
+			out.append(special)
+	return out
 
 
 ## The display text of meter `meter_id` in `solution`.
