@@ -1,0 +1,1071 @@
+{
+  "version": 1,
+  "world": "Copper Foundry — electronics expansion",
+  "components": [
+    {
+      "id": "diode_rectifier",
+      "name": "Rectifier diode",
+      "family": "Diodes",
+      "terminals": [
+        {
+          "id": "a",
+          "x": 7,
+          "y": 57
+        },
+        {
+          "id": "k",
+          "x": 185,
+          "y": 57
+        }
+      ],
+      "notes": "Cathode stripe at right; anode at left.",
+      "part": "res://assets/interactive/electronics/parts/diode_rectifier.png",
+      "symbol": "res://assets/interactive/electronics/symbols/diode_rectifier.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "diode_signal",
+      "name": "Glass signal diode",
+      "family": "Diodes",
+      "terminals": [
+        {
+          "id": "a",
+          "x": 7,
+          "y": 57
+        },
+        {
+          "id": "k",
+          "x": 185,
+          "y": 57
+        }
+      ],
+      "notes": "Glass package, cathode stripe at right.",
+      "part": "res://assets/interactive/electronics/parts/diode_signal.png",
+      "symbol": "res://assets/interactive/electronics/symbols/diode_signal.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "diode_zener",
+      "name": "Zener diode",
+      "family": "Diodes",
+      "terminals": [
+        {
+          "id": "a",
+          "x": 7,
+          "y": 57
+        },
+        {
+          "id": "k",
+          "x": 185,
+          "y": 57
+        }
+      ],
+      "notes": "Cathode stripe at right; Z is a game identification mark, not a part number.",
+      "part": "res://assets/interactive/electronics/parts/diode_zener.png",
+      "symbol": "res://assets/interactive/electronics/symbols/diode_zener.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "diode_schottky",
+      "name": "Schottky diode",
+      "family": "Diodes",
+      "terminals": [
+        {
+          "id": "a",
+          "x": 7,
+          "y": 57
+        },
+        {
+          "id": "k",
+          "x": 185,
+          "y": 57
+        }
+      ],
+      "notes": "Cathode stripe at right; S is a game identification mark.",
+      "part": "res://assets/interactive/electronics/parts/diode_schottky.png",
+      "symbol": "res://assets/interactive/electronics/symbols/diode_schottky.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "led_red_off",
+      "name": "Red LED — off",
+      "family": "Diodes",
+      "terminals": [
+        {
+          "id": "a",
+          "x": 80,
+          "y": 96
+        },
+        {
+          "id": "k",
+          "x": 112,
+          "y": 96
+        }
+      ],
+      "notes": "Left anode (+), right cathode (−); same geometry for both states.",
+      "part": "res://assets/interactive/electronics/parts/led_red_off.png",
+      "symbol": "res://assets/interactive/electronics/symbols/led_red_off.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "led_red_on",
+      "name": "Red LED — on",
+      "family": "Diodes",
+      "terminals": [
+        {
+          "id": "a",
+          "x": 80,
+          "y": 96
+        },
+        {
+          "id": "k",
+          "x": 112,
+          "y": 96
+        }
+      ],
+      "notes": "Left anode (+), right cathode (−); same geometry for both states.",
+      "part": "res://assets/interactive/electronics/parts/led_red_on.png",
+      "symbol": "res://assets/interactive/electronics/symbols/led_red_on.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "led_green_off",
+      "name": "Green LED — off",
+      "family": "Diodes",
+      "terminals": [
+        {
+          "id": "a",
+          "x": 80,
+          "y": 96
+        },
+        {
+          "id": "k",
+          "x": 112,
+          "y": 96
+        }
+      ],
+      "notes": "Left anode (+), right cathode (−); same geometry for both states.",
+      "part": "res://assets/interactive/electronics/parts/led_green_off.png",
+      "symbol": "res://assets/interactive/electronics/symbols/led_green_off.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "led_green_on",
+      "name": "Green LED — on",
+      "family": "Diodes",
+      "terminals": [
+        {
+          "id": "a",
+          "x": 80,
+          "y": 96
+        },
+        {
+          "id": "k",
+          "x": 112,
+          "y": 96
+        }
+      ],
+      "notes": "Left anode (+), right cathode (−); same geometry for both states.",
+      "part": "res://assets/interactive/electronics/parts/led_green_on.png",
+      "symbol": "res://assets/interactive/electronics/symbols/led_green_on.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "capacitor_ceramic",
+      "name": "Ceramic disc capacitor",
+      "family": "Capacitors",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 75,
+          "y": 96
+        },
+        {
+          "id": "2",
+          "x": 117,
+          "y": 96
+        }
+      ],
+      "notes": "Nonpolar; capacitance to be displayed dynamically.",
+      "part": "res://assets/interactive/electronics/parts/capacitor_ceramic.png",
+      "symbol": "res://assets/interactive/electronics/symbols/capacitor_ceramic.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "capacitor_electrolytic",
+      "name": "Electrolytic capacitor",
+      "family": "Capacitors",
+      "terminals": [
+        {
+          "id": "positive",
+          "x": 78,
+          "y": 96
+        },
+        {
+          "id": "negative",
+          "x": 115,
+          "y": 96
+        }
+      ],
+      "notes": "Polarized; negative stripe on right.",
+      "part": "res://assets/interactive/electronics/parts/capacitor_electrolytic.png",
+      "symbol": "res://assets/interactive/electronics/symbols/capacitor_electrolytic.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "capacitor_film",
+      "name": "Film capacitor",
+      "family": "Capacitors",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 70,
+          "y": 96
+        },
+        {
+          "id": "2",
+          "x": 122,
+          "y": 96
+        }
+      ],
+      "notes": "Nonpolar rectangular package.",
+      "part": "res://assets/interactive/electronics/parts/capacitor_film.png",
+      "symbol": "res://assets/interactive/electronics/symbols/capacitor_film.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "capacitor_variable",
+      "name": "Variable capacitor",
+      "family": "Capacitors",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 38,
+          "y": 96
+        },
+        {
+          "id": "2",
+          "x": 152,
+          "y": 96
+        }
+      ],
+      "notes": "Variable capacitance; simplified two-terminal tuning capacitor.",
+      "part": "res://assets/interactive/electronics/parts/capacitor_variable.png",
+      "symbol": "res://assets/interactive/electronics/symbols/capacitor_variable.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "inductor_air_core",
+      "name": "Air-core inductor",
+      "family": "Magnetics",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 7,
+          "y": 57
+        },
+        {
+          "id": "2",
+          "x": 185,
+          "y": 57
+        }
+      ],
+      "notes": "Nonpolar; winding only.",
+      "part": "res://assets/interactive/electronics/parts/inductor_air_core.png",
+      "symbol": "res://assets/interactive/electronics/symbols/inductor_air_core.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "inductor_iron_core",
+      "name": "Iron-core inductor",
+      "family": "Magnetics",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 7,
+          "y": 57
+        },
+        {
+          "id": "2",
+          "x": 185,
+          "y": 57
+        }
+      ],
+      "notes": "Magnetic core shown; core lines in symbol.",
+      "part": "res://assets/interactive/electronics/parts/inductor_iron_core.png",
+      "symbol": "res://assets/interactive/electronics/symbols/inductor_iron_core.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "transformer",
+      "name": "Transformer",
+      "family": "Magnetics",
+      "terminals": [
+        {
+          "id": "p1",
+          "x": 42,
+          "y": 96
+        },
+        {
+          "id": "p2",
+          "x": 69,
+          "y": 96
+        },
+        {
+          "id": "s1",
+          "x": 123,
+          "y": 96
+        },
+        {
+          "id": "s2",
+          "x": 150,
+          "y": 96
+        }
+      ],
+      "notes": "Primary and secondary pairs; dot convention on schematic.",
+      "part": "res://assets/interactive/electronics/parts/transformer.png",
+      "symbol": "res://assets/interactive/electronics/symbols/transformer.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "transistor_npn",
+      "name": "NPN bipolar transistor",
+      "family": "Active devices",
+      "terminals": [
+        {
+          "id": "lead_1",
+          "x": 66,
+          "y": 96
+        },
+        {
+          "id": "lead_2",
+          "x": 96,
+          "y": 96
+        },
+        {
+          "id": "lead_3",
+          "x": 126,
+          "y": 96
+        }
+      ],
+      "notes": "Generic package; physical lead order is not a universal B/C/E pinout. Symbol labels B/C/E.",
+      "part": "res://assets/interactive/electronics/parts/transistor_npn.png",
+      "symbol": "res://assets/interactive/electronics/symbols/transistor_npn.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "transistor_pnp",
+      "name": "PNP bipolar transistor",
+      "family": "Active devices",
+      "terminals": [
+        {
+          "id": "lead_1",
+          "x": 66,
+          "y": 96
+        },
+        {
+          "id": "lead_2",
+          "x": 96,
+          "y": 96
+        },
+        {
+          "id": "lead_3",
+          "x": 126,
+          "y": 96
+        }
+      ],
+      "notes": "Generic package; physical lead order is not a universal B/C/E pinout. Symbol labels B/C/E.",
+      "part": "res://assets/interactive/electronics/parts/transistor_pnp.png",
+      "symbol": "res://assets/interactive/electronics/symbols/transistor_pnp.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "mosfet_nmos",
+      "name": "N-channel MOSFET",
+      "family": "Active devices",
+      "terminals": [
+        {
+          "id": "lead_1",
+          "x": 66,
+          "y": 96
+        },
+        {
+          "id": "lead_2",
+          "x": 96,
+          "y": 96
+        },
+        {
+          "id": "lead_3",
+          "x": 126,
+          "y": 96
+        }
+      ],
+      "notes": "Generic power package, enhancement-mode NMOS symbol with body tied to source; verify real pinout.",
+      "part": "res://assets/interactive/electronics/parts/mosfet_nmos.png",
+      "symbol": "res://assets/interactive/electronics/symbols/mosfet_nmos.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "opamp_lm741",
+      "name": "LM741 operational amplifier",
+      "family": "Active devices",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 34,
+          "y": 25
+        },
+        {
+          "id": "2",
+          "x": 34,
+          "y": 41
+        },
+        {
+          "id": "3",
+          "x": 34,
+          "y": 57
+        },
+        {
+          "id": "4",
+          "x": 34,
+          "y": 73
+        },
+        {
+          "id": "8",
+          "x": 158,
+          "y": 25
+        },
+        {
+          "id": "7",
+          "x": 158,
+          "y": 41
+        },
+        {
+          "id": "6",
+          "x": 158,
+          "y": 57
+        },
+        {
+          "id": "5",
+          "x": 158,
+          "y": 73
+        }
+      ],
+      "notes": "DIP-8 top view, notch at top. Pin 2 − input, 3 + input, 4 V−, 6 output, 7 V+; 1/5 offset null, 8 NC. Symbol omits offset null and NC.",
+      "part": "res://assets/interactive/electronics/parts/opamp_lm741.png",
+      "symbol": "res://assets/interactive/electronics/symbols/opamp_lm741.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "timer_ne555",
+      "name": "NE555 timer",
+      "family": "Active devices",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 34,
+          "y": 25
+        },
+        {
+          "id": "2",
+          "x": 34,
+          "y": 41
+        },
+        {
+          "id": "3",
+          "x": 34,
+          "y": 57
+        },
+        {
+          "id": "4",
+          "x": 34,
+          "y": 73
+        },
+        {
+          "id": "8",
+          "x": 158,
+          "y": 25
+        },
+        {
+          "id": "7",
+          "x": 158,
+          "y": 41
+        },
+        {
+          "id": "6",
+          "x": 158,
+          "y": 57
+        },
+        {
+          "id": "5",
+          "x": 158,
+          "y": 73
+        }
+      ],
+      "notes": "DIP-8 top view. Pins 1 GND, 2 TRG, 3 OUT, 4 RST, 5 CTL, 6 THR, 7 DIS, 8 VCC. Symbol is functional, not physical layout.",
+      "part": "res://assets/interactive/electronics/parts/timer_ne555.png",
+      "symbol": "res://assets/interactive/electronics/symbols/timer_ne555.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "logic_74hc08",
+      "name": "74HC08 AND gate IC",
+      "family": "Active devices",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 34,
+          "y": 19
+        },
+        {
+          "id": "2",
+          "x": 34,
+          "y": 30
+        },
+        {
+          "id": "3",
+          "x": 34,
+          "y": 41
+        },
+        {
+          "id": "4",
+          "x": 34,
+          "y": 52
+        },
+        {
+          "id": "5",
+          "x": 34,
+          "y": 63
+        },
+        {
+          "id": "6",
+          "x": 34,
+          "y": 74
+        },
+        {
+          "id": "7",
+          "x": 34,
+          "y": 85
+        },
+        {
+          "id": "14",
+          "x": 158,
+          "y": 19
+        },
+        {
+          "id": "13",
+          "x": 158,
+          "y": 30
+        },
+        {
+          "id": "12",
+          "x": 158,
+          "y": 41
+        },
+        {
+          "id": "11",
+          "x": 158,
+          "y": 52
+        },
+        {
+          "id": "10",
+          "x": 158,
+          "y": 63
+        },
+        {
+          "id": "9",
+          "x": 158,
+          "y": 74
+        },
+        {
+          "id": "8",
+          "x": 158,
+          "y": 85
+        }
+      ],
+      "notes": "DIP-14 top view; symbol is one AND gate, not entire quad package. Pin 14 VCC, 7 GND; first gate 1A=1, 1B=2, 1Y=3.",
+      "part": "res://assets/interactive/electronics/parts/logic_74hc08.png",
+      "symbol": "res://assets/interactive/electronics/symbols/logic_74hc08.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "bridge_rectifier",
+      "name": "Bridge rectifier",
+      "family": "Active devices",
+      "terminals": [
+        {
+          "id": "ac1",
+          "x": 46,
+          "y": 96
+        },
+        {
+          "id": "positive",
+          "x": 79,
+          "y": 96
+        },
+        {
+          "id": "negative",
+          "x": 113,
+          "y": 96
+        },
+        {
+          "id": "ac2",
+          "x": 146,
+          "y": 96
+        }
+      ],
+      "notes": "Illustrative four-terminal package; markings define game connections, not universal real-world package pinout.",
+      "part": "res://assets/interactive/electronics/parts/bridge_rectifier.png",
+      "symbol": "res://assets/interactive/electronics/symbols/bridge_rectifier.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "photoresistor",
+      "name": "Photoresistor (LDR)",
+      "family": "Other components",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 76,
+          "y": 96
+        },
+        {
+          "id": "2",
+          "x": 116,
+          "y": 96
+        }
+      ],
+      "notes": "Nonpolar light-dependent resistor.",
+      "part": "res://assets/interactive/electronics/parts/photoresistor.png",
+      "symbol": "res://assets/interactive/electronics/symbols/photoresistor.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "switch_open",
+      "name": "SPST switch — open",
+      "family": "Other components",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 7,
+          "y": 57
+        },
+        {
+          "id": "2",
+          "x": 185,
+          "y": 57
+        }
+      ],
+      "notes": "Same lead geometry in both states.",
+      "part": "res://assets/interactive/electronics/parts/switch_open.png",
+      "symbol": "res://assets/interactive/electronics/symbols/switch_open.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "switch_closed",
+      "name": "SPST switch — closed",
+      "family": "Other components",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 7,
+          "y": 57
+        },
+        {
+          "id": "2",
+          "x": 185,
+          "y": 57
+        }
+      ],
+      "notes": "Same lead geometry in both states.",
+      "part": "res://assets/interactive/electronics/parts/switch_closed.png",
+      "symbol": "res://assets/interactive/electronics/symbols/switch_closed.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    },
+    {
+      "id": "fuse",
+      "name": "Cartridge fuse",
+      "family": "Other components",
+      "terminals": [
+        {
+          "id": "1",
+          "x": 7,
+          "y": 57
+        },
+        {
+          "id": "2",
+          "x": 185,
+          "y": 57
+        }
+      ],
+      "notes": "Illustrated glass cartridge, nonpolar.",
+      "part": "res://assets/interactive/electronics/parts/fuse.png",
+      "symbol": "res://assets/interactive/electronics/symbols/fuse.png",
+      "part_size": [
+        192,
+        128
+      ],
+      "symbol_size": [
+        208,
+        144
+      ],
+      "terminal_coordinate_space": "part PNG pixels, from upper-left",
+      "value_plaque": {
+        "x": 58,
+        "y": 96,
+        "w": 76,
+        "h": 28
+      }
+    }
+  ]
+}

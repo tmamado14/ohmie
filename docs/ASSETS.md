@@ -207,7 +207,8 @@ Rebuilt by scripts in `tools/`. Do not hand-edit the outputs; change the script 
 | `--headless --path . --script res://tools/build_player_frames.gd` | `resources/themes/player_frames.tres` |
 | `--headless --path . --script res://tools/generate_art.gd` | the seven socket/door PNGs in `assets/processed/` |
 | `--headless --path . --script res://tools/generate_parts_art.gd` | the ten part, meter, lamp and polarity PNGs in `assets/processed/` (see "Parts, meters and lamps") |
-| `--headless --path . --script res://tools/check_resources.gd` | nothing; verifies all of the above plus the music (727 checks, exit 0 = pass) |
+| `--headless --path . --script res://tools/generate_electronics_art.gd` | `diode_arrow_right.png`, `diode_arrow_left.png` in `assets/processed/` (see "Electronics set") |
+| `--headless --path . --script res://tools/check_resources.gd` | nothing; verifies all of the above plus the music and the diode pictures (793 checks, exit 0 = pass) |
 
 Full platform rebuild: `generate_platform_art.gd`, `--import`, `build_tilesets.gd`, `--import`, `check_resources.gd`.
 
@@ -326,6 +327,42 @@ Notes:
 - **Polarity badges**: centre them on the slot's corner screw on the matching side, source (25, 25) for the left and (183, 25) for the right, i.e. (12.5, 12.5) and (91.5, 12.5) on screen from the socket's top-left. The badge then sits over the screw without touching the window or the part.
 - The meters differ by enamel colour, needle colour and needle angle as well as by letter, so they are distinguishable even where the letter is hard to read.
 - Text in the battery plaque goes where the resistor icons have their baked value; the battery's plaque is pixel-copied from the blank resistor, so both blank plaques are identical.
+
+## Electronics set (`assets/interactive/electronics/`, World 2)
+
+The user's own set: 26 illustrated parts (`parts/*.png`, 192x128 RGBA, the resistor icons' footprint, each with a blank value plaque) and 26 matching schematic symbols (`symbols/*.png`, 208x144 RGBA, the socket footprint, ink on transparent), plus `manifest.json` (per id: name, family, part-PNG terminal points, plaque rect, notes). Original art, read-only. Partly measured so far; only the four diodes are fully checked.
+
+**Import and repository.** `parts/` and `symbols/` import with exactly the resistor icons' settings (every `[params]` line identical to `resistor_2ohm.png.import`: lossless, no mipmaps, fix alpha border), so nothing was changed there. Not used by the game, kept on disk only: `parts_hd/`, `symbols_hd/` (4x) and `source/` (SVG) each hold a `.gdignore` (not imported) and are git-ignored; `parts_atlas.png`, `symbols_atlas.png` import as `importer="skip"` and are git-ignored with `atlas_index.json`. Tracked: `parts/`, `symbols/`, `manifest.json` and their sidecars.
+
+**Diode pictures** (`diode_rectifier`, `diode_signal`, `diode_schottky`, `diode_zener`): carried two-terminal parts, used exactly like a resistor icon. Anode on the LEFT (lead at x 7), cathode stripe on the right.
+
+| | Diodes (all four identical here) | Resistor icons |
+|---|---|---|
+| Opaque box a >= 16 / a >= 128 | x 6-185 / 7-184, y 26-125 (signal y 35-125) | x 7-185, y 19-124 |
+| Lead rows | 51-62 (51 and 62 half alpha; solid 52-61), centre **y 57.0**; ink 51-53 and 60-62, grey core with a highlight | 50-63, centre y 57.0 |
+| Lead ends | x 7 and 184 (a >= 128), 6 and 185 (a >= 16); rounded | x 7 and 185, square |
+| Body | x 33-158, y 26-87 (signal x 42-149, y 35-78) | x 24-168, y 19-99 |
+| Plaque | separate rounded label under the body: outer ink x 56-135, y 94-125 (3 px ink), cream interior **x 60-131, y 98-121**, mottled (luminance 208-246) | x 57-135, y 100-124, hangs from the body |
+| Safe text rect (x, y, w, h) | **(62, 99, 68, 22)**, on screen (31, 49.5, 34, 11); max font **11 px** on screen, colour `#33241D` | (61, 98, 72, 23) |
+
+Verdict: **matches the resistor geometry where it matters**: same lead centre, leads inside the resistor's envelope (1 px thinner on screen, 0.5 px shorter on the right), so seated at socket top-left + **(8, 15)** the leads (rows 66-77) sit centred on the stubs (65-78) and the body is inside the window. Checked by compositing on `socket_empty.png` over the dimmed Copper Foundry background. The resistor text rect does **not** fit: it touches the plaque's ink on the right and bottom (24 pixels), so use (62, 99, 68, 22). Plaque geometry (alpha) is identical across all four diodes and every other part's rows 97-127 except `bridge_rectifier`, `capacitor_variable` and `transformer`, whose legs pass the plaque.
+
+`manifest.json` versus the PNGs (diodes): sizes correct; terminals a (7, 57), k (185, 57) are right to within 1 px (the cathode lead's last opaque column is 184); `value_plaque` (58, 96, 76, 28) is the plaque's outline, not its interior: it includes ink on its edge rows and columns. The manifest has no symbol terminal coordinates.
+
+**Symbols (two-terminal, measured):** every two-terminal symbol's leads are on rows 70-73 (centre **y 72.0**, the stub centre) but **stop 6 px short of each side** (ink from x 6 to x 201 at a >= 16, x 7-200 at a >= 128) and are 4 px thick (2 px on screen) against the stubs' 14. Drawn on a socket they overlap the stubs; drawn alone a wire must run to x 6 / 201.
+
+**Diode direction badges** (`assets/processed/`, from `tools/generate_electronics_art.gd`):
+
+| Resource path | Size (on screen) | What it is |
+|---|---|---|
+| `res://assets/processed/diode_arrow_right.png` | 32x32 (16x16) | `polarity_plus.png`'s brass disc (identical alpha and shading) with an ink diode mark: lead, triangle (x 9-20, y 9-23) pointing right at a cathode bar (x 21.5, half-width 1.8), lead. Conduction anode to cathode = left to right. |
+| `res://assets/processed/diode_arrow_left.png` | 32x32 (16x16) | Same disc; the mark mirrored about x = 16 (points left). The disc's light stays upper left, so only the mark is a mirror image. |
+
+Place a badge like the polarity badges: centred on a slot's corner screw, source (25, 25) left or (183, 25) right, (12.5, 12.5) / (91.5, 12.5) on screen from the socket's top-left. Pick the badge whose arrow matches the slot: a diode's anode faces the slot's `from` node.
+
+`check_resources.gd` verifies: the four diode PNGs load at 192x128, leads opaque on rows 52-61 and clear (alpha < 16) on rows 49 and 64 at x 10, 20, 172, 182, lead ends at x 7 and 184, the safe text rect all cream; both badges 32x32 with `polarity_plus.png`'s exact alpha, ink marks mirror images inside the rim (at most 2 pixels differ), and the right badge points right.
+
+**Not done yet:** full measurements of the other parts and symbols (LED, transistor, op-amp terminals), the style check, blown LED states, device plate, three-terminal bay, Copper Foundry open door.
 
 ---
 

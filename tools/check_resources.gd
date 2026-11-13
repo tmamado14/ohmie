@@ -97,7 +97,47 @@ const EXPECTED_TEXTURES: Dictionary = {
 	"res://assets/processed/lamp_blown.png": Vector2i(208, 144),
 	"res://assets/processed/polarity_plus.png": Vector2i(32, 32),
 	"res://assets/processed/polarity_minus.png": Vector2i(32, 32),
+	# From tools/generate_electronics_art.gd.
+	"res://assets/processed/diode_arrow_right.png": Vector2i(32, 32),
+	"res://assets/processed/diode_arrow_left.png": Vector2i(32, 32),
+	# The user's electronics set (World 2), used as is.
+	"res://assets/interactive/electronics/parts/diode_rectifier.png": Vector2i(192, 128),
+	"res://assets/interactive/electronics/parts/diode_signal.png": Vector2i(192, 128),
+	"res://assets/interactive/electronics/parts/diode_schottky.png": Vector2i(192, 128),
+	"res://assets/interactive/electronics/parts/diode_zener.png": Vector2i(192, 128),
 }
+
+## The user's axial diode pictures. Their leads are rows 51-62 (fully opaque 52-61, centre
+## y 57.0) with rounded ends at x 7 and 184: inside the resistor's lead envelope (rows 50-63,
+## x 7-185), so they seat on the socket stubs like a resistor.
+const DIODE_PART_PATHS: Array[String] = [
+	"res://assets/interactive/electronics/parts/diode_rectifier.png",
+	"res://assets/interactive/electronics/parts/diode_signal.png",
+	"res://assets/interactive/electronics/parts/diode_schottky.png",
+	"res://assets/interactive/electronics/parts/diode_zener.png",
+]
+const DIODE_LEAD_SOLID_ROWS: Vector2i = Vector2i(52, 61)
+const DIODE_LEAD_ENDS: Vector2i = Vector2i(7, 184)
+## Safe text rect inside the diode pictures' value plaque (interior x 60-131, y 98-121).
+const DIODE_PLAQUE_TEXT_RECT: Rect2i = Rect2i(62, 99, 68, 22)
+const PLAQUE_MIN_LUMINANCE: float = 0.7
+
+## Diode direction badges: the same brass disc as polarity_plus.png, ink marks mirrored.
+const DIODE_BADGE_RIGHT: String = "res://assets/processed/diode_arrow_right.png"
+const DIODE_BADGE_LEFT: String = "res://assets/processed/diode_arrow_left.png"
+const POLARITY_PLUS: String = "res://assets/processed/polarity_plus.png"
+## Solid ink (the ink colour is about 0.10); compared inside the disc's rim only, because the
+## disc is lit from the upper left and is deliberately not mirrored.
+const BADGE_INK_LUMINANCE: float = 0.12
+const BADGE_MARK_RADIUS: float = 11.0
+## Mirrored ink pixels may differ at a couple of anti-aliased edges over the unevenly lit disc.
+const BADGE_MIRROR_TOLERANCE: int = 2
+## Faint shadow pixels (alpha 4-5) sit beside the diode leads; "clear" means below this.
+const DIODE_CLEAR_ALPHA: float = 16.0 / 255.0
+## Three rows above the centre line, the right-pointing triangle is still ink at x 12 and the
+## gap before the cathode bar is clear at x 18.
+const BADGE_TRIANGLE_PROBE: Vector2i = Vector2i(12, 13)
+const BADGE_GAP_PROBE: Vector2i = Vector2i(18, 13)
 
 ## Carried parts: leads on rows 50-63 (centre y 57) from x 7 to x 185, like the resistor icons.
 const PART_PATHS: Array[String] = [
@@ -130,6 +170,8 @@ func _init() -> void:
 	_check_pickup_highlight_centre()
 	_check_part_leads()
 	_check_fixture_stubs()
+	_check_diode_parts()
+	_check_diode_badges()
 	print("check_resources: %d checks, %d failures" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -426,3 +468,60 @@ func _check_fixture_stubs() -> void:
 		for x: int in [0, right]:
 			_expect(img.get_pixel(x, 65).a > 0.5 and img.get_pixel(x, 72).a > 0.5 and img.get_pixel(x, 78).a > 0.5, "%s: stub covers rows 65-78 at x %d" % [path, x])
 			_expect(img.get_pixel(x, 63).a == 0.0 and img.get_pixel(x, 80).a == 0.0, "%s: stub is clear at rows 63 and 80 at x %d" % [path, x])
+
+
+## The user's diode pictures: leads inside the resistor's lead envelope (so they seat on the
+## socket stubs at the resistor offset (8, 15)), lead ends at x 7 and 184, and a clear plaque
+## text rect.
+func _check_diode_parts() -> void:
+	for path: String in DIODE_PART_PATHS:
+		var img: Image = _load_image(path)
+		if img == null:
+			continue
+		img.convert(Image.FORMAT_RGBA8)
+		for x: int in [10, 20, 172, 182]:
+			var solid: bool = true
+			for y: int in range(DIODE_LEAD_SOLID_ROWS.x, DIODE_LEAD_SOLID_ROWS.y + 1):
+				solid = solid and img.get_pixel(x, y).a > 0.5
+			_expect(solid, "%s: lead opaque on rows %d-%d at x %d" % [path, DIODE_LEAD_SOLID_ROWS.x, DIODE_LEAD_SOLID_ROWS.y, x])
+			_expect(img.get_pixel(x, 49).a < DIODE_CLEAR_ALPHA and img.get_pixel(x, 64).a < DIODE_CLEAR_ALPHA, "%s: lead inside rows 50-63 at x %d" % [path, x])
+		_expect(img.get_pixel(DIODE_LEAD_ENDS.x, 57).a > 0.5 and img.get_pixel(DIODE_LEAD_ENDS.y, 57).a > 0.5, "%s: leads reach x %d and x %d" % [path, DIODE_LEAD_ENDS.x, DIODE_LEAD_ENDS.y])
+		_expect(img.get_pixel(DIODE_LEAD_ENDS.x - 2, 57).a < DIODE_CLEAR_ALPHA and img.get_pixel(DIODE_LEAD_ENDS.y + 2, 57).a < DIODE_CLEAR_ALPHA, "%s: leads end within the resistor's x 7-185" % path)
+		var dark: int = 0
+		for y: int in range(DIODE_PLAQUE_TEXT_RECT.position.y, DIODE_PLAQUE_TEXT_RECT.end.y):
+			for x: int in range(DIODE_PLAQUE_TEXT_RECT.position.x, DIODE_PLAQUE_TEXT_RECT.end.x):
+				var c: Color = img.get_pixel(x, y)
+				if c.a < 0.99 or c.get_luminance() < PLAQUE_MIN_LUMINANCE:
+					dark += 1
+		_expect(dark == 0, "%s: plaque text rect %s is clear cream (%d pixels not)" % [path, DIODE_PLAQUE_TEXT_RECT, dark])
+
+
+## The diode badges share polarity_plus.png's disc (identical alpha), their ink marks are
+## mirror images, and the right one points right.
+func _check_diode_badges() -> void:
+	var right: Image = _load_image(DIODE_BADGE_RIGHT)
+	var left: Image = _load_image(DIODE_BADGE_LEFT)
+	var plus: Image = _load_image(POLARITY_PLUS)
+	if right == null or left == null or plus == null:
+		return
+	for img: Image in [right, left, plus]:
+		img.convert(Image.FORMAT_RGBA8)
+	var alpha_diff: int = 0
+	var mirror_diff: int = 0
+	var w: int = right.get_width()
+	for y: int in right.get_height():
+		for x: int in w:
+			if absf(right.get_pixel(x, y).a - plus.get_pixel(x, y).a) > 0.004 or absf(left.get_pixel(x, y).a - plus.get_pixel(x, y).a) > 0.004:
+				alpha_diff += 1
+			var inside_rim: bool = Vector2(x + 0.5, y + 0.5).distance_to(Vector2(w, right.get_height()) * 0.5) < BADGE_MARK_RADIUS
+			if inside_rim and _badge_ink(right, x, y) != _badge_ink(left, w - 1 - x, y):
+				mirror_diff += 1
+	_expect(alpha_diff == 0, "diode badges have polarity_plus.png's disc outline (%d alpha pixels differ)" % alpha_diff)
+	_expect(mirror_diff <= BADGE_MIRROR_TOLERANCE, "diode badge ink marks are mirror images (%d pixels differ, %d allowed)" % [mirror_diff, BADGE_MIRROR_TOLERANCE])
+	_expect(_badge_ink(right, BADGE_TRIANGLE_PROBE.x, BADGE_TRIANGLE_PROBE.y) and not _badge_ink(right, BADGE_GAP_PROBE.x, BADGE_GAP_PROBE.y),
+			"diode_arrow_right.png points right (triangle on the left, cathode bar on the right)")
+
+
+func _badge_ink(img: Image, x: int, y: int) -> bool:
+	var c: Color = img.get_pixel(x, y)
+	return c.a > 0.5 and c.get_luminance() < BADGE_INK_LUMINANCE

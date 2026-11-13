@@ -24,6 +24,14 @@ assets/worlds/world_progression.json
 assets/environment/*_original.png*
 assets/environment/tileset_preview_3x.png*
 assets/boss/shorty_original_six_pose_sheet.png*
+# Electronics set: the game uses parts/, symbols/ and manifest.json only
+# (the 4x folders and SVG sources also carry a .gdignore; the atlases import as "skip")
+assets/interactive/electronics/parts_hd/
+assets/interactive/electronics/symbols_hd/
+assets/interactive/electronics/source/
+assets/interactive/electronics/parts_atlas.png*
+assets/interactive/electronics/symbols_atlas.png*
+assets/interactive/electronics/atlas_index.json
 
 # Godot editor and OS clutter
 *.tmp
