@@ -13,12 +13,20 @@ const QUANTITY_SYMBOLS: Array[String] = ["I", "V", "R", "P"]
 ## The sentence on the mission sign, e.g. "Draw 2 A.".
 var mission: String = ""
 var conditions: Array[GoalCondition] = []
+## How the room prints quantities (the plaque, meters and parts follow it).
+var number_style: QuantityText.Style = QuantityText.Style.FRACTION
 
 
-static func create(mission_text: String, goal_conditions: Array[GoalCondition]) -> LevelGoal:
+## A goal of `goal_conditions`; every condition is set to print in `numbers`.
+static func create(mission_text: String, goal_conditions: Array[GoalCondition],
+		numbers: QuantityText.Style = QuantityText.Style.FRACTION) -> LevelGoal:
 	var goal: LevelGoal = LevelGoal.new()
 	goal.mission = mission_text
 	goal.conditions = goal_conditions.duplicate()
+	goal.number_style = numbers
+	for condition: GoalCondition in goal.conditions:
+		if condition != null:
+			condition.style = numbers
 	return goal
 
 

@@ -59,9 +59,10 @@ func _ready() -> void:
 
 
 ## Builds the card for `world`. `thumbnail` is the world's background;
-## `completed` and `total` are its room progress (shown for open worlds).
-func setup(world: CampaignWorld, thumbnail: Texture2D, completed: int, total: int) -> void:
-	_locked = world.locked
+## `completed` and `total` are its room progress (shown for open worlds);
+## `locked`: the world cannot be entered yet (Progress.is_world_open).
+func setup(world: CampaignWorld, thumbnail: Texture2D, completed: int, total: int, locked: bool) -> void:
+	_locked = locked
 	mouse_default_cursor_shape = Control.CURSOR_ARROW if _locked else Control.CURSOR_POINTING_HAND
 	_body = Control.new()
 	_body.name = "Body"

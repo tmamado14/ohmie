@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="RoomTheme" format=3]
+
+[ext_resource type="Script" path="res://src/level/room_theme.gd" id="1_theme"]
+[ext_resource type="TileSet" path="res://resources/themes/copper_foundry/tileset.tres" id="2_tiles"]
+[ext_resource type="Texture2D" path="res://assets/worlds/level_02_copper_foundry/background_1920x1080.png" id="3_background"]
+[ext_resource type="AudioStream" path="res://assets/audio/Ohmie BGM.mp3" id="4_music"]
+
+[resource]
+script = ExtResource("1_theme")
+tileset = ExtResource("2_tiles")
+background = ExtResource("3_background")
+background_modulate = Color(0.8, 0.8, 0.8, 1)
+music = ExtResource("4_music")
+wire_normal = Color(0.6666667, 0.3254902, 0.17254902, 1)
+wire_normal_outline = Color(0.14117648, 0.09411765, 0.05882353, 1)
+wire_closed = Color(0.96862745, 0.74509805, 0.3529412, 1)
+wire_closed_outline = Color(0.14117648, 0.09411765, 0.05882353, 1)
+wire_match = Color(0.36078432, 0.69803923, 0.6117647, 1)
+wire_match_outline = Color(0.09411765, 0.15686275, 0.13333334, 1)

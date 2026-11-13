@@ -18,7 +18,8 @@ extends RefCounted
 ##                              a resistor of `value` ohms, lit while its
 ##                              current is within rated_min..rated_max amps
 ##   ammeter, voltmeter, ohmmeter   ideal meters (see DcNetwork)
-## Every value is a string such as "3/2" and must be > 0.
+## Every value is a string such as "3/2", "0.003" or "1k" (QuantityText.parse)
+## and must be > 0.
 ## Any edge may carry an optional "label" (a short non-empty string such as
 ## "top"); the readout plaque shows it after the quantity symbol ("I top").
 
@@ -153,7 +154,8 @@ func build_base_network() -> DcNetwork:
 
 ## The base network plus the part in every slot listed in `filled` (slot id ->
 ## Part): a resistor becomes add_resistor(slot, from, to, ohms), a battery
-## add_voltage_source(slot, from, to, volts) with plus at `from`. Slots not in
+## add_voltage_source(slot, from, to, volts) with plus at `from`, a diode
+## add_diode(slot, from, to, drop) with its anode at `from`. Slots not in
 ## `filled` are empty and left out. Unknown slot ids or values that are not a
 ## Part push an error and are skipped.
 func build_network(filled: Dictionary) -> DcNetwork:
@@ -184,10 +186,13 @@ func build_network(filled: Dictionary) -> DcNetwork:
 					push_error("LevelCircuit.build_network: the content of slot '%s' is not a Part" % edge.id)
 					continue
 				var part: Part = content
-				if part.is_battery():
-					network.add_voltage_source(edge.id, a, b, part.value)
-				else:
-					network.add_resistor(edge.id, a, b, part.value)
+				match part.kind:
+					Part.Kind.BATTERY:
+						network.add_voltage_source(edge.id, a, b, part.value)
+					Part.Kind.DIODE:
+						network.add_diode(edge.id, a, b, part.value)
+					_:
+						network.add_resistor(edge.id, a, b, part.value)
 	for key: Variant in filled.keys():
 		if not slot_ids.has(key):
 			push_error("LevelCircuit.build_network: '%s' is not a slot of this circuit" % str(key))
@@ -331,7 +336,11 @@ static func _parse_positive(raw: Dictionary, key: String, type: String, id: Stri
 	if not raw.has(key) or not raw[key] is String:
 		push_error("LevelCircuit: %s: %s edge '%s' needs '%s' as a string like \"3/2\"" % [source, type, id, key])
 		return null
-	var value: Rational = Rational.parse(raw[key])
+	var value: Rational = QuantityText.parse(raw[key], true)
+	if value == null:
+		# Report why as a plain number would have failed (the message from
+		# before prefixes were accepted).
+		Rational.parse(raw[key])
 	if value == null or not value.is_valid():
 		push_error("LevelCircuit: %s: %s edge '%s' has an invalid '%s' value '%s'" % [source, type, id, key, raw[key]])
 		return null

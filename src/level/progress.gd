@@ -7,7 +7,8 @@ extends RefCounted
 ## progress lives in memory only (tests, tools, rooms loaded without the menus).
 ##
 ## Unlock rules (is_unlocked):
-## - nothing in a locked world, and no room that is not built, is unlocked;
+## - nothing in a world that is not open (is_world_open), and no room that is
+##   not built, is unlocked;
 ## - a completed room stays unlocked;
 ## - the first built room of an unlocked world is always unlocked;
 ## - a regular room is unlocked when the previous built room in play order is
@@ -58,7 +59,7 @@ func completed_count(world: CampaignWorld) -> int:
 
 ## Whether `room` of `world` may be started (see the rules above).
 func is_unlocked(world: CampaignWorld, room: CampaignRoom) -> bool:
-	if world == null or room == null or world.locked or not room.built:
+	if world == null or room == null or not is_world_open(world) or not room.built:
 		return false
 	if is_completed(room.file):
 		return true
@@ -68,6 +69,15 @@ func is_unlocked(world: CampaignWorld, room: CampaignRoom) -> bool:
 		return is_overtime_open(world)
 	var previous: CampaignRoom = world.previous_built_room(room)
 	return previous != null and is_completed(previous.file)
+
+
+## Whether `world` may be entered: not hard `locked`, and, when it names an
+## `unlock_after` world, that world's Overtime is open (the same rule:
+## its room 10 completed).
+func is_world_open(world: CampaignWorld) -> bool:
+	if world == null or world.locked:
+		return false
+	return world.unlock_after == null or is_overtime_open(world.unlock_after)
 
 
 ## Whether the Overtime rooms of `world` are open.

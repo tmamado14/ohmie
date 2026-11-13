@@ -22,7 +22,16 @@
 				{ "number": 13, "file": "res://levels/w1_13.json", "overtime": true }
 			]
 		},
-		{ "id": "copper_foundry", "number": 2, "name": "Copper Foundry", "topic": "Coming soon", "locked": true, "rooms": [] },
+		{
+			"id": "copper_foundry",
+			"number": 2,
+			"name": "Copper Foundry",
+			"topic": "Basic electronics",
+			"unlock_after": "old_workshop",
+			"rooms": [
+				{ "number": 1, "file": "res://levels/w2_01.json" }
+			]
+		},
 		{ "id": "substation_switchyard", "number": 3, "name": "Substation Switchyard", "topic": "Coming soon", "locked": true, "rooms": [] },
 		{ "id": "signal_clocktower", "number": 4, "name": "Signal Clocktower", "topic": "Coming soon", "locked": true, "rooms": [] },
 		{ "id": "high_voltage_transmitter", "number": 5, "name": "High-Voltage Transmitter", "topic": "Coming soon", "locked": true, "rooms": [] }

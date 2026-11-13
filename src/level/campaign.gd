@@ -5,7 +5,9 @@ extends RefCounted
 ##       "topic": "DC basics", "locked": false,
 ##       "rooms": [ { "number": 1, "file": "res://levels/w1_01.json" }, ...,
 ##                  { "number": 11, "file": "res://levels/w1_11.json", "overtime": true } ] },
-##     { "id": "copper_foundry", "number": 2, ..., "locked": true, "rooms": [] } ] }
+##     { "id": "copper_foundry", "number": 2, ..., "unlock_after": "old_workshop",
+##       "rooms": [ ... ] },
+##     { "id": "substation_switchyard", "number": 3, ..., "locked": true, "rooms": [] } ] }
 ##
 ## Rooms are kept in the order the file lists them (the play order). A room
 ## whose level file does not exist is "not built yet": it is listed, but
@@ -14,6 +16,9 @@ extends RefCounted
 ## so tests can describe any mix of built and unbuilt rooms. Pure data: no nodes.
 
 const DEFAULT_PATH: String = "res://levels/campaign.json"
+## Optional world field: the id of the world whose Overtime opening (room 10
+## completed) also opens this world (CampaignWorld.unlock_after).
+const UNLOCK_AFTER_KEY: String = "unlock_after"
 
 var worlds: Array[CampaignWorld] = []
 
@@ -42,6 +47,17 @@ static func from_dictionary(data: Variant, source: String, file_exists: Callable
 		if world == null:
 			return null
 		campaign.worlds.append(world)
+	var world_list: Array = (data as Dictionary)["worlds"]
+	for i: int in world_list.size():
+		var after: Variant = (world_list[i] as Dictionary).get(UNLOCK_AFTER_KEY)
+		if after == null:
+			continue
+		var other: CampaignWorld = campaign.get_world(str(after)) if after is String else null
+		if other == null or other == campaign.worlds[i]:
+			push_error("Campaign: '%s': world '%s' has '%s' naming no other world" % [
+					source, campaign.worlds[i].id, UNLOCK_AFTER_KEY])
+			return null
+		campaign.worlds[i].unlock_after = other
 	return campaign
 
 

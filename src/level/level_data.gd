@@ -17,9 +17,14 @@ const DEFAULT_WORLD: String = "old_workshop"
 const REQUIRED_FIELDS: PackedStringArray = [
 	"id", "title", "mission", "goal", "tiles", "spawn", "door", "parts", "circuit",
 ]
-const OPTIONAL_FIELDS: PackedStringArray = ["world", "teaches", "objects"]
+const OPTIONAL_FIELDS: PackedStringArray = ["world", "teaches", "objects", "numbers"]
+## Values of the optional "numbers" field: how the room prints quantities
+## (indexed by QuantityText.Style). Absent means "fraction" (World 1).
+const NUMBER_STYLE_NAMES: PackedStringArray = ["fraction", "engineering"]
 
 var id: String = ""
+## How the room prints quantities: plaque, meters, part plaques and name tags.
+var number_style: QuantityText.Style = QuantityText.Style.FRACTION
 var title: String = ""
 ## Optional note for designers: what the room teaches.
 var teaches: String = ""
@@ -92,6 +97,12 @@ static func from_dictionary(data: Variant, source: String) -> LevelData:
 			push_error("LevelData: %s: field 'world' must be a non-empty string" % source)
 			return null
 		level.world = dict["world"]
+	if dict.has("numbers"):
+		var style_index: int = NUMBER_STYLE_NAMES.find(str(dict["numbers"])) if dict["numbers"] is String else -1
+		if style_index < 0:
+			push_error("LevelData: %s: field 'numbers' must be one of %s" % [source, ", ".join(NUMBER_STYLE_NAMES)])
+			return null
+		level.number_style = style_index as QuantityText.Style
 
 	if not _parse_tiles(dict["tiles"], source, level):
 		return null
@@ -104,7 +115,7 @@ static func from_dictionary(data: Variant, source: String) -> LevelData:
 		return null
 	level.door = door_point
 
-	if not LevelPart.parse_all(dict["parts"], source, level.parts):
+	if not LevelPart.parse_all(dict["parts"], source, level.parts, level.number_style):
 		return null
 	if dict.has("objects") and not LevelObject.parse_all(dict["objects"], source, level.objects):
 		return null
@@ -120,7 +131,7 @@ static func from_dictionary(data: Variant, source: String) -> LevelData:
 
 ## The level's goal: its mission and conditions together.
 func make_goal() -> LevelGoal:
-	return LevelGoal.create(mission, goal)
+	return LevelGoal.create(mission, goal, number_style)
 
 
 static func _parse_goal(value: Variant, source: String, level: LevelData) -> bool:
@@ -136,6 +147,7 @@ static func _parse_goal(value: Variant, source: String, level: LevelData) -> boo
 		if condition == null:
 			push_error("LevelData: %s: goal[%d] is invalid (see the error above)" % [source, i])
 			return false
+		condition.style = level.number_style
 		level.goal.append(condition)
 	return true
 

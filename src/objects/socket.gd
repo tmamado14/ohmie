@@ -3,8 +3,9 @@ extends Interactable
 ## A slot on the circuit board that holds at most one part of any kind. The
 ## node's origin is the midpoint of its edge; the 104x72 frame is centred on it.
 ##
-## A battery's plus end faces the slot's `from` node: its art (plus on the
-## left) is mirrored when `from` lies right of `to`, and the + / − badges sit
+## A battery's plus end (and a diode's anode) faces the slot's `from` node: its art (on the
+## left) is mirrored when `from` lies right of `to`, so a diode's stripe points
+## toward `to`; the + / − badges sit
 ## on the matching corner screws while a battery is in.
 ##
 ## Announces every change of contents with `contents_changed`; the board
@@ -65,10 +66,10 @@ func get_frame_rect() -> Rect2:
 	return Rect2(global_position - FRAME_SIZE * 0.5, FRAME_SIZE)
 
 
-## The label of the part in the slot, or "empty".
+## The name tag of the part in the slot ("3 Ω", "diode 0.7 V"), or "empty".
 func get_tag_text() -> String:
 	var part: Part = get_part()
-	return part.label() if part != null else EMPTY_TAG
+	return part.tag_text() if part != null else EMPTY_TAG
 
 
 ## Tells the slot where its `from` node is, so a battery faces the right way.
@@ -136,5 +137,5 @@ func _show_contents() -> void:
 	var part: Part = get_part()
 	var battery: bool = part != null and part.is_battery()
 	_icon.set_part(part)
-	_icon.set_flipped(battery and _from_is_right)
+	_icon.set_flipped(part != null and part.is_polarized() and _from_is_right)
 	_badges.show_polarity(battery, _from_is_right)

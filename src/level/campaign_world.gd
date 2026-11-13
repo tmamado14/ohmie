@@ -3,13 +3,19 @@ extends RefCounted
 ## One world of the campaign: its id (the theme name, e.g. "old_workshop"),
 ## number, display name, topic line, whether it is locked, and its rooms in
 ## play order (the order the campaign file lists them: regular rooms, then the
-## Overtime rooms). Pure data.
+## Overtime rooms). A world opens either always, never (`locked`) or once
+## another world's Overtime is open (`unlock_after`). Pure data.
 
 var id: String = ""
 var number: int = 0
 var name: String = ""
 var topic: String = ""
+## A hard lock: nothing in the world can be played (the planned worlds).
 var locked: bool = false
+## The world whose Overtime must be open (its room 10 completed) before this
+## one opens, or null ("unlock_after" in the campaign file). See
+## Progress.is_world_open().
+var unlock_after: CampaignWorld = null
 var rooms: Array[CampaignRoom] = []
 
 

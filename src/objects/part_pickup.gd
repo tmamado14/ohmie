@@ -1,6 +1,6 @@
 class_name PartPickup
 extends Interactable
-## One carried part (resistor or battery) from the level. The node's origin is
+## One carried part (resistor, battery or diode) from the level. The node's origin is
 ## the floor point under it (bottom centre of the icon).
 ##
 ## The same node represents the part for the whole level: it is shown while it
@@ -97,9 +97,9 @@ func get_icon() -> PartIcon:
 	return _icon
 
 
-## The part's label: "3 Ω", "1/2 Ω", "6 V".
+## The part's name tag: "3 Ω", "1/2 Ω", "6 V", "diode 0.7 V".
 func get_tag_text() -> String:
-	return part.label() if part != null else ""
+	return part.tag_text() if part != null else ""
 
 
 func set_highlighted(highlighted: bool) -> void:

@@ -30,8 +30,10 @@ static func special_readings_in(readings: PackedStringArray) -> PackedStringArra
 	return out
 
 
-## The display text of meter `meter_id` in `solution`.
-static func reading(solution: DcSolution, meter_id: String) -> String:
+## The display text of meter `meter_id` in `solution`, numbers printed in
+## `style` (World 1: "3/2 A"; World 2: "5.3 mA").
+static func reading(solution: DcSolution, meter_id: String,
+		style: QuantityText.Style = QuantityText.Style.FRACTION) -> String:
 	if solution == null:
 		return ERROR_TEXT
 	var kind: int = solution.element_kind(meter_id)
@@ -39,7 +41,7 @@ static func reading(solution: DcSolution, meter_id: String) -> String:
 	if kind == DcNetwork.Kind.OHMMETER:
 		match state:
 			DcSolution.MeterState.VALUE:
-				return _with_unit(solution.meter_reading(meter_id), UNIT_OHM)
+				return _with_unit(solution.meter_reading(meter_id), UNIT_OHM, style)
 			DcSolution.MeterState.OPEN:
 				return OVER_LIMIT_TEXT
 		return ERROR_TEXT
@@ -55,13 +57,13 @@ static func reading(solution: DcSolution, meter_id: String) -> String:
 	match state:
 		DcSolution.MeterState.VALUE:
 			return _with_unit(solution.meter_reading(meter_id),
-					UNIT_AMPERE if kind == DcNetwork.Kind.AMMETER else UNIT_VOLT)
+					UNIT_AMPERE if kind == DcNetwork.Kind.AMMETER else UNIT_VOLT, style)
 		DcSolution.MeterState.OPEN:
 			return NO_READING_TEXT
 	return ERROR_TEXT
 
 
-static func _with_unit(value: Rational, unit: String) -> String:
+static func _with_unit(value: Rational, unit: String, style: QuantityText.Style) -> String:
 	if value == null:
 		return ERROR_TEXT
-	return "%s %s" % [value.to_text(), unit]
+	return QuantityText.format(value, unit, style)

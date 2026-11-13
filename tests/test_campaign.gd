@@ -143,7 +143,13 @@ func test_real_campaign_lists_five_worlds() -> void:
 	assert_eq(names, ["Old Workshop", "Copper Foundry", "Substation Switchyard", "Signal Clocktower",
 			"High-Voltage Transmitter"] as Array[String])
 	assert_false(campaign.worlds[0].locked, "World 1 is open")
-	for i: int in range(1, 5):
+	var two: CampaignWorld = campaign.worlds[1]
+	assert_false(two.locked, "World 2 is not hard-locked")
+	assert_true(two.unlock_after == campaign.worlds[0], "World 2 opens after World 1")
+	assert_eq(two.topic, "Basic electronics")
+	assert_eq(two.rooms.size(), 1)
+	assert_eq(two.rooms[0].file, "res://levels/w2_01.json")
+	for i: int in range(2, 5):
 		assert_true(campaign.worlds[i].locked, "world %d is locked" % (i + 1))
 		assert_eq(campaign.worlds[i].topic, "Coming soon")
 

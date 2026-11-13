@@ -136,7 +136,7 @@ func _add_components() -> void:
 				fixed.position = middle
 				add_child(fixed)
 				var kind: Part.Kind = Part.Kind.BATTERY if edge.type == LevelCircuit.TYPE_BATTERY else Part.Kind.RESISTOR
-				fixed.setup(Part.create(kind, edge.value), from_is_right)
+				fixed.setup(Part.create(kind, edge.value, "", _number_style()), from_is_right)
 				_add_blocker(fixed)
 			LevelCircuit.TYPE_LAMP:
 				var lamp: BoardLamp = BoardLamp.new()
@@ -193,7 +193,7 @@ func _refresh() -> void:
 	_goal_met = goal_met
 	var shown: PackedStringArray = PackedStringArray()
 	for id: String in _meters:
-		var reading: String = MeterText.reading(solution, id)
+		var reading: String = MeterText.reading(solution, id, _number_style())
 		(_meters[id] as BoardMeter).set_reading(reading)
 		shown.append(reading)
 	for id: String in _lamps:
@@ -215,6 +215,11 @@ func _announce_special_readings(specials: PackedStringArray) -> void:
 	_specials_announced = true
 	_special_readings = specials
 	special_readings_changed.emit(specials.duplicate())
+
+
+## How the room prints quantities (the goal's number style; fractions without a goal).
+func _number_style() -> QuantityText.Style:
+	return _goal.number_style if _goal != null else QuantityText.Style.FRACTION
 
 
 static func _wire_state(solution: DcSolution, goal_met: bool) -> CircuitWires.State:

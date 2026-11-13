@@ -174,7 +174,7 @@ func test_invalid_circuit_is_rejected() -> void:
 func test_invalid_part_is_rejected() -> void:
 	var data: Dictionary = _valid_level()
 	data["parts"][0]["kind"] = "capacitor"
-	_assert_rejected(data, "needs 'kind' \"resistor\" or \"battery\"", "unknown kind")
+	_assert_rejected(data, "needs 'kind' \"resistor\", \"battery\" or \"diode\"", "unknown kind")
 
 
 # --- LevelPart ------------------------------------------------------------------------

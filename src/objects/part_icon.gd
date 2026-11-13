@@ -5,8 +5,10 @@ extends Node2D
 ##
 ## Resistors with a value that has art use their icon. Any other resistor uses
 ## the blank resistor with its value written in the plaque; a battery uses the
-## battery art with its voltage written in the plaque. The battery art's plus
-## end is on its LEFT; set_flipped(true) mirrors the art (not the text).
+## battery art with its voltage written in the plaque; a diode uses its
+## style's picture with its forward drop written in the plaque. The battery
+## art's plus end and the diode's anode are on the LEFT; set_flipped(true)
+## mirrors the art (not the text). The plaque text is Part.value_text().
 ## The pack's 1/2 Ω art has "0.5 Ω" painted on it, so that value uses the
 ## blank resistor with "1/2 Ω" printed: every value reads as a fraction.
 
@@ -28,6 +30,12 @@ const INK_BOTTOM_INSET: float = 1.5
 ## The plaque's text rectangle relative to the icon centre: (30.5, 49, 36, 11.5)
 ## on screen from the icon's top-left (docs/ASSETS.md).
 const LABEL_RECT: Rect2 = Rect2(-17.5, 17, 36, 11.5)
+## A diode's picture, by Part.diode_style (anode on the LEFT, cathode stripe
+## on the right; 192x128 like the resistor icons).
+const DIODE_PATH: String = "res://assets/interactive/electronics/parts/diode_%s.png"
+## The diode plaque's safe text rectangle, (62, 99, 68, 22) source px
+## (docs/ASSETS.md: the resistor rectangle touches the diode plaque's ink).
+const DIODE_LABEL_RECT: Rect2 = Rect2(-17, 17.5, 34, 11)
 const LABEL_COLOR: Color = Color("33241d")
 const LABEL_MAX_FONT_SIZE: int = 11
 const LABEL_MIN_FONT_SIZE: int = 6
@@ -63,14 +71,22 @@ func set_part(part: Part) -> void:
 		_label.visible = false
 		return
 	var key: String = part.value.to_text()
-	if not part.is_battery() and ICON_NAMES.has(key):
+	if part.kind == Part.Kind.RESISTOR and ICON_NAMES.has(key):
 		_sprite.texture = load(ICON_DIR + "resistor_%s.png" % ICON_NAMES[key]) as Texture2D
 		_label.visible = false
 		return
-	_sprite.texture = BATTERY_TEXTURE if part.is_battery() else BLANK_RESISTOR_TEXTURE
-	_label.text = part.label()
+	var rect: Rect2 = LABEL_RECT
+	match part.kind:
+		Part.Kind.BATTERY:
+			_sprite.texture = BATTERY_TEXTURE
+		Part.Kind.DIODE:
+			_sprite.texture = load(DIODE_PATH % part.diode_style) as Texture2D
+			rect = DIODE_LABEL_RECT
+		_:
+			_sprite.texture = BLANK_RESISTOR_TEXTURE
+	_label.text = part.value_text()
 	_label.visible = true
-	TextFit.fit_centred(_label, LABEL_RECT, LABEL_MAX_FONT_SIZE, LABEL_MIN_FONT_SIZE)
+	TextFit.fit_centred(_label, rect, LABEL_MAX_FONT_SIZE, LABEL_MIN_FONT_SIZE)
 
 
 ## The part shown, or null.

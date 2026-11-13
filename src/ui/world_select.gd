@@ -112,7 +112,8 @@ func _build_cards() -> void:
 		add_child(card)
 		card.position = Vector2(left + i * (WorldCard.CARD_SIZE.x + CARD_GAP), CARD_TOP)
 		var path: String = THUMBNAILS.get(world.id, FALLBACK_THUMBNAIL)
-		card.setup(world, load(path) as Texture2D, progress.completed_count(world), world.rooms.size())
+		card.setup(world, load(path) as Texture2D, progress.completed_count(world), world.rooms.size(),
+				not progress.is_world_open(world))
 		card.hovered.connect(_on_card_hovered.bind(i))
 		card.clicked.connect(_on_card_clicked.bind(i))
 		_cards.append(card)
