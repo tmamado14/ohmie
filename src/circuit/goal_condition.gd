@@ -8,9 +8,10 @@ extends RefCounted
 ## `min_value` to `max_value` where either end may be null (one-sided). Both
 ## ends of a range are inclusive.
 ##
-## Data form (all numbers are strings, parsed exactly by Rational.parse):
+## Data form (all numbers are strings, parsed exactly by QuantityText.parse,
+## so "2", "3/2", "0.5" and also "4.3m" or "2.2k" are accepted):
 ##   {"of": "am1", "quantity": "current", "equals": "2"}
-##   {"of": "lamp1", "quantity": "current", "min": "1", "max": "3/2"}
+##   {"of": "lamp1", "quantity": "current", "min": "4.3m", "max": "3/2"}
 ## Allowed keys: of, quantity, equals, min, max. Quantities: current, voltage,
 ## resistance, power.
 ##
@@ -95,6 +96,10 @@ static func from_dictionary(data: Dictionary) -> GoalCondition:
 		push_error("GoalCondition.from_dictionary: unknown quantity '%s' (expected %s)." % [
 				String(data["quantity"]), ", ".join(_QUANTITY_NAMES)])
 		return null
+	return _from_tests(data, id, what as Quantity)
+
+
+static func _from_tests(data: Dictionary, id: String, what: Quantity) -> GoalCondition:
 	var has_equals: bool = data.has("equals")
 	var has_range: bool = data.has("min") or data.has("max")
 	if has_equals and has_range:
@@ -235,8 +240,11 @@ static func _parse_value(data: Dictionary, key: String, id: String) -> Rational:
 		push_error("GoalCondition.from_dictionary: '%s' of '%s' must be a string like \"3/2\", got %s." % [
 				key, id, type_string(typeof(raw))])
 		return null
-	var value: Rational = Rational.parse(String(raw))
+	var value: Rational = QuantityText.parse(String(raw), true)
 	if value == null:
+		# Report why as a plain number would have failed (the same message as
+		# before prefixes were accepted).
+		Rational.parse(String(raw))
 		push_error("GoalCondition.from_dictionary: '%s' of '%s' is not a number: '%s'." % [
 				key, id, String(raw)])
 		return null

@@ -30,13 +30,20 @@ func test_engineering_examples() -> void:
 	assert_eq(_eng("-43/10000", "A"), "-4.3 mA")
 
 
-func test_engineering_sub_unit_values_take_a_prefix() -> void:
-	# 0.7 V has magnitude below 1, so the rule [1, 1000) gives millivolts.
-	assert_eq(_eng("7/10", "V"), "700 mV")
-	assert_eq(_eng("1/8", "V"), "125 mV")
-	assert_eq(_eng("1/16", "V"), "62.5 mV")
-	# A third of a milliamp is 1000/3 microamps: the rule picks µ.
-	assert_eq(_eng("1/3000", "A"), "1000/3 µA")
+func test_engineering_volts_and_ohms_never_go_below_the_base_unit() -> void:
+	assert_eq(_eng("7/10", "V"), "0.7 V")
+	assert_eq(_eng("1/20", "V"), "0.05 V")
+	assert_eq(_eng("1/8", "V"), "0.125 V")
+	assert_eq(_eng("1/2", "Ω"), "0.5 Ω")
+	assert_eq(_eng("1/3", "V"), "1/3 V")
+	assert_eq(_eng("1500", "V"), "1.5 kV", "above the base unit volts use k")
+
+
+func test_engineering_amps_and_watts_use_milli_below_one() -> void:
+	assert_eq(_eng("1/3000", "A"), "1/3 mA", "below 1 m they stay in m")
+	assert_eq(_eng("1/2000000", "A"), "0.0005 mA")
+	assert_eq(_eng("1/8", "W"), "125 mW")
+	assert_eq(_eng("1/2", "A"), "500 mA")
 
 
 func test_engineering_zero_and_prefix_edges() -> void:
@@ -49,12 +56,12 @@ func test_engineering_zero_and_prefix_edges() -> void:
 	assert_eq(_eng("1", "A"), "1 A")
 
 
-func test_engineering_micro_and_mega() -> void:
-	assert_eq(_eng("47/1000000", "A"), "47 µA")
-	assert_eq(_eng("1/2000000", "A"), "0.5 µA", "below 1 µ keeps µ")
+func test_engineering_never_micro_and_mega() -> void:
+	assert_eq(_eng("47/1000000", "A"), "0.047 mA", "µ is never printed")
+	assert_eq(_eng("-1/400000", "A"), "-0.0025 mA")
 	assert_eq(_eng("2200000", "Ω"), "2.2 MΩ")
 	assert_eq(_eng("4700000000", "Ω"), "4700 MΩ", "1000 M or more keeps M")
-	assert_eq(_eng("-1/400000", "A"), "-2.5 µA")
+	assert_eq(_eng("-1/1000000", "V"), "-0.000001 V")
 
 
 func test_fraction_style_is_world_one_text() -> void:
@@ -70,21 +77,22 @@ func test_format_bad_values() -> void:
 	var invalid: Rational = Rational.new(1, 0)
 	assert_error_pushed("zero denominator")
 	assert_eq(QuantityText.format(invalid, "A"), "ERROR")
-	assert_eq(QuantityText.split(null).size(), 0)
+	assert_eq(QuantityText.split(null, "A").size(), 0)
 
 
 func test_split() -> void:
-	assert_eq(QuantityText.split(_q("43/10000"), ENG), PackedStringArray(["4.3", "m"]))
-	assert_eq(QuantityText.split(_q("0"), ENG), PackedStringArray(["0", ""]))
-	assert_eq(QuantityText.split(_q("43/10000")), PackedStringArray(["43/10000", ""]))
+	assert_eq(QuantityText.split(_q("43/10000"), "A", ENG), PackedStringArray(["4.3", "m"]))
+	assert_eq(QuantityText.split(_q("43/10000"), "V", ENG), PackedStringArray(["0.0043", ""]))
+	assert_eq(QuantityText.split(_q("0"), "A", ENG), PackedStringArray(["0", ""]))
+	assert_eq(QuantityText.split(_q("43/10000"), "A"), PackedStringArray(["43/10000", ""]))
 
 
 func test_unscalable_value_falls_back_to_the_exact_fraction() -> void:
-	# 2^52 / (2^63 - 1), about 4.9e-4, with a huge odd denominator: scaling to
-	# µ would overflow, so the exact base-unit fraction is printed instead (no
+	# 2^62 / (2^63 - 1), about 0.5 A, with a huge odd denominator: scaling to
+	# m would overflow, so the exact base-unit fraction is printed instead (no
 	# error, no rounding).
-	var tiny: Rational = Rational.new(4503599627370496, INT_MAX)
-	assert_eq(QuantityText.format(tiny, "A", ENG), "4503599627370496/9223372036854775807 A")
+	var half: Rational = Rational.new(4611686018427387904, INT_MAX)
+	assert_eq(QuantityText.format(half, "A", ENG), "4611686018427387904/9223372036854775807 A")
 
 
 func test_decimal_text() -> void:
@@ -102,7 +110,9 @@ func test_decimal_text() -> void:
 
 func test_format_range() -> void:
 	assert_eq(QuantityText.format_range(_q("1/200"), _q("1/50"), "A", ENG), "5–20 mA")
-	assert_eq(QuantityText.format_range(_q("1/2000"), _q("1/500"), "A", ENG), "500 µA–2 mA")
+	assert_eq(QuantityText.format_range(_q("1/2000"), _q("1/500"), "A", ENG), "0.5–2 mA")
+	assert_eq(QuantityText.format_range(_q("1/2"), _q("2"), "A", ENG), "500 mA–2 A")
+	assert_eq(QuantityText.format_range(_q("1/2"), _q("2"), "V", ENG), "0.5–2 V")
 	assert_eq(QuantityText.format_range(_q("0"), _q("1/50"), "A", ENG), "0–20 mA")
 	assert_eq(QuantityText.format_range(_q("1"), _q("3/2"), "A"), "1–3/2 A")
 	assert_eq(QuantityText.format_range(_q("1"), _q("3/2"), "A", FRACTION, "-"), "1-3/2 A")
@@ -131,7 +141,7 @@ func test_parse_part_values() -> void:
 func test_parse_round_trips_engineering_numbers() -> void:
 	for text: String in ["43/10000", "2200", "7/10", "1/300", "47/1000000", "2200000"]:
 		var value: Rational = _q(text)
-		var parts: PackedStringArray = QuantityText.split(value, ENG)
+		var parts: PackedStringArray = QuantityText.split(value, "A", ENG)
 		var prefix: String = "u" if parts[1] == QuantityText.MICRO else parts[1]
 		assert_rational_eq(QuantityText.parse(parts[0] + prefix), text, text)
 
@@ -188,7 +198,7 @@ func test_goal_condition_engineering_style() -> void:
 	assert_eq(volts.reading_text(sol), "4.3 V")
 	var drop: GoalCondition = GoalCondition.exactly("D1", VOLTAGE, _q("7/10"))
 	drop.style = ENG
-	assert_eq(drop.reading_text(sol), "700 mV")
+	assert_eq(drop.reading_text(sol), "0.7 V")
 	var ohms: GoalCondition = GoalCondition.exactly("OM", RESISTANCE, _q("1000"))
 	ohms.style = ENG
 	assert_eq(ohms.reading_text(sol), "1 kΩ")
@@ -201,7 +211,41 @@ func test_goal_condition_engineering_style() -> void:
 	assert_false(rated.is_met(sol), "4.3 mA is below 5 mA")
 	var at_least: GoalCondition = GoalCondition.between("D1", CURRENT, _q("1/2000"), null)
 	at_least.style = ENG
-	assert_eq(at_least.target_text(), "≥ 500 µA")
+	assert_eq(at_least.target_text(), "≥ 0.5 mA")
 	var at_most: GoalCondition = GoalCondition.between("D1", CURRENT, null, _q("1/50"))
 	at_most.style = ENG
 	assert_eq(at_most.target_text(), "≤ 20 mA")
+
+
+# --- goal values parsed with prefixes ------------------------------------------------------
+
+func test_goal_values_accept_prefixes() -> void:
+	var milli: GoalCondition = GoalCondition.from_dictionary({"of": "x", "quantity": "current", "equals": "4.3m"})
+	assert_rational_eq(milli.equals, "43/10000")
+	var kilo: GoalCondition = GoalCondition.from_dictionary({"of": "x", "quantity": "voltage", "min": "1k",
+			"max": "2.2k"})
+	assert_rational_eq(kilo.min_value, "1000")
+	assert_rational_eq(kilo.max_value, "2200")
+
+
+func test_goal_values_without_prefixes_are_unchanged() -> void:
+	for text: String in ["2", "3/2", "0.5", "-0.75", "0", "12", "51/10"]:
+		var condition: GoalCondition = GoalCondition.from_dictionary({"of": "x", "quantity": "current",
+				"equals": text})
+		assert_true(condition.equals.equals(Rational.parse(text)), text)
+
+
+func test_goal_value_with_a_bad_prefix_is_rejected() -> void:
+	assert_null(GoalCondition.from_dictionary({"of": "x", "quantity": "current", "equals": "4.3x"}))
+	assert_error_pushed("Rational.parse: '4.3x' is not a number")
+	assert_error_pushed("'equals' of 'x' is not a number")
+
+
+func test_quiet_parsing_pushes_nothing() -> void:
+	assert_null(QuantityText.parse("abc", true))
+	assert_null(QuantityText.parse("1/0", true))
+	assert_null(QuantityText.parse("9223372036854775807k", true))
+	assert_null(Rational.parse("two", true))
+	assert_null(Rational.parse("99999999999999999999", true))
+	assert_rational_eq(QuantityText.parse("4.7k", true), "4700")
+	assert_rational_eq(Rational.parse("3/2", true), "3/2")

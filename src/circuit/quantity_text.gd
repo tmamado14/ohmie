@@ -6,13 +6,18 @@ extends RefCounted
 ## Styles:
 ##   FRACTION     World 1: the plain exact fraction in base units, "3/2 A",
 ##                "-6 V", "0 Ω". This is Rational.to_text() plus the unit.
-##   ENGINEERING  World 2: the SI prefix (µ, m, none, k, M) that puts the
-##                magnitude in [1, 1000), then the scaled value as an exact
-##                decimal when its denominator has only the factors 2 and 5
-##                ("4.3 mA", "0.7 V" is "700 mV", "2.2 kΩ", "-6 V"), otherwise
-##                as a fraction ("10/3 mA"). Zero is "0" with the base unit.
-##                A magnitude below 1 µ keeps µ (e.g. "0.5 µA"); one of 1000 M
-##                or more keeps M ("2000 MΩ").
+##   ENGINEERING  World 2: the prefixes M, k, none and (for some units) m:
+##                - at or above 1000 the largest of k, M that leaves a
+##                  magnitude of at least 1 ("2.2 kΩ", "1.5 kV", "2.2 MΩ";
+##                  1000 M or more keeps M: "4700 MΩ");
+##                - from 1 to under 1000, no prefix ("12 V", "-6 V");
+##                - below 1: amps and watts ("A", "W") use m, and stay in m
+##                  however small ("4.3 mA", "1/3 mA", "0.0005 mA"); every
+##                  other unit (volts, ohms) never goes below the base unit
+##                  ("0.7 V", "0.05 V", "0.5 Ω").
+##                The scaled value is an exact decimal when its denominator has
+##                only the factors 2 and 5, otherwise a fraction ("10/3 mA").
+##                Zero is "0" with the base unit. µ is never printed.
 ##
 ## parse() reads part values: a number Rational.parse accepts ("220", "0.7",
 ## "1/2", "-6") optionally followed directly by one prefix letter: "u" or "µ"
@@ -23,8 +28,10 @@ extends RefCounted
 enum Style { FRACTION, ENGINEERING }
 
 const MICRO: String = "µ"
-const _PREFIX_EXPONENTS: Array[int] = [6, 3, 0, -3, -6]
-const _PREFIX_TEXTS: Array[String] = ["M", "k", "", "m", MICRO]
+## Units printed with m below 1 in ENGINEERING style.
+const MILLI_UNITS: Array[String] = ["A", "W"]
+const _PREFIX_EXPONENTS: Array[int] = [6, 3, 0, -3]
+const _PREFIX_TEXTS: Array[String] = ["M", "k", "", "m"]
 ## Accepted by parse(): letter -> power of ten.
 const _PARSE_PREFIXES: Dictionary = {"M": 6, "k": 3, "m": -3, "u": -6, MICRO: -6, "μ": -6}
 const _DIGITS: String = "0123456789"
@@ -33,23 +40,24 @@ const _DIGITS: String = "0123456789"
 ## "<number> <unit>" in `style` (see the class description). "ERROR" for a
 ## null or invalid value.
 static func format(value: Rational, unit: String, style: Style = Style.FRACTION) -> String:
-	var parts: PackedStringArray = split(value, style)
+	var parts: PackedStringArray = split(value, unit, style)
 	if parts.is_empty():
 		return "ERROR"
 	return "%s %s%s" % [parts[0], parts[1], unit]
 
 
-## [number text, prefix] as format() would print them ("4.3", "m"). The
-## prefix is "" in FRACTION style and for zero. Empty for a null or invalid
-## value.
-static func split(value: Rational, style: Style = Style.FRACTION) -> PackedStringArray:
+## [number text, prefix] as format() would print them for `unit` ("4.3", "m").
+## The prefix is "" in FRACTION style and for zero. Empty for a null or
+## invalid value.
+static func split(value: Rational, unit: String, style: Style = Style.FRACTION) -> PackedStringArray:
 	if value == null or not value.is_valid():
 		return PackedStringArray()
 	if style == Style.FRACTION or value.is_zero():
 		return PackedStringArray([value.to_text(), ""])
 	var magnitude: Rational = Rational.new(absi(value.numerator), value.denominator)
-	var chosen: int = _PREFIX_EXPONENTS.size() - 1
-	for i: int in _PREFIX_EXPONENTS.size():
+	var last: int = _PREFIX_EXPONENTS.size() - 1 if MILLI_UNITS.has(unit) else _PREFIX_EXPONENTS.find(0)
+	var chosen: int = last
+	for i: int in last:
 		if magnitude.compare(_power_of_ten(_PREFIX_EXPONENTS[i])) >= 0:
 			chosen = i
 			break
@@ -62,12 +70,12 @@ static func split(value: Rational, style: Style = Style.FRACTION) -> PackedStrin
 
 ## A range "low–high unit" with the dash given. In ENGINEERING style both ends
 ## share the prefix when they would print with the same one ("5–20 mA"),
-## otherwise each end has its own ("500 µA–2 mA"). "ERROR" if either end is
+## otherwise each end has its own ("500 mA–2 A"). "ERROR" if either end is
 ## null or invalid.
 static func format_range(low: Rational, high: Rational, unit: String, style: Style = Style.FRACTION,
 		dash: String = "–") -> String:
-	var low_parts: PackedStringArray = split(low, style)
-	var high_parts: PackedStringArray = split(high, style)
+	var low_parts: PackedStringArray = split(low, unit, style)
+	var high_parts: PackedStringArray = split(high, unit, style)
 	if low_parts.is_empty() or high_parts.is_empty():
 		return "ERROR"
 	if low_parts[1] == high_parts[1] or low.is_zero():
@@ -120,8 +128,9 @@ static func decimal_text(value: Rational) -> String:
 ## Parses a part value such as "1k", "4.7k", "220", "0.7", "1/2", "2.2M",
 ## "100u", "-6". Surrounding whitespace is ignored; there is no space between
 ## the number and its prefix and no unit. Returns null (with a push_error that
-## names the text) for anything else or a value that does not fit in 64 bits.
-static func parse(text: String) -> Rational:
+## names the text, unless `quiet`) for anything else or a value that does not
+## fit in 64 bits. Every text Rational.parse accepts gives the same value here.
+static func parse(text: String, quiet: bool = false) -> Rational:
 	var body: String = text.strip_edges()
 	var exponent: int = 0
 	if not body.is_empty():
@@ -130,17 +139,22 @@ static func parse(text: String) -> Rational:
 			exponent = int(_PARSE_PREFIXES[last])
 			body = body.substr(0, body.length() - 1)
 	if not _is_number_text(body):
-		push_error("QuantityText.parse: '%s' is not a value (expected e.g. 220, 0.7, 1/2, 4.7k, 2.2M)." % text)
+		_error("QuantityText.parse: '%s' is not a value (expected e.g. 220, 0.7, 1/2, 4.7k, 2.2M)." % text, quiet)
 		return null
-	var number: Rational = Rational.parse(body)
+	var number: Rational = Rational.parse(body, quiet)
 	if number == null:
-		push_error("QuantityText.parse: '%s' is not a valid value (see the error above)." % text)
+		_error("QuantityText.parse: '%s' is not a valid value (see the error above)." % text, quiet)
 		return null
 	var value: Rational = _scale(number, exponent)
 	if value == null:
-		push_error("QuantityText.parse: '%s' does not fit in 64 bits." % text)
+		_error("QuantityText.parse: '%s' does not fit in 64 bits." % text, quiet)
 		return null
 	return value
+
+
+static func _error(message: String, quiet: bool) -> void:
+	if not quiet:
+		push_error(message)
 
 
 ## value * 10^exponent exactly, or null when it does not fit. Never pushes an

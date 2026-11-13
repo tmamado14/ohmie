@@ -82,9 +82,9 @@ static func create(num: int, den: int = 1) -> Rational:
 
 ## Parses "2", "-2", "1/2", "-3/4", "0.5", "-1.25" exactly.
 ## Surrounding whitespace is ignored. A sign is allowed only at the very start.
-## Returns null (with push_error) for anything else, for a zero denominator, or
-## for a value that does not fit in 64 bits.
-static func parse(text: String) -> Rational:
+## Returns null (with push_error, unless `quiet`) for anything else, for a zero
+## denominator, or for a value that does not fit in 64 bits.
+static func parse(text: String, quiet: bool = false) -> Rational:
 	var s: String = text.strip_edges()
 	var negative: bool = false
 	if s.begins_with("-"):
@@ -93,11 +93,11 @@ static func parse(text: String) -> Rational:
 	var result: Rational = null
 	var slash: int = s.find("/")
 	if slash >= 0:
-		result = _parse_fraction_body(s.substr(0, slash), s.substr(slash + 1), text)
+		result = _parse_fraction_body(s.substr(0, slash), s.substr(slash + 1), text, quiet)
 	elif s.find(".") >= 0:
-		result = _parse_decimal_body(s, text)
+		result = _parse_decimal_body(s, text, quiet)
 	else:
-		var n: Rational = _parse_digits(s, text)
+		var n: Rational = _parse_digits(s, text, quiet)
 		result = n
 	if result == null:
 		return null
@@ -304,67 +304,74 @@ static func _compare_non_negative(a: int, b: int, c: int, d: int) -> int:
 
 
 ## Parses a non-empty run of decimal digits. Returns null on bad text or overflow.
-static func _parse_digits(digits: String, original: String) -> Rational:
-	var value: int = _digits_to_int(digits, original)
+static func _parse_digits(digits: String, original: String, quiet: bool) -> Rational:
+	var value: int = _digits_to_int(digits, original, quiet)
 	if value < 0:
 		return null
 	return Rational.new(value, 1)
 
 
-## Returns the value of a non-empty run of digits, or -1 (with push_error).
-static func _digits_to_int(digits: String, original: String) -> int:
+## Returns the value of a non-empty run of digits, or -1 (with push_error
+## unless `quiet`).
+static func _digits_to_int(digits: String, original: String, quiet: bool) -> int:
 	if digits.is_empty():
-		push_error("Rational.parse: '%s' is not a number (expected 2, -3/4 or 0.5)." % original)
+		_parse_error("Rational.parse: '%s' is not a number (expected 2, -3/4 or 0.5)." % original, quiet)
 		return -1
 	var value: int = 0
 	for i: int in digits.length():
 		var digit: int = _DIGITS.find(digits[i])
 		if digit < 0:
-			push_error("Rational.parse: '%s' is not a number (expected 2, -3/4 or 0.5)." % original)
+			_parse_error("Rational.parse: '%s' is not a number (expected 2, -3/4 or 0.5)." % original, quiet)
 			return -1
 		if value > (INT_MAX - digit) / 10:
-			push_error("Rational.parse: '%s' does not fit in 64 bits." % original)
+			_parse_error("Rational.parse: '%s' does not fit in 64 bits." % original, quiet)
 			return -1
 		value = value * 10 + digit
 	return value
 
 
-static func _parse_fraction_body(num_text: String, den_text: String, original: String) -> Rational:
-	var n: int = _digits_to_int(num_text, original)
+static func _parse_fraction_body(num_text: String, den_text: String, original: String,
+		quiet: bool) -> Rational:
+	var n: int = _digits_to_int(num_text, original, quiet)
 	if n < 0:
 		return null
-	var d: int = _digits_to_int(den_text, original)
+	var d: int = _digits_to_int(den_text, original, quiet)
 	if d < 0:
 		return null
 	if d == 0:
-		push_error("Rational.parse: '%s' has a zero denominator." % original)
+		_parse_error("Rational.parse: '%s' has a zero denominator." % original, quiet)
 		return null
 	return Rational.new(n, d)
 
 
-static func _parse_decimal_body(text: String, original: String) -> Rational:
+static func _parse_decimal_body(text: String, original: String, quiet: bool) -> Rational:
 	var dot: int = text.find(".")
 	var int_text: String = text.substr(0, dot)
 	var frac_text: String = text.substr(dot + 1)
 	if int_text.is_empty() or frac_text.is_empty():
-		push_error("Rational.parse: '%s' needs digits on both sides of the point." % original)
+		_parse_error("Rational.parse: '%s' needs digits on both sides of the point." % original, quiet)
 		return null
 	# Trailing zeros after the point do not change the value.
 	while frac_text.length() > 1 and frac_text.ends_with("0"):
 		frac_text = frac_text.substr(0, frac_text.length() - 1)
-	var whole: int = _digits_to_int(int_text, original)
+	var whole: int = _digits_to_int(int_text, original, quiet)
 	if whole < 0:
 		return null
-	var frac: int = _digits_to_int(frac_text, original)
+	var frac: int = _digits_to_int(frac_text, original, quiet)
 	if frac < 0:
 		return null
 	var scale: int = 1
 	for i: int in frac_text.length():
 		if not _mul_fits(scale, 10):
-			push_error("Rational.parse: '%s' has too many decimal places." % original)
+			_parse_error("Rational.parse: '%s' has too many decimal places." % original, quiet)
 			return null
 		scale *= 10
 	if not _mul_fits(whole, scale) or not _add_fits(whole * scale, frac):
-		push_error("Rational.parse: '%s' does not fit in 64 bits." % original)
+		_parse_error("Rational.parse: '%s' does not fit in 64 bits." % original, quiet)
 		return null
 	return Rational.new(whole * scale + frac, scale)
+
+
+static func _parse_error(message: String, quiet: bool) -> void:
+	if not quiet:
+		push_error(message)
