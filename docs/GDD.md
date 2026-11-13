@@ -4,7 +4,7 @@
 
 Ohmie is a small striped resistor with legs, loose in an old electrical workshop. Every room has an unfinished circuit wired across the wall, some batteries and resistors lying around, and a locked door. Carry parts to the circuit's slots until the circuit does what the mission asks, and the door opens.
 
-The long-term aim is a full electronics game. World 1 covers basic DC networks. Later worlds add new part families (diodes and LEDs, capacitors, switches and logic gates, AC) as new parts, new meters and new goal quantities on the same engine and room format.
+The long-term aim is a full electronics game. World 1 covers basic DC networks. World 2 covers basic electronics (section 11). Later worlds add more part families (switches, capacitors, logic gates, AC) as new parts, new meters and new goal quantities on the same engine and room format.
 
 ### Pillars
 
@@ -194,6 +194,69 @@ Splash (engine card, then the producer card) → title → world select → leve
 
 1. **World 1 complete:** all thirteen rooms, enemies and bounce pads in the overtime rooms, a full QA pass.
 2. **Collapse replay:** after a resistance room is solved, the network simplifies on screen one series or parallel merge at a time, with the arithmetic shown.
-3. **World 2 (Copper Foundry):** switches that open and close wires, moving platforms, and the first new part family.
-4. **Later worlds:** diodes and LEDs, capacitors and timing, logic gates, and a final encounter with Shorty the Short-Circuit Baron.
+3. **World 2 (Copper Foundry):** basic electronics, designed in section 11. Diodes, LEDs, Zeners, transistors as switches and closed-loop op-amp circuits.
+4. **Later worlds:** switches and fuses, capacitors, inductors and timing (the 555), logic gates, AC and transformers, and a final encounter with Shorty the Short-Circuit Baron.
 5. **Release polish:** animation cycles, a custom logotype, settings, a Windows export.
+
+## 11. World 2: the Copper Foundry (planned, not built)
+
+Basic electronics at DC. Ten rooms, then three overtime rooms. The art for the parts and their schematic symbols is the user's set in `assets/interactive/electronics/` (`manifest.json` gives sizes and terminals).
+
+### Units and numbers
+
+World 2 works in volts, milliamps and kilohms. The engine still computes in exact rationals in base units; only the text changes:
+
+- A part value may be written with a prefix: `"1k"`, `"4.7k"`, `"220"`.
+- Readings pick the prefix that gives a number from 1 to under 1000: `4.3 mA`, `2.2 kΩ`, `12 V`.
+- A value whose denominator has only factors of 2 and 5 is shown as an exact decimal (`0.7 V`, `4.3 mA`). Any other value stays a fraction (`10/3 mA`). Nothing is ever rounded. World 1 rooms keep showing fractions.
+
+### Device models
+
+Every device is piecewise linear: it is in one of a few states, each state is a linear element, and each state has a condition that must hold. The engine tries the combinations of states and keeps the one whose conditions all hold. No combination: `ERROR`. More than one with different readings: `???` (rooms are designed so this cannot happen).
+
+| Device | States | Fixed numbers |
+|---|---|---|
+| Diode (rectifier, signal) | Off: no current, voltage below the drop. On: voltage equals the drop, current flows anode to cathode | Drop 0.7 V |
+| Schottky diode | Same | Drop 0.3 V |
+| LED | Same as a diode. Lit while its current is inside its rated range, dark below, blown above (a blown LED still conducts, like a blown lamp) | Red 2 V, green 3 V; rated 5 to 20 mA unless the room says otherwise |
+| Zener diode | Off; forward on (0.7 V); breakdown: reverse voltage equals the Zener voltage, current flows cathode to anode | Zener voltage printed on the part, for example 5.1 V |
+| NPN and PNP transistor | Cutoff: no currents. Active: base-emitter 0.7 V, collector current = β × base current, collector-emitter above 0.2 V. Saturated: base-emitter 0.7 V, collector-emitter 0.2 V, collector current at most β × base current. PNP is the same with every polarity reversed | β = 100 |
+| Op-amp | Linear: both inputs at the same voltage, output between the rails. High: output at the positive rail, + input above − input. Low: output at the negative rail, + input below − input. The inputs draw no current | Rails ±12 V unless the room says otherwise |
+
+### Board and parts
+
+- **Two-terminal parts** (diodes, LEDs, Zeners) are carried and go in the ordinary slots, next to resistors and batteries. Every slot still takes any two-terminal part.
+- **Direction.** A diode's anode faces the slot's `from` node, as a battery's plus does. The slot shows a small arrow badge while a diode is in it. There is no flip action: which slot a diode goes in is the puzzle, and rooms offer slots facing both ways.
+- **Fixed devices.** A transistor or op-amp fixed to the board is drawn with its schematic symbol on a board plate, with a wire meeting each labelled terminal. Op-amps are always fixed; the player chooses the resistors around them. The supply rails are part of the op-amp element and are printed on its plate, not wired.
+- **Device bays.** A bay is a three-terminal slot (base, collector, emitter). It takes any three-terminal part: NPN, PNP, and later the MOSFET. Ohmie carries the illustrated part; a filled bay shows the part's symbol. A wrong device gives whatever physics says.
+- **New goal words.** A condition can name an LED like a lamp (`lit`), and a voltmeter can read an op-amp output or a transistor terminal like any node.
+
+### Rooms
+
+| # | Title | Mission | Board | Idea |
+|---|---|---|---|---|
+| 1 | One Way Street | Light the lamp. | A fixed battery, a lamp and two slots facing opposite ways on parallel paths; one diode and a few resistors | A diode conducts one way only |
+| 2 | Drop It | Put 4.3 V on the meter. | A fixed 5 V battery, a slot, a fixed resistor with a voltmeter across it; a silicon diode, a Schottky and decoy resistors | The forward drop |
+| 3 | Glow Up | Light the LED. Don't blow it. | A fixed battery, an LED slot and a series slot | The current-limiting resistor |
+| 4 | Zener Garden | Hold 5.1 V on the meter. | A fixed 12 V battery, a series slot, a slot across a fixed load with a voltmeter | A Zener in reverse holds its voltage; forwards it is only a diode |
+| 5 | Base Camp | Light the lamp. Keep the base under 1 mA. | A fixed NPN with a lamp in its collector, a base slot, ammeters on base and collector | A small current switches a large one |
+| 6 | Opposites Attract | Light both lamps. | Two bays, one switching the low side of its lamp and one the high side; an NPN and a PNP to carry | PNP is NPN with everything reversed |
+| 7 | Compare and Contrast | Swing the output high. | An op-amp with no feedback, a fixed reference on one input, a two-slot divider on the other, a voltmeter on the output | The comparator |
+| 8 | Flip the Script | Put −6 V on the meter. | An inverting amplifier with a fixed input voltage, an input slot and a feedback slot | Inverting gain: −Rf / Rin |
+| 9 | Gain Train | Put 6 V on the meter. | A non-inverting amplifier with a fixed input voltage, a feedback slot and a ground slot | Non-inverting gain: 1 + Rf / Rg. A wire for Rf makes a follower |
+| 10 | Sum of Its Parts | Put −9 V on the meter. | A summing amplifier with two fixed input voltages, an input slot for each and a feedback slot | Weighted sums; several answers, the room makes most of them awkward |
+| 11 | Bias for Action | Put 6 V on the collector. | A fixed NPN on a 12 V supply with a base slot and a collector slot | Biasing in the active region, the first step to an amplifier |
+| 12 | Difference of Opinion | Put 4 V on the meter. | A difference amplifier with four slots | Matching ratios |
+| 13 | Full Bridge Ahead | Light the LED, whichever way the battery goes. | Four diode slots in a bridge feeding an LED, and a source slot whose direction the room does not let you choose | The bridge rectifier |
+
+Rooms 11 to 13 are overtime. Ideas held in reserve: a red and a green LED steered by the battery's direction, a fuse that must survive, a switch Ohmie flips, the MOSFET as a switch, and a photoresistor under a light.
+
+Left for later worlds because they need time or AC: capacitors, inductors, the transformer and the 555. The AND gate waits for a logic world.
+
+### Build order
+
+1. Engine: the piecewise-linear framework with diodes, LEDs and Zeners; then the transistor; then the op-amp; prefixed and decimal reading text; the puzzle search over the new parts.
+2. Assets: document and import the electronics set; generate what is missing (a blown LED, the arrow badge, board plates for fixed devices, the Copper Foundry door's open state).
+3. Game: new part kinds and their slot behaviour, LED states, fixed devices, the bay, the Copper Foundry theme, unlocking World 2 after World 1's room 10.
+4. Rooms 1 to 4 (diodes) first, as a playable slice; then 5 and 6; then 7 to 10; then overtime.
+5. QA after each group.
