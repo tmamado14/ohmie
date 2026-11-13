@@ -207,12 +207,12 @@ Basic electronics at DC. Ten rooms, then three overtime rooms. The art for the p
 World 2 works in volts, milliamps and kilohms. The engine still computes in exact rationals in base units; only the text changes:
 
 - A part value may be written with a prefix: `"1k"`, `"4.7k"`, `"220"`.
-- Readings pick the prefix that gives a number from 1 to under 1000: `4.3 mA`, `2.2 kΩ`, `12 V`.
+- Readings pick the prefix that gives a number from 1 to under 1000: `4.3 mA`, `2.2 kΩ`, `12 V`. Only milli, kilo and mega are used, and volts and ohms never go below the base unit, so a small voltage reads `0.7 V` and a small current `1/3 mA`.
 - A value whose denominator has only factors of 2 and 5 is shown as an exact decimal (`0.7 V`, `4.3 mA`). Any other value stays a fraction (`10/3 mA`). Nothing is ever rounded. World 1 rooms keep showing fractions.
 
 ### Device models
 
-Every device is piecewise linear: it is in one of a few states, each state is a linear element, and each state has a condition that must hold. The engine tries the combinations of states and keeps the one whose conditions all hold. No combination: `ERROR`. More than one with different readings: `???` (rooms are designed so this cannot happen).
+Every device is piecewise linear: it is in one of a few states, each state is a linear element, and each state has a condition that must hold. The engine tries the combinations of states and keeps the one whose conditions all hold. If none holds and some combination is a short (a battery straight across a forward diode), the board reads `SHORT`. More than one with different readings: `???`, for example two identical diodes in parallel; rooms are designed so this cannot happen. A corner point (exactly 0.7 V and no current) counts as off. To an ohmmeter every device is open.
 
 | Device | States | Fixed numbers |
 |---|---|---|

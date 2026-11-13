@@ -35,8 +35,14 @@ extends RefCounted
 ## network is never modified, and the same network always gives the same
 ## result.
 ##
-## Internals are shared with DcPuzzleSearch: a network is compiled once into
-## index arrays (_Circuit), and slot elements are switched on and off in place.
+## Internals are shared with DcPuzzleSearch and PwlSolver: a network is
+## compiled once into index arrays (_Circuit), and slot and device elements are
+## switched in place.
+##
+## A network holding a device (a diode or Zener, DcNetwork.has_devices) is
+## handed to PwlSolver, which searches the device states and uses this linear
+## solver for each combination. A network with no device never reaches
+## PwlSolver, so its result is exactly the linear one described above.
 
 const _LINEAR_OK: int = 0
 const _LINEAR_INCONSISTENT: int = 1
@@ -69,9 +75,10 @@ class _Circuit:
 	var node_b: Array[int] = []
 	var values: Array[Rational] = []  # ohms or volts; null for other kinds
 	var conductances: Array[Rational] = []  # 1 / ohms for resistors, else null
+	var models: Array[PwlDevice] = []  # the device model of a device element, else null
 
 	func add_element(id: String, kind: int, a: int, b: int, value: Rational,
-			conductance: Rational) -> int:
+			conductance: Rational, model: PwlDevice = null) -> int:
 		element_index[id] = ids.size()
 		ids.append(id)
 		kinds.append(kind)
@@ -79,12 +86,22 @@ class _Circuit:
 		node_b.append(b)
 		values.append(value)
 		conductances.append(conductance)
+		models.append(model)
 		return ids.size() - 1
 
-	func set_element(index: int, kind: int, value: Rational, conductance: Rational) -> void:
+	func set_element(index: int, kind: int, value: Rational, conductance: Rational,
+			model: PwlDevice = null) -> void:
 		kinds[index] = kind
 		values[index] = value
 		conductances[index] = conductance
+		models[index] = model
+
+	## True when an element that is present holds a device model.
+	func has_devices() -> bool:
+		for e: int in ids.size():
+			if models[e] != null and kinds[e] != ABSENT:
+				return true
+		return false
 
 
 ## Solves `network` without modifying it. Never returns null.
@@ -97,7 +114,10 @@ static func solve(network: DcNetwork) -> DcSolution:
 		solution.error_message = message
 		return solution
 	var no_extra_nodes: Array[String] = []
-	return _solve_circuit(_compile(network, no_extra_nodes), {}, true)
+	var circuit: _Circuit = _compile(network, no_extra_nodes)
+	if network.has_devices():
+		return PwlSolver._solve_compiled(circuit, {}, true)
+	return _solve_circuit(circuit, {}, true)
 
 
 # --- compiling ---------------------------------------------------------------------
@@ -127,7 +147,7 @@ static func _compile(network: DcNetwork, extra_nodes: Array[String]) -> _Circuit
 			_union(parent, a, b)
 		var value: Rational = network.get_value(id)
 		var conductance: Rational = value.reciprocal() if kind == _RESISTOR else null
-		circuit.add_element(id, kind, a, b, value, conductance)
+		circuit.add_element(id, kind, a, b, value, conductance, network.get_device(id))
 	circuit.merged.resize(names.size())
 	for i: int in names.size():
 		circuit.merged[i] = _root(parent, i)
@@ -140,7 +160,10 @@ static func _compile(network: DcNetwork, extra_nodes: Array[String]) -> _Circuit
 ## in. Otherwise only the elements whose ids are keys of `wanted` get voltage,
 ## current, power and meter values (used by the puzzle search, where only the
 ## goal conditions matter); node voltages and is_energized are then not set.
-static func _solve_circuit(circuit: _Circuit, wanted: Dictionary, everything: bool) -> DcSolution:
+## With `with_ohmmeters` false the ohmmeters are left INVALID (PwlSolver
+## measures them once, with every device open).
+static func _solve_circuit(circuit: _Circuit, wanted: Dictionary, everything: bool,
+		with_ohmmeters: bool = true) -> DcSolution:
 	var solution: DcSolution = DcSolution.new()
 	var any_ohmmeter: bool = false
 	for e: int in circuit.ids.size():
@@ -169,7 +192,7 @@ static func _solve_circuit(circuit: _Circuit, wanted: Dictionary, everything: bo
 		for id: String in solution._meter_states.keys():
 			solution._meter_states[id] = DcSolution.MeterState.INVALID
 
-	if any_ohmmeter:
+	if any_ohmmeter and with_ohmmeters:
 		_solve_ohmmeters(circuit, wanted, everything, solution)
 	return solution
 

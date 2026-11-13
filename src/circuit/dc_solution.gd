@@ -7,11 +7,14 @@ extends RefCounted
 ##   OK             the circuit has exactly one solution.
 ##   SHORT          the equations contradict each other: an ideal source (or
 ##                  ammeter) loop whose voltages do not sum to zero, e.g. a
-##                  battery shorted by a wire or by an ammeter.
+##                  battery shorted by a wire or by an ammeter, or directly
+##                  across a forward diode.
 ##   INDETERMINATE  consistent, but some current is not determined, e.g. two
 ##                  ammeters in parallel or two equal batteries in parallel.
 ##   ERROR          a value overflowed 64 bits or the network was invalid;
 ##                  error_message says why. Never shown as a number.
+## With devices, PwlSolver documents how the statuses of its state
+## combinations combine into one.
 ##
 ## Sign conventions (one place, used everywhere):
 ##   Every element has a first node a and a second node b (plus and minus for a
@@ -25,8 +28,16 @@ extends RefCounted
 ##     voltage source's delivered power volts * delivered current (positive
 ##     when it powers a load); 0 for meters; null for wires.
 ##   An ammeter reads current_through (a to b); a voltmeter reads V(a) - V(b).
+##   Devices (DIODE, ZENER; a is the anode, b the cathode):
+##     voltage_across = V(anode) - V(cathode), null when an OFF device's ends
+##     lie in different connected parts (as for a voltmeter);
+##     current_through = the current from anode to cathode through it (a
+##     Zener in breakdown carries a negative current);
+##     power_of = voltage * current (0 for an OFF device);
+##     device_state / device_state_name give the state PwlSolver chose.
 ##   Node voltages are relative to the ground of their connected component,
-##   which is the component's alphabetically smallest node name.
+##   which is the component's alphabetically smallest node name. An OFF device
+##   does not connect its ends.
 ##
 ## Every getter returns null (and never calls push_error) when the id or node
 ## is unknown, or when the value is not available: the status is not OK, or the
@@ -56,6 +67,8 @@ var _powers: Dictionary = {}  # element id -> Rational (only when OK)
 var _meter_states: Dictionary = {}  # meter id -> MeterState
 var _meter_readings: Dictionary = {}  # meter id -> Rational (only when VALUE)
 var _energized: bool = false
+var _device_states: Dictionary = {}  # device id -> int state (only when OK)
+var _device_state_names: Dictionary = {}  # device id -> String (only when OK)
 
 
 ## The DcNetwork.Kind of an element, or -1 for an unknown id.
@@ -103,6 +116,8 @@ func power_of(id: String) -> Rational:
 ## Ohmmeter readings come from their own solve of the dead network (voltage
 ## sources and ammeters become wires; voltmeters and other ohmmeters are open),
 ## so they are valid even when the live circuit is SHORT or INDETERMINATE.
+## Every device (diode, LED, Zener) is open for an ohmmeter: with all sources
+## off nothing forward-biases it, so a path only through a device reads OL.
 func meter_reading(id: String) -> Rational:
 	return _meter_readings.get(id, null)
 
@@ -114,10 +129,28 @@ func meter_state(id: String) -> MeterState:
 	return _meter_states[id]
 
 
-## True when the status is OK and at least one resistor carries a non-zero
-## current.
+## True when the status is OK and at least one resistor or device carries a
+## non-zero current.
 func is_energized() -> bool:
 	return status == Status.OK and _energized
+
+
+## True when `id` is a device element (DIODE or ZENER) of the solved network,
+## whatever the status.
+func is_device(id: String) -> bool:
+	return DcNetwork.is_device_kind(element_kind(id))
+
+
+## The device's state (DiodeModel.State for diodes and Zeners). -1 for an
+## unknown id, an element that is not a device, or when the status is not OK.
+func device_state(id: String) -> int:
+	return int(_device_states.get(id, -1))
+
+
+## The device model's name for its state: "off" or "on" for a diode; "off",
+## "forward" or "breakdown" for a Zener. "" whenever device_state is -1.
+func device_state_name(id: String) -> String:
+	return String(_device_state_names.get(id, ""))
 
 
 func is_ok() -> bool:

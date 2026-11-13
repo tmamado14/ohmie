@@ -13,6 +13,11 @@ extends RefCounted
 ##   {"of": "lamp1", "quantity": "current", "min": "1", "max": "3/2"}
 ## Allowed keys: of, quantity, equals, min, max. Quantities: current, voltage,
 ## resistance, power.
+##
+## Text: target_text() and reading_text() print numbers in `style`
+## (QuantityText.Style). The default, FRACTION, is World 1's "3/2 A"; a room
+## that sets ENGINEERING gets "4.3 mA", "2.2 kΩ". The style changes text only,
+## never a test.
 
 enum Quantity { CURRENT, VOLTAGE, RESISTANCE, POWER }
 
@@ -26,6 +31,8 @@ var quantity: Quantity = Quantity.CURRENT
 var equals: Rational = null
 var min_value: Rational = null
 var max_value: Rational = null
+## How target_text() and reading_text() print numbers.
+var style: QuantityText.Style = QuantityText.Style.FRACTION
 
 
 ## Builds a condition testing for an exact value. Returns null (with
@@ -172,19 +179,20 @@ func quantity_name() -> String:
 
 
 ## "2 A"; a range "1–3/2 A" (en dash); one-sided "≥ 1 A" or "≤ 2 A".
+## ENGINEERING style: "4.3 mA", "5–20 mA", "≥ 500 µA".
 func target_text() -> String:
 	if equals != null:
-		return "%s %s" % [equals.to_text(), unit()]
+		return _with_unit(equals)
 	if min_value != null and max_value != null:
-		return "%s%s%s %s" % [min_value.to_text(), _RANGE_DASH, max_value.to_text(), unit()]
+		return QuantityText.format_range(min_value, max_value, unit(), style, _RANGE_DASH)
 	if min_value != null:
-		return "≥ %s %s" % [min_value.to_text(), unit()]
+		return "≥ %s" % _with_unit(min_value)
 	if max_value != null:
-		return "≤ %s %s" % [max_value.to_text(), unit()]
+		return "≤ %s" % _with_unit(max_value)
 	return "---"
 
 
-## The live value as a meter would show it:
+## The live value as a meter would show it, in `style`:
 ##   "3/2 A" when a value is available (including "0 A" for no current);
 ##   RESISTANCE (ohmmeters): "OL" when OPEN, "ERROR" when INVALID;
 ##   CURRENT / VOLTAGE / POWER: "SHORT", "???" (INDETERMINATE) or "ERROR" from
@@ -218,7 +226,7 @@ func reading_text(solution: DcSolution) -> String:
 
 
 func _with_unit(value: Rational) -> String:
-	return "%s %s" % [value.to_text(), unit()]
+	return QuantityText.format(value, unit(), style)
 
 
 static func _parse_value(data: Dictionary, key: String, id: String) -> Rational:

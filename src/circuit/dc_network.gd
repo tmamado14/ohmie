@@ -15,6 +15,14 @@ extends RefCounted
 ##   VOLTMETER       ideal (draws no current); measures V(a) - V(b).
 ##   OHMMETER        ideal; measures the resistance between a and b with every
 ##                   source switched off (see DcSolution.meter_reading).
+##   DIODE           piecewise linear (DiodeModel): anode a, cathode b, with a
+##                   forward drop. Rectifier, signal, Schottky and LED parts are
+##                   all diodes; only the drop differs.
+##   ZENER           piecewise linear (DiodeModel): a diode that also breaks
+##                   down in reverse at its Zener voltage.
+## DIODE and ZENER are "device" kinds (is_device_kind). A network holding a
+## device is solved by PwlSolver's state search (DcSolver.solve does this
+## automatically); see DiodeModel for the states.
 ##
 ## Every add_* function returns true on success. On bad input (empty id or node
 ## name, duplicate id, a null or invalid value, a resistance that is not > 0)
@@ -23,10 +31,10 @@ extends RefCounted
 ## Read accessors never call push_error: for an unknown id they return "",
 ## null or -1 as documented on each function.
 
-enum Kind { WIRE, RESISTOR, VOLTAGE_SOURCE, AMMETER, VOLTMETER, OHMMETER }
+enum Kind { WIRE, RESISTOR, VOLTAGE_SOURCE, AMMETER, VOLTMETER, OHMMETER, DIODE, ZENER }
 
 const _KIND_NAMES: Array[String] = [
-		"wire", "resistor", "voltage_source", "ammeter", "voltmeter", "ohmmeter"]
+		"wire", "resistor", "voltage_source", "ammeter", "voltmeter", "ohmmeter", "diode", "zener"]
 
 
 class _Element:
@@ -36,17 +44,20 @@ class _Element:
 	var node_a: String
 	var node_b: String
 	var value: Rational  # ohms for a resistor, volts for a source, else null
+	var device: PwlDevice = null  # the model of a device kind, else null
 
 	func _init(element_id: String, element_kind: Kind, a: String, b: String,
-			element_value: Rational) -> void:
+			element_value: Rational, element_device: PwlDevice = null) -> void:
 		id = element_id
 		kind = element_kind
 		node_a = a
 		node_b = b
 		value = element_value
+		device = element_device
 
 
 var _elements: Dictionary = {}  # String id -> _Element
+var _device_count: int = 0
 
 
 ## Adds a zero-resistance wire between a and b.
@@ -107,6 +118,52 @@ func add_ohmmeter(id: String, a: String, b: String) -> bool:
 	return true
 
 
+## Adds a diode (DiodeModel.diode) with its anode at `anode` and its cathode
+## at `cathode`, conducting from anode to cathode once V(anode) - V(cathode)
+## reaches `forward_drop` (>= 0, e.g. 7/10 for silicon, 2 for a red LED).
+## Following the battery convention, the anode is the element's first node.
+func add_diode(id: String, anode: String, cathode: String, forward_drop: Rational) -> bool:
+	if not _check_new(id, anode, cathode, "add_diode"):
+		return false
+	if not _check_drop(id, forward_drop, "add_diode"):
+		return false
+	_add_device(id, anode, cathode, DiodeModel.diode(forward_drop))
+	return true
+
+
+## Adds a Zener diode (DiodeModel.zener): forward drop `forward_drop` (>= 0)
+## from anode to cathode, and reverse breakdown at `zener_voltage` (> 0), when
+## V(anode) - V(cathode) = -zener_voltage. The anode is the first node.
+func add_zener(id: String, anode: String, cathode: String, forward_drop: Rational,
+		zener_voltage: Rational) -> bool:
+	if not _check_new(id, anode, cathode, "add_zener"):
+		return false
+	if not _check_drop(id, forward_drop, "add_zener"):
+		return false
+	if zener_voltage == null or not zener_voltage.is_valid() or zener_voltage.sign() <= 0:
+		push_error("DcNetwork.add_zener: Zener '%s' needs a Zener voltage > 0." % id)
+		return false
+	_add_device(id, anode, cathode, DiodeModel.zener(forward_drop, zener_voltage))
+	return true
+
+
+## The device model of a DIODE or ZENER element; null for every other kind and
+## for an unknown id.
+func get_device(id: String) -> PwlDevice:
+	var element: _Element = _elements.get(id, null)
+	return element.device if element != null else null
+
+
+## True when the network holds at least one device element.
+func has_devices() -> bool:
+	return _device_count > 0
+
+
+## True for the kinds solved as piecewise-linear devices (DIODE, ZENER).
+static func is_device_kind(kind: int) -> bool:
+	return kind == Kind.DIODE or kind == Kind.ZENER
+
+
 func element_count() -> int:
 	return _elements.size()
 
@@ -158,31 +215,34 @@ func get_node_b(id: String) -> String:
 
 
 ## Ohms for a resistor, volts for a voltage source; null for every other kind
-## and for an unknown id.
+## (a device's parameters are on get_device) and for an unknown id.
 func get_value(id: String) -> Rational:
 	var element: _Element = _elements.get(id, null)
 	return element.value if element != null else null
 
 
-## "wire", "resistor", "voltage_source", "ammeter", "voltmeter", "ohmmeter".
-## "" for anything else.
+## "wire", "resistor", "voltage_source", "ammeter", "voltmeter", "ohmmeter",
+## "diode", "zener". "" for anything else.
 static func kind_name(kind: int) -> String:
 	if kind < 0 or kind >= _KIND_NAMES.size():
 		return ""
 	return _KIND_NAMES[kind]
 
 
-## An independent copy. Rational values are immutable, so they are shared.
+## An independent copy. Rational values and device models are immutable, so
+## they are shared.
 func duplicate_network() -> DcNetwork:
 	var copy: DcNetwork = DcNetwork.new()
 	for element: _Element in _elements.values():
 		copy._elements[element.id] = _Element.new(element.id, element.kind,
-				element.node_a, element.node_b, element.value)
+				element.node_a, element.node_b, element.value, element.device)
+	copy._device_count = _device_count
 	return copy
 
 
 ## A deterministic multi-line description, one element per line in id order:
-## "<kind> <id> <a> <b>" plus " <value>" for resistors and sources.
+## "<kind> <id> <a> <b>" plus " <value>" for resistors and sources and
+## " <parameters>" for devices ("diode D1 a k 7/10", "zener Z1 a k 7/10 51/10").
 func to_text() -> String:
 	var lines: PackedStringArray = PackedStringArray()
 	for id: String in get_element_ids():
@@ -190,8 +250,22 @@ func to_text() -> String:
 		var line: String = "%s %s %s %s" % [kind_name(element.kind), id, element.node_a, element.node_b]
 		if element.value != null:
 			line += " " + element.value.to_text()
+		if element.device != null:
+			line += " " + element.device.parameters_text()
 		lines.append(line)
 	return "\n".join(lines)
+
+
+func _add_device(id: String, a: String, b: String, model: PwlDevice) -> void:
+	_elements[id] = _Element.new(id, model.network_kind() as Kind, a, b, null, model)
+	_device_count += 1
+
+
+func _check_drop(id: String, drop: Rational, op: String) -> bool:
+	if drop == null or not drop.is_valid() or drop.sign() < 0:
+		push_error("DcNetwork.%s: device '%s' needs a forward drop >= 0." % [op, id])
+		return false
+	return true
 
 
 func _check_new(id: String, a: String, b: String, op: String) -> bool:
