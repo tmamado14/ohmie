@@ -155,9 +155,11 @@ func build_base_network() -> DcNetwork:
 ## The base network plus the part in every slot listed in `filled` (slot id ->
 ## Part): a resistor becomes add_resistor(slot, from, to, ohms), a battery
 ## add_voltage_source(slot, from, to, volts) with plus at `from`, a diode
-## add_diode(slot, from, to, drop) with its anode at `from`. Slots not in
-## `filled` are empty and left out. Unknown slot ids or values that are not a
-## Part push an error and are skipped.
+## add_diode(slot, anode, cathode, drop) as its picture shows it: the anode at
+## the slot's screen-left node when not flipped, at its screen-right node when
+## flipped (see diode_anode_node). Slots not in `filled` are empty and left
+## out. Unknown slot ids or values that are not a Part push an error and are
+## skipped.
 func build_network(filled: Dictionary) -> DcNetwork:
 	var network: DcNetwork = DcNetwork.new()
 	var slot_ids: Dictionary = {}
@@ -190,13 +192,28 @@ func build_network(filled: Dictionary) -> DcNetwork:
 					Part.Kind.BATTERY:
 						network.add_voltage_source(edge.id, a, b, part.value)
 					Part.Kind.DIODE:
-						network.add_diode(edge.id, a, b, part.value)
+						var anode: String = diode_anode_node(edge, part.flipped)
+						network.add_diode(edge.id, anode, b if anode == a else a, part.value)
 					_:
 						network.add_resistor(edge.id, a, b, part.value)
 	for key: Variant in filled.keys():
 		if not slot_ids.has(key):
 			push_error("LevelCircuit.build_network: '%s' is not a slot of this circuit" % str(key))
 	return network
+
+
+## True when the slot's `from` node lies right of its `to` node on screen
+## (equal x counts as `from` on the left).
+func is_from_right(edge: Edge) -> bool:
+	return get_node_position(edge.from_node).x > get_node_position(edge.to_node).x
+
+
+## The node of `edge` (a slot) where a diode's anode sits: the screen-left
+## node when not `flipped`, the screen-right node when `flipped`.
+func diode_anode_node(edge: Edge, flipped: bool) -> String:
+	var left: String = edge.to_node if is_from_right(edge) else edge.from_node
+	var right: String = edge.from_node if is_from_right(edge) else edge.to_node
+	return right if flipped else left
 
 
 ## True when every condition names an edge of this circuit and asks for a

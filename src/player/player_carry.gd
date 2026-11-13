@@ -22,8 +22,17 @@ extends Node2D
 ##                                   on a PartBlocker's area: pads, hazards,
 ##                                   board components, the door)
 ##   anything else                -> invalid
+## On `flip` (GDD 11, "Direction"; also only while standing):
+##   carrying a flippable part             -> it turns end for end
+##   empty hands + filled slot, flippable  -> the part turns in the slot
+##                                            (the slot announces the change)
+##   empty hands + loose flippable part    -> it turns where it lies
+##   anything else                         -> invalid
 
 signal picked_up(part: PartPickup)
+## A part was turned end for end (carried, in `socket`, or loose; `socket` is
+## null unless it was in a slot).
+signal part_flipped(part: PartPickup, socket: CircuitSocket)
 signal placed(part: PartPickup, socket: CircuitSocket)
 signal removed(part: PartPickup, socket: CircuitSocket)
 signal swapped(placed_part: PartPickup, taken_part: PartPickup, socket: CircuitSocket)
@@ -74,6 +83,11 @@ func _physics_process(_delta: float) -> void:
 			_interact()
 		else:
 			invalid_action.emit()
+	if Input.is_action_just_pressed("flip"):
+		if grounded:
+			_flip()
+		else:
+			invalid_action.emit()
 	_announce_target()
 
 
@@ -84,6 +98,11 @@ func get_carried() -> PartPickup:
 
 func is_carrying() -> bool:
 	return _carried != null
+
+
+## The icon drawn above Ohmie's head (for checks of how the carried part looks).
+func get_carried_icon() -> PartIcon:
+	return _carried_icon
 
 
 ## The highlighted interactable, or null.
@@ -164,6 +183,24 @@ func _interact() -> void:
 	_set_carried(null)
 	held.place_loose(spot)
 	dropped.emit(held)
+
+
+func _flip() -> void:
+	if _carried != null:
+		if _carried.flip():
+			_carried_icon.set_part(_carried.part)
+			part_flipped.emit(_carried, null)
+		else:
+			invalid_action.emit()
+		return
+	var socket: CircuitSocket = _target as CircuitSocket
+	var pickup: PartPickup = _target as PartPickup
+	if socket != null and socket.flip_part():
+		part_flipped.emit(socket.get_pickup(), socket)
+	elif pickup != null and pickup.flip():
+		part_flipped.emit(pickup, null)
+	else:
+		invalid_action.emit()
 
 
 func _is_grounded() -> bool:

@@ -6,6 +6,10 @@ extends Interactable
 ## The same node represents the part for the whole level: it is shown while it
 ## lies loose, and hidden while Ohmie carries it or it sits in a slot (those
 ## draw their own icon). It remembers where the level first put it.
+##
+## It owns its own copy of the level's Part, so turning a diode (flip()) never
+## changes the level data; the direction stays with the part wherever it goes
+## (carried, plugged in, put down, sent home) until the room restarts.
 
 ## From the origin (feet) to the icon centre: the logical 96x64 icon box whose
 ## bottom is the floor point (reach, name tag and footprint use it).
@@ -35,11 +39,11 @@ func _ready() -> void:
 	_icon.set_part(part)
 
 
-## Sets the part and home (global floor point) and puts it there. Call after
-## adding the node to the tree.
+## Sets the part (a copy of `level_part`, direction included) and home (global
+## floor point) and puts it there. Call after adding the node to the tree.
 func setup(id: String, level_part: Part, home: Vector2) -> void:
 	part_id = id
-	part = level_part
+	part = level_part.copy() if level_part != null else null
 	home_position = home
 	if _icon != null:
 		_icon.set_part(part)
@@ -51,6 +55,16 @@ func place_loose(at: Vector2) -> void:
 	global_position = at
 	_loose = true
 	visible = true
+
+
+## Turns the part end for end (a diode) and redraws it. Returns false and
+## changes nothing for a part without a direction.
+func flip() -> bool:
+	if part == null or not part.set_flipped(not part.flipped):
+		return false
+	if _icon != null:
+		_icon.set_part(part)
+	return true
 
 
 ## Takes the part out of the world (carried or plugged in).
@@ -97,7 +111,7 @@ func get_icon() -> PartIcon:
 	return _icon
 
 
-## The part's name tag: "3 Ω", "1/2 Ω", "6 V", "diode 0.7 V".
+## The part's name tag: "3 Ω", "1/2 Ω", "6 V", "diode 0.7 V →".
 func get_tag_text() -> String:
 	return part.tag_text() if part != null else ""
 

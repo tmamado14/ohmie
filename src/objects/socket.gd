@@ -3,13 +3,15 @@ extends Interactable
 ## A slot on the circuit board that holds at most one part of any kind. The
 ## node's origin is the midpoint of its edge; the 104x72 frame is centred on it.
 ##
-## A battery's plus end (and a diode's anode) faces the slot's `from` node: its art (on the
-## left) is mirrored when `from` lies right of `to`, so a diode's stripe points
-## toward `to`; the + / − badges sit
-## on the matching corner screws while a battery is in.
+## A battery's plus end faces the slot's `from` node: its art (plus on the
+## left) is mirrored when `from` lies right of `to`; the + / − badges sit on
+## the matching corner screws while a battery is in. A diode is never turned
+## by the slot: its picture is mirrored exactly when the part is flipped
+## (Part.flipped), and that is also how the board wires it in.
 ##
-## Announces every change of contents with `contents_changed`; the board
-## listens and re-solves the circuit.
+## Announces every change of contents with `contents_changed` (also when the
+## diode in it is flipped in place); the board listens and re-solves the
+## circuit.
 
 signal contents_changed
 
@@ -112,6 +114,17 @@ func swap(pickup: PartPickup) -> PartPickup:
 	return old
 
 
+## Turns the part in the slot end for end, if it can be flipped (one change
+## event). Returns false and changes nothing when the slot is empty or holds
+## a part without a direction.
+func flip_part() -> bool:
+	if _pickup == null or not _pickup.flip():
+		return false
+	_show_contents()
+	contents_changed.emit()
+	return true
+
+
 func set_highlighted(highlighted: bool) -> void:
 	if _frame != null:
 		_frame.texture = highlight_texture if highlighted else empty_texture
@@ -137,5 +150,6 @@ func _show_contents() -> void:
 	var part: Part = get_part()
 	var battery: bool = part != null and part.is_battery()
 	_icon.set_part(part)
-	_icon.set_flipped(part != null and part.is_polarized() and _from_is_right)
+	if battery:
+		_icon.set_flipped(_from_is_right)
 	_badges.show_polarity(battery, _from_is_right)

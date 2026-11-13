@@ -1,7 +1,7 @@
 {
   "id": "dev_diode",
   "title": "Dev Diode",
-  "teaches": "Development only: a diode conducts one way (tests/play_diode.gd)",
+  "teaches": "Development only: a diode conducts one way and the player turns it with F; both slots conduct left to right, so stripe right (not flipped) works in either (tests/play_diode.gd)",
   "world": "copper_foundry",
   "numbers": "engineering",
   "mission": "Light the lamp brightly.",

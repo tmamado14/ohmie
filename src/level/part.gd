@@ -1,11 +1,19 @@
 class_name Part
 extends RefCounted
 ## One carried part: a resistor (ohms), a battery (volts) or a diode (forward
-## drop in volts), with its exact value. Pure data, immutable after create().
+## drop in volts), with its exact value. Kind, value and looks are fixed after
+## create(); only a diode's direction (`flipped`) changes, and only when the
+## player turns it (set_flipped).
 ##
 ## A diode also has a look (`diode_style`: rectifier, signal or schottky; the
 ## picture only) and, like every part, the number style its texts use
 ## (`number_style`: World 1 fractions or World 2 engineering text).
+##
+## Direction (GDD 11, "Board and parts"): a diode not flipped is drawn as the
+## art is, anode on the screen-left and the cathode stripe on the right, and
+## conducts left to right; flipped, the picture is mirrored (stripe on the
+## left) and it conducts right to left. Batteries cannot be flipped (their
+## plus faces their slot's `from` node).
 
 enum Kind { RESISTOR, BATTERY, DIODE }
 
@@ -16,6 +24,11 @@ const DIODE_STYLES: Array[String] = ["rectifier", "signal", "schottky"]
 const DEFAULT_DIODE_STYLE: String = "rectifier"
 ## Put before a diode's value on its name tag: "diode 0.7 V".
 const DIODE_TAG_PREFIX: String = "diode "
+## Put after a diode's value on its name tag: the way it conducts on screen.
+const TAG_ARROW_RIGHT: String = " →"
+const TAG_ARROW_LEFT: String = " ←"
+## The puzzle search's key for a part it may also try the other way round.
+const SEARCH_REVERSIBLE_KEY: String = "reversible"
 
 var kind: Kind = Kind.RESISTOR
 ## Ohms for a resistor (> 0), volts for a battery (> 0), the forward drop in
@@ -25,6 +38,9 @@ var value: Rational = null
 var diode_style: String = ""
 ## How value_text() and tag_text() print the value.
 var number_style: QuantityText.Style = QuantityText.Style.FRACTION
+## A diode turned end for end: anode on the screen-right, stripe on the left.
+## Always false for a part that is not flippable.
+var flipped: bool = false
 
 
 ## A part of `part_kind` with `part_value` (> 0; a diode's drop may be 0).
@@ -65,9 +81,34 @@ func is_diode() -> bool:
 
 
 ## True for a part whose picture has a direction (a battery's plus, a diode's
-## anode on the left) and is mirrored to face its slot's `from` node.
+## anode on the left of the art).
 func is_polarized() -> bool:
 	return kind == Kind.BATTERY or kind == Kind.DIODE
+
+
+## True for a part the player may turn end for end (a diode).
+func is_flippable() -> bool:
+	return kind == Kind.DIODE
+
+
+## Sets a flippable part's direction. Returns false (and changes nothing) for
+## a part that cannot be flipped.
+func set_flipped(turned: bool) -> bool:
+	if not is_flippable():
+		return false
+	flipped = turned
+	return true
+
+
+## A new Part with the same kind, value, looks, number style and direction.
+func copy() -> Part:
+	var twin: Part = Part.new()
+	twin.kind = kind
+	twin.value = value
+	twin.diode_style = diode_style
+	twin.number_style = number_style
+	twin.flipped = flipped
+	return twin
 
 
 ## "resistor", "battery" or "diode".
@@ -93,11 +134,18 @@ func value_text() -> String:
 	return QuantityText.format(value, unit(), number_style)
 
 
-## The name tag: value_text(), with "diode " before a diode's value.
+## The name tag: value_text(); a diode's reads "diode 0.7 V →" (conducts left
+## to right, not flipped) or "diode 0.7 V ←" (flipped).
 func tag_text() -> String:
-	return DIODE_TAG_PREFIX + value_text() if kind == Kind.DIODE else value_text()
+	if kind != Kind.DIODE:
+		return value_text()
+	return DIODE_TAG_PREFIX + value_text() + (TAG_ARROW_LEFT if flipped else TAG_ARROW_RIGHT)
 
 
-## The form DcPuzzleSearch.find_solutions expects for one part.
+## The form DcPuzzleSearch.find_solutions expects for one part. A flippable
+## part is marked "reversible": the search tries it both ways round.
 func to_search_dictionary() -> Dictionary:
-	return {"kind": kind_name(), "value": value}
+	var search: Dictionary = {"kind": kind_name(), "value": value}
+	if is_flippable():
+		search[SEARCH_REVERSIBLE_KEY] = true
+	return search

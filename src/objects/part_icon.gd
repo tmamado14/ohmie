@@ -7,8 +7,10 @@ extends Node2D
 ## the blank resistor with its value written in the plaque; a battery uses the
 ## battery art with its voltage written in the plaque; a diode uses its
 ## style's picture with its forward drop written in the plaque. The battery
-## art's plus end and the diode's anode are on the LEFT; set_flipped(true)
-## mirrors the art (not the text). The plaque text is Part.value_text().
+## art's plus end and the diode's anode are on the LEFT. set_part() mirrors the
+## art of a flipped part (Part.flipped: a diode turned end for end);
+## set_flipped(true) mirrors it on request (a battery facing its slot). The
+## text is never mirrored. The plaque text is Part.value_text().
 ## The pack's 1/2 Ω art has "0.5 Ω" painted on it, so that value uses the
 ## blank resistor with "1/2 Ω" printed: every value reads as a fraction.
 
@@ -63,9 +65,11 @@ func _init() -> void:
 	add_child(_label)
 
 
-## Shows `part`, or nothing when `part` is null.
+## Shows `part`, or nothing when `part` is null. The art is mirrored exactly
+## when the part is flipped (call again after the part is turned).
 func set_part(part: Part) -> void:
 	_part = part
+	_sprite.flip_h = part != null and part.flipped
 	if part == null:
 		_sprite.texture = null
 		_label.visible = false

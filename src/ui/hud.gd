@@ -15,8 +15,9 @@ extends Control
 ## parchment, so a long caption shrinks together with its value.
 ##
 ## The control hint reads "A/D move · Space jump (hold for higher) · E use ·
-## R restart", with "S drop down" when the room has a one-way platform and
-## "Esc map" when Esc opens the map (MenuStyle hint style).
+## R restart", with "S drop down" when the room has a one-way platform, "F flip"
+## after "E use" when the room has a part that can be flipped, and "Esc map"
+## when Esc opens the map (MenuStyle hint style).
 ##
 ## The line under the victory banner sits on a dark rounded strip sized to its
 ## text, so it stays readable over anything behind it.
@@ -42,10 +43,13 @@ const VICTORY_PLAY_AGAIN: String = "Press R to play again"
 const VICTORY_NEXT_ROOM_MAP: String = "E next room · R replay · Esc map"
 const VICTORY_MAP_PLAY_AGAIN: String = "R replay · Esc map"
 ## The control hint's entries, in order. DROP_HINT is added when the room has a
-## one-way platform; the hint ends with MAP_HINT when Esc opens the map.
+## one-way platform, FLIP_HINT when it has a flippable part; the hint ends with
+## MAP_HINT when Esc opens the map.
 const MOVE_HINTS: PackedStringArray = ["A/D move", "Space jump (hold for higher)"]
 const DROP_HINT: String = "S drop down"
-const USE_HINTS: PackedStringArray = ["E use", "R restart"]
+const USE_HINT: String = "E use"
+const FLIP_HINT: String = "F flip"
+const RESTART_HINT: String = "R restart"
 const MAP_HINT: String = " · Esc map"
 ## Caption of the target row when the goal has one condition.
 const GOAL_CAPTION: String = "GOAL"
@@ -130,13 +134,17 @@ func set_mission(text: String) -> void:
 	_mission_text.add_theme_font_size_override(&"font_size", size)
 
 
-## Sets the control hint: "S drop down" only when `has_one_way_platform`, and
-## "Esc map" at the end only when `map_shown`.
-func set_controls_hint(has_one_way_platform: bool, map_shown: bool) -> void:
+## Sets the control hint: "S drop down" only when `has_one_way_platform`,
+## "F flip" only when `has_flippable_part`, and "Esc map" at the end only when
+## `map_shown`.
+func set_controls_hint(has_one_way_platform: bool, map_shown: bool, has_flippable_part: bool = false) -> void:
 	var entries: PackedStringArray = MOVE_HINTS.duplicate()
 	if has_one_way_platform:
 		entries.append(DROP_HINT)
-	entries.append_array(USE_HINTS)
+	entries.append(USE_HINT)
+	if has_flippable_part:
+		entries.append(FLIP_HINT)
+	entries.append(RESTART_HINT)
 	var text: String = MenuStyle.hint_text(entries)
 	_hint.text = text + MAP_HINT if map_shown else text
 

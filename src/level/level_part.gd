@@ -1,15 +1,20 @@
 class_name LevelPart
 extends RefCounted
 ## One entry of a level's "parts" list: {"id", "kind", "value", "pos"} and,
-## for a diode only, an optional "style" (Part.DIODE_STYLES), with the part
-## parsed once into a Part.
+## for a diode only, an optional "style" (Part.DIODE_STYLES) and an optional
+## "flipped" (bool, default false: stripe on the right), with the part parsed
+## once into a Part.
 ##
 ## "kind" is "resistor", "battery" or "diode". "value" is a string read by
 ## QuantityText.parse ("3/2", "0.7", "1k"): ohms or volts, > 0; a diode's
 ## forward drop in volts, >= 0.
+##
+## `part` is the level's initial state; the room gives each pickup its own
+## copy, so the player's flips never change it.
 
-const ALLOWED_KEYS: Array[String] = ["id", "kind", "value", "pos", "style"]
+const ALLOWED_KEYS: Array[String] = ["id", "kind", "value", "pos", "style", "flipped"]
 const STYLE_KEY: String = "style"
+const FLIPPED_KEY: String = "flipped"
 
 var id: String = ""
 var part: Part = null
@@ -72,6 +77,15 @@ static func _parse_one(raw: Variant, index: int, source: String,
 					source, id, ", ".join(Part.DIODE_STYLES)])
 			return null
 		look = entry[STYLE_KEY]
+	var flipped: bool = false
+	if entry.has(FLIPPED_KEY):
+		if kind != Part.Kind.DIODE:
+			push_error("LevelPart: %s: part '%s' has 'flipped', which only a diode may have" % [source, id])
+			return null
+		if not entry[FLIPPED_KEY] is bool:
+			push_error("LevelPart: %s: part '%s' needs 'flipped' as true or false" % [source, id])
+			return null
+		flipped = entry[FLIPPED_KEY]
 	if not entry.get("value") is String:
 		push_error("LevelPart: %s: part '%s' needs 'value' as a string like \"3/2\"" % [source, id])
 		return null
@@ -94,6 +108,7 @@ static func _parse_one(raw: Variant, index: int, source: String,
 	var level_part: LevelPart = LevelPart.new()
 	level_part.id = id
 	level_part.part = Part.create(kind as Part.Kind, value, look, numbers)
+	level_part.part.set_flipped(flipped)
 	level_part.position = Vector2(float(pair[0]), float(pair[1]))
 	return level_part
 

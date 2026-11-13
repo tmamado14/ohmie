@@ -3,7 +3,9 @@ extends SceneTree
 ##
 ## Loads the level (LevelData validates the tiles, parts, circuit and goal),
 ## runs DcPuzzleSearch over every way of filling the slots with the room's
-## parts, and prints each solution (at most MAX_PRINTED), which parts are never
+## parts (a diode both ways round), and prints each solution (at most
+## MAX_PRINTED; a diode with the on-screen direction the player must give it,
+## "stripe right" or "stripe left"), which parts are never
 ## used (decoys), and layout warnings (edges that are not horizontal or
 ## vertical, component edges shorter than MIN_COMPONENT_LENGTH).
 ##
@@ -16,6 +18,9 @@ const MAX_PRINTED: int = 40
 const MAX_SOLUTIONS: int = 100000
 const EXIT_OK: int = 0
 const EXIT_FAIL: int = 1
+## How a diode must lie on screen: as drawn (not flipped) or mirrored (flipped).
+const STRIPE_RIGHT: String = "stripe right"
+const STRIPE_LEFT: String = "stripe left"
 
 
 func _initialize() -> void:
@@ -59,12 +64,16 @@ func _run() -> int:
 	var solutions: Array[Dictionary] = DcPuzzleSearch.find_solutions(
 			circuit.build_base_network(), slots, search_parts, goal.conditions, MAX_SOLUTIONS)
 	print("Solutions:  %d" % solutions.size())
+	var flippable_texts: Dictionary = {}  # Part.label() of every flippable part -> true
+	for entry: LevelPart in level.parts:
+		if entry.part.is_flippable():
+			flippable_texts[entry.part.label()] = true
 	for i: int in mini(solutions.size(), MAX_PRINTED):
-		print("  %d. %s" % [i + 1, _describe_solution(solutions[i], slots)])
+		print("  %d. %s" % [i + 1, _describe_solution(solutions[i], slots, circuit, flippable_texts)])
 	if solutions.size() > MAX_PRINTED:
 		print("  ... and %d more" % (solutions.size() - MAX_PRINTED))
 
-	_print_part_usage(level.parts, solutions)
+	_print_part_usage(level.parts, solutions, slots)
 
 	if solutions.is_empty():
 		print("UNSOLVABLE  %s" % path)
@@ -90,20 +99,37 @@ func _print_layout_warnings(circuit: LevelCircuit) -> int:
 	return count
 
 
-func _describe_solution(solution: Dictionary, slots: Array[Dictionary]) -> String:
+## "s1=3 Ω, s2=empty, s3=diode 7/10 V (stripe right)": each slot's part, and
+## for a flippable part (a diode) the way the player must turn it on screen:
+## "stripe right" is the part as drawn (not flipped), "stripe left" flipped.
+func _describe_solution(solution: Dictionary, slots: Array[Dictionary], circuit: LevelCircuit,
+		flippable_texts: Dictionary) -> String:
 	var texts: Array[String] = []
 	for slot: Dictionary in slots:
 		var id: String = slot["id"]
-		texts.append("%s=%s" % [id, solution[id] if solution.has(id) else "empty"])
+		if not solution.has(id):
+			texts.append("%s=empty" % id)
+			continue
+		var part_text: String = DcPuzzleSearch.placed_part_text(solution, id)
+		if not flippable_texts.has(part_text):
+			texts.append("%s=%s" % [id, solution[id]])
+			continue
+		var reversed: bool = DcPuzzleSearch.is_reversed(solution, id)
+		var anode: String = String(slot["to"]) if reversed else String(slot["from"])
+		var flipped: bool = circuit.diode_anode_node(circuit.get_edge(id), true) == anode
+		texts.append("%s=%s (%s)" % [id, part_text, STRIPE_LEFT if flipped else STRIPE_RIGHT])
 	return ", ".join(texts)
 
 
 ## One line per distinct part (kind and value): used in some solution, or a decoy.
-func _print_part_usage(parts: Array[LevelPart], solutions: Array[Dictionary]) -> void:
+## A part counts as used whichever way round it sits.
+func _print_part_usage(parts: Array[LevelPart], solutions: Array[Dictionary], slots: Array[Dictionary]) -> void:
 	var used: Dictionary = {}
 	for solution: Dictionary in solutions:
-		for text: Variant in solution.values():
-			used[str(text)] = true
+		for slot: Dictionary in slots:
+			var text: String = DcPuzzleSearch.placed_part_text(solution, String(slot["id"]))
+			if not text.is_empty():
+				used[text] = true
 	var counts: Dictionary = {}  # label -> count
 	var order: Array[String] = []
 	var kinds: Dictionary = {}  # label -> kind name

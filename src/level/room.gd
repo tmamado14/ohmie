@@ -39,6 +39,8 @@ signal zapped
 const LEVEL_ARG_PREFIX: String = "--level="
 ## The background is scaled to cover exactly this area (the 1280x720 room).
 const ROOM_SIZE: Vector2 = Vector2(1280, 720)
+## Played when Ohmie turns a diode (the pick-up click, reused).
+const FLIP_SOUND: StringName = &"pickup"
 
 ## When not empty, every Room loads this level instead of `level_path` or the
 ## command line. A static, so it outlives scene reloads; for scripted tests.
@@ -90,7 +92,7 @@ func _ready() -> void:
 	_tiles.build(level_data.tile_rows)
 	_hud.set_title(level_data.title)
 	_hud.set_mission(_goal.mission)
-	_hud.set_controls_hint(_has_one_way_platform(), GameSession.from_menus)
+	_hud.set_controls_hint(_has_one_way_platform(), GameSession.from_menus, _has_flippable_part())
 	var symbols: PackedStringArray = PackedStringArray()
 	var targets: PackedStringArray = PackedStringArray()
 	for i: int in _goal.condition_count():
@@ -285,6 +287,7 @@ func _spawn_player() -> void:
 	_carry.swapped.connect(_play_sound.bind(&"place_resistor").unbind(3))
 	_carry.dropped.connect(_play_sound.bind(&"place_resistor").unbind(1))
 	_carry.invalid_action.connect(_play_sound.bind(&"invalid"))
+	_carry.part_flipped.connect(_play_sound.bind(FLIP_SOUND).unbind(2))
 	_carry.target_changed.connect(_target_tag.show_target)
 	_respawn.setup(_player, _carry, level_data.spawn)
 
@@ -349,6 +352,14 @@ func _row_caption(index: int) -> String:
 func _has_one_way_platform() -> bool:
 	for row: String in level_data.tile_rows:
 		if row.contains(RoomTiles.CHAR_PLATFORM):
+			return true
+	return false
+
+
+## True when the level has a part the player can turn with `flip` (a diode).
+func _has_flippable_part() -> bool:
+	for entry: LevelPart in level_data.parts:
+		if entry.part.is_flippable():
 			return true
 	return false
 
