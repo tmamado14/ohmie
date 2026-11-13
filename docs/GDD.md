@@ -36,6 +36,7 @@ The long-term aim is a full electronics game. World 1 covers basic DC networks. 
   - empty hands at a filled slot: pull the part out;
   - carrying at a filled slot: swap;
   - carrying with nothing in range: put the part down at Ohmie's feet. It always ends up fully on screen, fully supported, and clear of other loose parts, pads and hazards; it slides a little to manage that, or the action is refused.
+- The flip key (F) turns a part that has a direction end for end: the carried one, or with empty hands the one in the slot Ohmie stands at. It does nothing for parts without a direction. (World 2 onward; see section 11.)
 - R restarts the room. Esc returns to the map.
 - The door is open exactly while the mission holds. Break the circuit and it shuts.
 - Falling off the screen or touching an enemy or hazard zaps Ohmie: a short freeze, then a respawn at the room's start. A carried part returns to where it first lay. The circuit is untouched. There are no lives.
@@ -226,7 +227,7 @@ Every device is piecewise linear: it is in one of a few states, each state is a 
 ### Board and parts
 
 - **Two-terminal parts** (diodes, LEDs, Zeners) are carried and go in the ordinary slots, next to resistors and batteries. Every slot still takes any two-terminal part.
-- **Direction.** A diode's anode faces the slot's `from` node, as a battery's plus does. The slot shows a small arrow badge while a diode is in it. There is no flip action: which slot a diode goes in is the puzzle, and rooms offer slots facing both ways.
+- **Direction.** The player sets a diode's direction. The flip key (F) turns a diode end for end: the one Ohmie is carrying, or, with empty hands, the one in the slot Ohmie is standing at. The picture shows the truth: the stripe (cathode) points left or right on screen, and the diode conducts toward the stripe. Nothing ever turns a diode automatically: it goes into a slot facing the way Ohmie holds it, comes out the same way, and keeps its direction when put down or sent home. A diode starts with its stripe to the right unless the room says otherwise (`"flipped": true` on the part). Batteries are not flippable; their plus still faces the slot's `from` node. LEDs and Zeners will flip the same way.
 - **Fixed devices.** A transistor or op-amp fixed to the board is drawn with its schematic symbol on a board plate, with a wire meeting each labelled terminal. Op-amps are always fixed; the player chooses the resistors around them. The supply rails are part of the op-amp element and are printed on its plate, not wired.
 - **Device bays.** A bay is a three-terminal slot (base, collector, emitter). It takes any three-terminal part: NPN, PNP, and later the MOSFET. Ohmie carries the illustrated part; a filled bay shows the part's symbol. A wrong device gives whatever physics says.
 - **New goal words.** A condition can name an LED like a lamp (`lit`), and a voltmeter can read an op-amp output or a transistor terminal like any node.
@@ -235,7 +236,7 @@ Every device is piecewise linear: it is in one of a few states, each state is a 
 
 | # | Title | Mission | Board | Idea |
 |---|---|---|---|---|
-| 1 | One Way Street | Light the lamp. | A fixed battery, a lamp and two slots facing opposite ways on parallel paths; one diode and a few resistors | A diode conducts one way only |
+| 1 | One Way Street | Light the lamp. | A fixed battery, a lamp, an ammeter and one slot in a single loop; one diode, lying the wrong way round for the loop, and a decoy resistor | A diode conducts one way only: plug it in, see nothing, flip it |
 | 2 | Drop It | Put 4.3 V on the meter. | A fixed 5 V battery, a slot, a fixed resistor with a voltmeter across it; a silicon diode, a Schottky and decoy resistors | The forward drop |
 | 3 | Glow Up | Light the LED. Don't blow it. | A fixed battery, an LED slot and a series slot | The current-limiting resistor |
 | 4 | Zener Garden | Hold 5.1 V on the meter. | A fixed 12 V battery, a series slot, a slot across a fixed load with a voltmeter | A Zener in reverse holds its voltage; forwards it is only a diode |
